@@ -1,94 +1,158 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 
-// Define User type
-interface User {
+/* =======================
+   Types
+======================= */
+
+export interface User {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  role: "CLIENT" | "ADMIN";
+  role?: "admin" | "client";
 }
 
-// Context type
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  token: string | null;
   loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    sex?: string;
+  }) => Promise<void>;
+  logout: () => void;
 }
 
-// Create context
+/* =======================
+   Context
+======================= */
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Provider props
-interface AuthProviderProps {
-  children: ReactNode;
-}
+/* =======================
+   Hook
+======================= */
 
-// AuthProvider
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
-
-  // Check local storage/session on mount
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
-  }, []);
-
-  // Login function
-  const login = async (email: string, password: string) => {
-    setLoading(true);
-
-    try {
-      // TODO: Replace with real API call
-      // Example fake API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      const fakeUser: User = {
-        id: "123",
-        name: "John Doe",
-        email,
-        role: "CLIENT", // Or "ADMIN" depending on login
-      };
-
-      // Save user to state and localStorage
-      setUser(fakeUser);
-      localStorage.setItem("user", JSON.stringify(fakeUser));
-
-    } catch (error) {
-      console.error("Login failed:", error);
-      throw new Error("Invalid credentials");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Logout function
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-    router.push("/login");
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-// Custom hook
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
+};
+
+/* =======================
+   Provider
+======================= */
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+
+  /* Load auth from storage */
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    const storedToken = localStorage.getItem("token");
+
+    if (storedUser && storedToken) {
+      setUser(JSON.parse(storedUser) as User);
+      setToken(storedToken);
+    }
+  }, []);
+
+  /* Persist auth */
+  const saveAuth = (userData: User, jwt: string) => {
+    setUser(userData);
+    setToken(jwt);
+    localStorage.setItem("user", JSON.stringify(userData));
+    localStorage.setItem("token", jwt);
+  };
+
+  /* Login */
+  const login = async (email: string, password: string) => {
+    try {
+      setLoading(true);
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_REST_API}/auth/login`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Login failed");
+
+      saveAuth(data.user, data.token);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* Signup */
+  const signup = async (payload: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    sex?: string;
+  }) => {
+    try {
+      setLoading(true);
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_REST_API}/auth_create/create_account`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Signup failed");
+
+      saveAuth(data.user, data.token);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* Logout */
+  const logout = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+  };
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        loading,
+        login,
+        signup,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };

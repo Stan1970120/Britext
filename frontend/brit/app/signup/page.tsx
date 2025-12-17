@@ -1,70 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { FaGoogle, FaApple } from "react-icons/fa6";
-import { REST_API } from "../constant";
-import { useUser, useUserType } from "../hooks";
+import { useUser } from "@/app/hooks/useUser";
+
+interface SignupError {
+  status: boolean;
+  message: string;
+}
 
 export default function SignupPage() {
   const router = useRouter();
-  const { setUser } = useUser();
-  const { setUserType } = useUserType();
+  const { signup } = useUser();
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [sex, setSex] = useState("");
-  const [email, setEmail] = useState("");
-  const [password1, setPassword1] = useState("");
-  const [password2, setPassword2] = useState("");
-  const [passwordNotMatch, setPasswordNotMatch] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [pushError, setPushError] = useState({ status: false, message: "" });
+  const [firstName, setFirstName] = useState<string>("");
+  const [lastName, setLastName] = useState<string>("");
+  const [sex, setSex] = useState<"male" | "female" | "custom" | "">("");
+  const [email, setEmail] = useState<string>("");
+  const [password1, setPassword1] = useState<string>("");
+  const [password2, setPassword2] = useState<string>("");
 
-  // Validate password match
-  const validatePasswords = () => {
-    if (password1 && password2 && password1 === password2) {
-      setPasswordNotMatch(false);
-      return true;
-    } else {
-      setPasswordNotMatch(true);
-      return false;
-    }
+  const [passwordNotMatch, setPasswordNotMatch] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [pushError, setPushError] = useState<SignupError>({
+    status: false,
+    message: "",
+  });
+
+  const validatePasswords = (): boolean => {
+    const valid = password1.length > 0 && password1 === password2;
+    setPasswordNotMatch(!valid);
+    return valid;
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleSignup = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setPushError({ status: false, message: "" });
+
     if (!validatePasswords()) return;
 
     setLoading(true);
 
-    const payload = {
-      firstName,
-      lastName,
-      email,
-      password: password1,
-      sex,
-    };
-
     try {
-      const res = await fetch(`${REST_API}/auth_create/create_account`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
+      await signup({
+        firstName,
+        lastName,
+        email,
+        password: password1,
       });
-      const data = await res.json();
 
-      if (data.user?.user_id) {
-        setUser(data.user);
-        setUserType(data.user.role);
-        router.replace(`/${data.user.role}s`);
-      } else {
-        setPushError({ status: true, message: "Error creating account" });
-      }
-    } catch (err) {
-      console.error(err);
-      setPushError({ status: true, message: "Network error" });
+      // Successful signup → redirect
+      router.replace("/dashboard");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Signup failed";
+      setPushError({ status: true, message });
     } finally {
       setLoading(false);
     }
@@ -97,16 +88,14 @@ export default function SignupPage() {
             />
           </div>
 
-          <div>
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
-            />
-          </div>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
+          />
 
           <div className="flex gap-2">
             <input
@@ -116,7 +105,9 @@ export default function SignupPage() {
               onChange={(e) => setPassword1(e.target.value)}
               required
               className={`w-1/2 border px-3 py-2 rounded-lg outline-none ${
-                passwordNotMatch ? "border-red-500" : "focus:ring-2 focus:ring-sky-500"
+                passwordNotMatch
+                  ? "border-red-500"
+                  : "focus:ring-2 focus:ring-sky-500"
               }`}
             />
             <input
@@ -126,7 +117,9 @@ export default function SignupPage() {
               onChange={(e) => setPassword2(e.target.value)}
               required
               className={`w-1/2 border px-3 py-2 rounded-lg outline-none ${
-                passwordNotMatch ? "border-red-500" : "focus:ring-2 focus:ring-sky-500"
+                passwordNotMatch
+                  ? "border-red-500"
+                  : "focus:ring-2 focus:ring-sky-500"
               }`}
             />
           </div>
@@ -135,54 +128,52 @@ export default function SignupPage() {
             <p className="text-red-600 text-xs">Passwords do not match</p>
           )}
 
-          <div className="flex gap-3">
-            <label className="flex items-center gap-1">
-              <input
-                type="radio"
-                name="sex"
-                value="male"
-                onChange={(e) => setSex(e.target.value)}
-                required
-              />
-              Male
-            </label>
-            <label className="flex items-center gap-1">
-              <input
-                type="radio"
-                name="sex"
-                value="female"
-                onChange={(e) => setSex(e.target.value)}
-                required
-              />
-              Female
-            </label>
-            <label className="flex items-center gap-1">
-              <input
-                type="radio"
-                name="sex"
-                value="custom"
-                onChange={(e) => setSex(e.target.value)}
-                required
-              />
-              Custom
-            </label>
+          {pushError.status && (
+            <p className="text-red-600 text-sm">{pushError.message}</p>
+          )}
+
+          <div className="flex gap-4 text-sm">
+            {(["male", "female", "custom"] as const).map((value) => (
+              <label key={value} className="flex items-center gap-1">
+                <input
+                  type="radio"
+                  name="sex"
+                  value={value}
+                  checked={sex === value}
+                  onChange={(e) =>
+                    setSex(e.target.value as typeof sex)
+                  }
+                  required
+                />
+                {value.charAt(0).toUpperCase() + value.slice(1)}
+              </label>
+            ))}
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-sky-700 text-white py-2 rounded-lg hover:bg-sky-800 transition"
+            className="w-full bg-sky-700 text-white py-2 rounded-lg hover:bg-sky-800 transition disabled:opacity-60"
           >
             {loading ? "Signing Up..." : "Sign Up"}
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-600 mt-4">or sign up with</p>
+        <p className="text-center text-sm text-gray-600 mt-4">
+          or sign up with
+        </p>
+
         <div className="flex justify-center gap-4 mt-2">
-          <button className="flex items-center gap-2 border px-3 py-2 rounded-lg hover:bg-gray-100">
+          <button
+            type="button"
+            className="flex items-center gap-2 border px-3 py-2 rounded-lg hover:bg-gray-100"
+          >
             <FaGoogle className="text-red-500" /> Google
           </button>
-          <button className="flex items-center gap-2 border px-3 py-2 rounded-lg hover:bg-gray-100">
+          <button
+            type="button"
+            className="flex items-center gap-2 border px-3 py-2 rounded-lg hover:bg-gray-100"
+          >
             <FaApple className="text-gray-800" /> Apple
           </button>
         </div>

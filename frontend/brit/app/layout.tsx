@@ -1,4 +1,4 @@
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider } from "@/app/context/AuthContext";
 import Header from "./Components/Header";
 import Footer from "./Components/Footer";
 import "./globals.css";

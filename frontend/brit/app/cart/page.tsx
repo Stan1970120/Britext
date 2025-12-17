@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "../context/AuthContext"; // make sure path is correct
+import { useAuth } from "@/app/context/AuthContext"; // make sure path is correct
 import MyCart from "./Components/MyCart";
 import Payment from "./Components/Payment";
 import Confirmation from "./Components/Confirmation";
