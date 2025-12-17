@@ -113,7 +113,7 @@ const Footer = () => {
           <FaWhatsapp size={22} />
         </Link>
           </motion.div>
-          <p className="text-center sm:text-center">
+          <p className="text-center mt-4 sm:text-center">
           © 2025–2025 Britext Policy, Inc. or its affiliate
         </p>
     </footer>

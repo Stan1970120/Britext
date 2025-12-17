@@ -1,169 +1,202 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Phone, Mail } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { FaGoogle, FaApple } from "react-icons/fa6";
+import { REST_API } from "../constant";
+import { useUser, useUserType } from "../hooks";
 
-export default function AdSignUpPage() {
-  const [formData, setFormData] = useState({
-    name: "",
-    company: "",
-    email: "",
-    product: "",
-    description: "",
-  });
+export default function SignupPage() {
+  const router = useRouter();
+  const { setUser } = useUser();
+  const { setUserType } = useUserType();
 
-  const [success, setSuccess] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [sex, setSex] = useState("");
+  const [email, setEmail] = useState("");
+  const [password1, setPassword1] = useState("");
+  const [password2, setPassword2] = useState("");
+  const [passwordNotMatch, setPasswordNotMatch] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [pushError, setPushError] = useState({ status: false, message: "" });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  // Validate password match
+  const validatePasswords = () => {
+    if (password1 && password2 && password1 === password2) {
+      setPasswordNotMatch(false);
+      return true;
+    } else {
+      setPasswordNotMatch(true);
+      return false;
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Here you would normally send formData to your backend
-    setSuccess(true);
-    setFormData({ name: "", company: "", email: "", product: "", description: "" });
-  };
+    if (!validatePasswords()) return;
 
-  const fadeInUp = (delay = 0) => ({
-    initial: { opacity: 0, y: 30 },
-    whileInView: { opacity: 1, y: 0, transition: { duration: 0.6, delay } },
-    viewport: { once: true },
-  });
+    setLoading(true);
+
+    const payload = {
+      firstName,
+      lastName,
+      email,
+      password: password1,
+      sex,
+    };
+
+    try {
+      const res = await fetch(`${REST_API}/auth_create/create_account`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+
+      if (data.user?.user_id) {
+        setUser(data.user);
+        setUserType(data.user.role);
+        router.replace(`/${data.user.role}s`);
+      } else {
+        setPushError({ status: true, message: "Error creating account" });
+      }
+    } catch (err) {
+      console.error(err);
+      setPushError({ status: true, message: "Network error" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="w-full min-h-screen bg-white text-gray-900 font-sans">
+    <section className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-md">
+        <h2 className="text-2xl font-bold text-center mb-6 text-sky-700">
+          Create Your Account
+        </h2>
 
-      {/* ================= HERO ================= */}
-      <motion.section
-        {...fadeInUp(0)}
-        className="w-full h-[60vh] flex flex-col justify-center items-center text-center px-6 bg-gradient-to-b from-sky-100 to-white"
-      >
-        <h1 className="text-4xl md:text-5xl font-bold mb-4">Advertise Your Product</h1>
-        <p className="text-gray-700 text-lg md:text-xl max-w-2xl">
-          Fill out the form below or contact us directly via WhatsApp or Email to start advertising your product on BriText.
-        </p>
-      </motion.section>
-
-      {/* ================= FORM & CONTACT OPTIONS ================= */}
-      <section className="py-20 max-w-6xl mx-auto px-6">
-        <motion.div variants={fadeInUp(0)} className="grid md:grid-cols-2 gap-12">
-
-          {/* FORM */}
-          <form
-            onSubmit={handleSubmit}
-            className="bg-white shadow-lg rounded-2xl p-8 space-y-6"
-          >
-            <h2 className="text-2xl font-bold mb-4">Fill Out the Form</h2>
-
+        <form onSubmit={handleSignup} className="space-y-4">
+          <div className="flex gap-2">
             <input
               type="text"
-              name="name"
-              placeholder="Your Name"
-              value={formData.name}
-              onChange={handleChange}
+              placeholder="First Name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
               required
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="w-1/2 border px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
             />
             <input
               type="text"
-              name="company"
-              placeholder="Company Name"
-              value={formData.company}
-              onChange={handleChange}
+              placeholder="Last Name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
               required
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="w-1/2 border px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
             />
+          </div>
+
+          <div>
             <input
               type="email"
-              name="email"
-              placeholder="Email Address"
-              value={formData.email}
-              onChange={handleChange}
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              type="password"
+              placeholder="Password"
+              value={password1}
+              onChange={(e) => setPassword1(e.target.value)}
+              required
+              className={`w-1/2 border px-3 py-2 rounded-lg outline-none ${
+                passwordNotMatch ? "border-red-500" : "focus:ring-2 focus:ring-sky-500"
+              }`}
             />
             <input
-              type="text"
-              name="product"
-              placeholder="Product Name"
-              value={formData.product}
-              onChange={handleChange}
+              type="password"
+              placeholder="Confirm Password"
+              value={password2}
+              onChange={(e) => setPassword2(e.target.value)}
               required
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className={`w-1/2 border px-3 py-2 rounded-lg outline-none ${
+                passwordNotMatch ? "border-red-500" : "focus:ring-2 focus:ring-sky-500"
+              }`}
             />
-            <textarea
-              name="description"
-              placeholder="Product Description"
-              value={formData.description}
-              onChange={handleChange}
-              required
-              rows={4}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
-            />
-
-            <button
-              type="submit"
-              className="w-full py-3 bg-sky-600 text-white font-semibold rounded-2xl hover:bg-sky-700 transition-all"
-            >
-              Submit
-            </button>
-          </form>
-
-          {/* CONTACT OPTIONS */}
-          <motion.div variants={fadeInUp(0.2)} className="flex flex-col gap-6">
-            <h2 className="text-2xl font-bold mb-4">Or Contact Directly</h2>
-
-            <a
-              href={`https://wa.me/2348012345678?text=Hello%20BriText,%20I%20want%20to%20advertise%20my%20product.`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-4 p-6 bg-green-50 rounded-2xl hover:bg-green-100 transition cursor-pointer"
-            >
-              <Phone className="w-6 h-6 text-green-600" />
-              <div>
-                <p className="font-semibold text-green-700">WhatsApp</p>
-                <p className="text-gray-600 text-sm">+234 801 234 5678</p>
-              </div>
-            </a>
-
-            <a
-              href={`mailto:advertise@britext.com?subject=Advertise%20My%20Product&body=Hello%20BriText,%20I%20want%20to%20advertise%20my%20product.`}
-              className="flex items-center gap-4 p-6 bg-blue-50 rounded-2xl hover:bg-blue-100 transition cursor-pointer"
-            >
-              <Mail className="w-6 h-6 text-blue-600" />
-              <div>
-                <p className="font-semibold text-blue-700">Email</p>
-                <p className="text-gray-600 text-sm">advertise@britext.com</p>
-              </div>
-            </a>
-          </motion.div>
-
-        </motion.div>
-      </section>
-
-      {/* ================= SUCCESS MODAL ================= */}
-      {success && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.9 }}
-          className="fixed inset-0 flex justify-center items-center bg-black/50 z-50"
-        >
-          <div className="bg-white p-8 rounded-2xl shadow-lg text-center max-w-sm mx-4">
-            <h3 className="text-xl font-bold mb-4">Thank You!</h3>
-            <p className="mb-6 text-gray-700">Your advertising request has been submitted successfully.</p>
-            <button
-              onClick={() => setSuccess(false)}
-              className="px-6 py-2 bg-sky-600 text-white rounded-2xl hover:bg-sky-700 transition"
-            >
-              Close
-            </button>
           </div>
-        </motion.div>
-      )}
 
-    </div>
+          {passwordNotMatch && (
+            <p className="text-red-600 text-xs">Passwords do not match</p>
+          )}
+
+          <div className="flex gap-3">
+            <label className="flex items-center gap-1">
+              <input
+                type="radio"
+                name="sex"
+                value="male"
+                onChange={(e) => setSex(e.target.value)}
+                required
+              />
+              Male
+            </label>
+            <label className="flex items-center gap-1">
+              <input
+                type="radio"
+                name="sex"
+                value="female"
+                onChange={(e) => setSex(e.target.value)}
+                required
+              />
+              Female
+            </label>
+            <label className="flex items-center gap-1">
+              <input
+                type="radio"
+                name="sex"
+                value="custom"
+                onChange={(e) => setSex(e.target.value)}
+                required
+              />
+              Custom
+            </label>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-sky-700 text-white py-2 rounded-lg hover:bg-sky-800 transition"
+          >
+            {loading ? "Signing Up..." : "Sign Up"}
+          </button>
+        </form>
+
+        <p className="text-center text-sm text-gray-600 mt-4">or sign up with</p>
+        <div className="flex justify-center gap-4 mt-2">
+          <button className="flex items-center gap-2 border px-3 py-2 rounded-lg hover:bg-gray-100">
+            <FaGoogle className="text-red-500" /> Google
+          </button>
+          <button className="flex items-center gap-2 border px-3 py-2 rounded-lg hover:bg-gray-100">
+            <FaApple className="text-gray-800" /> Apple
+          </button>
+        </div>
+
+        <p className="text-center text-sm text-gray-600 mt-4">
+          Already have an account?{" "}
+          <button
+            onClick={() => router.push("/signin")}
+            className="text-sky-700 hover:underline"
+          >
+            Login
+          </button>
+        </p>
+      </div>
+    </section>
   );
 }

@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { FaPaypal, FaCcVisa, FaCcMastercard } from "react-icons/fa";
 
-// ✅ Define the prop types
 interface PaymentProps {
   onNext?: () => void;
   onBack?: () => void;
@@ -12,6 +11,28 @@ interface PaymentProps {
 
 const Payment: React.FC<PaymentProps> = ({ onNext, onBack }) => {
   const [method, setMethod] = useState<"paypal" | "credit">("credit");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+ const handlePayment = async () => {
+  setLoading(true);
+  setError("");
+
+  try {
+    // Simulate API call
+    await new Promise((res) => setTimeout(res, 2000));
+
+    if (onNext) onNext();
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      setError(err.message);
+    } else {
+      setError("Payment failed. Please try again.");
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-white py-8 px-4 md:px-20">
@@ -36,13 +57,12 @@ const Payment: React.FC<PaymentProps> = ({ onNext, onBack }) => {
         <span>Confirmation</span>
       </div>
 
-      {/* Payment Method Section */}
+      {/* Payment Method */}
       <h2 className="text-lg font-semibold mb-6">
         Choose your preferred payment method
       </h2>
 
       <div className="space-y-5">
-        {/* Paypal */}
         <div
           className={`border rounded-2xl p-5 flex justify-between items-center cursor-pointer transition ${
             method === "paypal"
@@ -53,24 +73,16 @@ const Payment: React.FC<PaymentProps> = ({ onNext, onBack }) => {
         >
           <div>
             <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-              <input
-                type="radio"
-                checked={method === "paypal"}
-                readOnly
-                className="accent-[#035b77]"
-              />
+              <input type="radio" checked={method === "paypal"} readOnly className="accent-[#035b77]" />
               Paypal
             </h3>
             <p className="text-sm text-gray-500 mt-1">
-              Safe payment online. Credit card needed.
-              <br />
-              Paypal account is not necessary.
+              Safe payment online. Credit card needed. Paypal account is not necessary.
             </p>
           </div>
           <FaPaypal size={40} className="text-[#003087]" />
         </div>
 
-        {/* Credit Card */}
         <div
           className={`border rounded-2xl p-5 cursor-pointer transition ${
             method === "credit"
@@ -82,17 +94,11 @@ const Payment: React.FC<PaymentProps> = ({ onNext, onBack }) => {
           <div className="flex justify-between items-center">
             <div>
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                <input
-                  type="radio"
-                  checked={method === "credit"}
-                  readOnly
-                  className="accent-[#035b77]"
-                />
+                <input type="radio" checked={method === "credit"} readOnly className="accent-[#035b77]" />
                 Credit Card
               </h3>
               <p className="text-sm text-gray-500 mt-1">
-                Safe money transfer using your bank account. Visa, MasterCard or
-                Verve.
+                Safe money transfer using your bank account. Visa, MasterCard or Verve.
               </p>
             </div>
             <div className="flex gap-2 items-center">
@@ -103,13 +109,19 @@ const Payment: React.FC<PaymentProps> = ({ onNext, onBack }) => {
         </div>
       </div>
 
+      {/* Error message */}
+      {error && <p className="text-red-600 mt-4">{error}</p>}
+
       {/* Pay Button */}
       <div className="mt-10 flex justify-end">
         <button
-          onClick={onNext}
-          className="bg-[#035b77] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#02485d] transition"
+          onClick={handlePayment}
+          disabled={loading}
+          className={`bg-[#035b77] text-white px-6 py-3 rounded-full font-semibold hover:bg-[#02485d] transition flex items-center justify-center ${
+            loading ? "opacity-70 cursor-not-allowed" : ""
+          }`}
         >
-          Pay Now →
+          {loading ? "Processing..." : "Pay Now →"}
         </button>
       </div>
     </div>

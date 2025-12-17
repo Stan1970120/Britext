@@ -1,34 +1,34 @@
 "use client";
 
 import React, { useState } from "react";
-
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "../context/AuthContext";
 
 const SignInForm: React.FC = () => {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const params = useSearchParams();
+  const redirectTo = params.get("redirect") || "/account";
+
+  const { login, loading } = useAuth();
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
-    // 🧠 Later this is where you'll integrate your backend login API
-    setTimeout(() => {
-      setLoading(false);
-      alert("Login successful!");
-      router.push("/dashboard/students");
-    }, 2000);
+    try {
+      await login(formData.email, formData.password); // real auth context
+      router.push(redirectTo); // redirect to previous page or account
+    } catch (err) {
+      console.error(err);
+      alert("Login failed. Please check your credentials.");
+    }
   };
 
   return (
@@ -68,7 +68,7 @@ const SignInForm: React.FC = () => {
             disabled={loading}
             className="w-full flex justify-center items-center bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition"
           >
-           
+            {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
 

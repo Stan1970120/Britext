@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 
 const Hero = () => {
   return (
-    <section className="relative mt-16 w-full bg-[#035b77] text-white rounded-b-[2rem] overflow-hidden py-0 md:py-20 lg:py-0">
+    <section className="relative  w-full bg-[#035b77] text-white rounded-b-[2rem] overflow-hidden py-0 md:py-20 lg:py-0">
       {/* Flex container - always side by side */}
       <div className="flex flex-row items-center justify-between px-5 md:px-12 lg:px-20 max-w-7xl mx-auto relative">
         

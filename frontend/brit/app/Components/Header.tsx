@@ -131,7 +131,7 @@ const Header = () => {
           className="relative flex items-center gap-1 hover:text-[#035b77] transition"
         >
           <ShoppingCart size={18} />
-          <span>Cart</span>
+          <span>Checkout</span>
           <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-semibold rounded-full px-[5px] py-[1px] translate-x-2 -translate-y-2">
             1
           </span>
