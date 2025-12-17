@@ -1,3 +1,5 @@
+"use client";
+
 import { useContext } from "react";
 import { AppLoadingContext, LoggedInContext, UserContext, UserTypeContext } from "@/context";
 import { usePathname } from "next/navigation";
