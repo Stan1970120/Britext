@@ -4,10 +4,10 @@ import Image from "next/image";
 import { useState } from "react";
 import { ShoppingCart, ArrowLeft, Star, Check } from "lucide-react";
 import Link from "next/link";
-import SimilarPost from "@/app/Components/SimilarPost";
-import AboutAuthor from "@/app/Components/AboutAuthor";
+import SimilarPost from "@/Components/SimilarPost";
+import AboutAuthor from "@/Components/AboutAuthor";
 import { useRouter } from "next/navigation";
-import CommentSection from "@/app/Components/CommentSection";
+import CommentSection from "@/Components/CommentSection";
 
 export default function BookDetails() {
   const [rating, setRating] = useState(2.5);
