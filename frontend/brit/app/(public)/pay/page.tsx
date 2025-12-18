@@ -46,7 +46,7 @@ export default function PaymentPage() {
           className="text-gray-700 text-lg md:text-xl max-w-2xl"
         >
           Enjoy fast, secure, and easy payments for all your digital books and resources.
-          Multiple payment options available to suit your needs.
+          Multiple payment options available to suit your needs all round.
         </motion.p>
       </motion.section>
 

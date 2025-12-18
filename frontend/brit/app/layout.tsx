@@ -1,25 +1,28 @@
+// app/layout.tsx
 "use client";
 
 import { AuthProvider } from "@/app/context/AuthContext";
-import Header from "./Components/Header";
-import Footer from "./Components/Footer";
 import Spinner from "./Components/Spinner";
 import "./globals.css";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [loading, setLoading] = useState(true);
   const pathname = usePathname();
   const [currentPath, setCurrentPath] = useState(pathname);
 
-  // Initial loader (5 seconds)
+  // Initial loader
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 5000);
+    const timer = setTimeout(() => setLoading(false), 500);
     return () => clearTimeout(timer);
   }, []);
 
-  // Detect route changes for loader
+  // Route change loader
   useEffect(() => {
     if (pathname !== currentPath) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -27,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       const timer = setTimeout(() => {
         setLoading(false);
         setCurrentPath(pathname);
-      }, 500); // minimal spinner display for route change
+      }, 300);
       return () => clearTimeout(timer);
     }
   }, [pathname, currentPath]);
@@ -36,15 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="antialiased bg-white">
         <AuthProvider>
-          {loading ? (
-            <Spinner />
-          ) : (
-            <>
-              <Header />
-              {children}
-              <Footer />
-            </>
-          )}
+          {loading ? <Spinner /> : children}
         </AuthProvider>
       </body>
     </html>
