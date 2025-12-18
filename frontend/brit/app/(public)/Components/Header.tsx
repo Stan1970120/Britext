@@ -201,12 +201,12 @@ const Header = () => {
 
           <button
             onClick={() => {
-              router.push("/cart");
+              router.push("/checkout");
               setMobileMenuOpen(false);
             }}
             className="flex items-center gap-2 text-gray-700 hover:text-[#035b77] transition"
           >
-            <ShoppingCart size={18} /> Cart
+            <ShoppingCart size={18} /> Checkout
           </button>
 
           <button
