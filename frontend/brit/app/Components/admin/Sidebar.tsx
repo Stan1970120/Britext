@@ -16,7 +16,7 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex md:w-64 bg-slate-900 text-white flex-col">
+    <aside className="hidden md:flex md:w-64 bg-sky-900 text-white flex-col">
       <div className="p-6 text-xl font-semibold">BASE Admin</div>
 
       <nav className="flex-1 px-4 space-y-2">
