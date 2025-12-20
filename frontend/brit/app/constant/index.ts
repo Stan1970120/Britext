@@ -1,3 +1,11 @@
-// constants/index.ts
-export const REST_API =
-    process.env.NEXT_PUBLIC_REST_API || "https://britext.onrender.com";
+// frontend/brit/constants/index.ts
+export const REST_API = (() => {
+    const api = process.env.NEXT_PUBLIC_REST_API;
+
+    if (!api) {
+        console.warn("⚠️ NEXT_PUBLIC_REST_API is not defined. Using fallback.");
+        return "https://britext.onrender.com/api";
+    }
+
+    return api;
+})();
