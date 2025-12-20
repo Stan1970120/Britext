@@ -1,13 +1,14 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { REST_API } from "../constant";
 
 export interface User {
-  _id: string; // match backend
+  _id: string;
   firstName: string;
   lastName: string;
   email: string;
-  role?: "admin" | "user"; // match backend
+  role?: "admin" | "user";
   provider?: string;
 }
 
@@ -15,9 +16,14 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  setLoading: (val: boolean) => void;
   login: (email: string, password: string) => Promise<void>;
-  signup: (payload: { firstName: string; lastName: string; email: string; password: string; sex?: string }) => Promise<void>;
+  signup: (payload: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    sex?: string;
+  }) => Promise<void>;
   logout: () => void;
 }
 
@@ -32,16 +38,18 @@ export const useAuth = (): AuthContextType => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
 
+  // Load auth from localStorage on first mount
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     const storedToken = localStorage.getItem("token");
+
     if (storedUser && storedToken) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUser(JSON.parse(storedUser));
       setToken(storedToken);
     }
+
     setLoading(false);
   }, []);
 
@@ -54,29 +62,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     setLoading(true);
-    const res = await fetch(`${process.env.NEXT_PUBLIC_REST_API}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Login failed");
-    saveAuth(data.user, data.token);
-    setLoading(false);
+    try {
+      const res = await fetch(`${REST_API}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Login failed");
+
+      saveAuth(data.user, data.token);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const signup = async (payload: { firstName: string; lastName: string; email: string; password: string; sex?: string }) => {
-  setLoading(true);
-  const res = await fetch(`${process.env.NEXT_PUBLIC_REST_API}/auth/signup`, {  // ✅ corrected
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Signup failed");
-  saveAuth(data.user, data.token);
-  setLoading(false);
-};
+  const signup = async (payload: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    sex?: string;
+  }) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${REST_API}/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Signup failed");
+
+      saveAuth(data.user, data.token);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const logout = () => {
     setUser(null);
@@ -86,7 +110,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, setLoading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );
