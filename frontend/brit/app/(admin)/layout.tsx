@@ -1,21 +1,22 @@
-// app/(admin)/layout.tsx
-import Sidebar from "../Components/admin/Sidebar";
-import Topbar from "../Components/admin/Topbar";
+"use client";
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar />
-      <div className="flex flex-col flex-1">
-        <Topbar />
-        <main className="p-4 md:p-6 overflow-y-auto">
-          {children}
-        </main>
-      </div>
-    </div>
-  );
+import { useAuth } from "../context/AuthContext";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (!user || user.role !== "admin") {
+      router.replace("/login"); // or 403 page
+    }
+  }, [user, loading]);
+
+  if (loading || !user || user.role !== "admin") return null;
+
+  return <>{children}</>;
 }

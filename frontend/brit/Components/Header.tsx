@@ -65,7 +65,7 @@ const Header = () => {
           onClick={() => router.push("/")}
           className="text-2xl font-bold text-black cursor-pointer"
         >
-          Bri<span className="text-[#035b77]">Text</span>
+          Enjoy<span className="text-[#035b77]">Reads</span>
         </h1>
 
         <div className="hidden sm:flex items-center gap-1 text-gray-600 text-sm cursor-pointer">
@@ -127,7 +127,7 @@ const Header = () => {
         </button>
 
         <button
-          onClick={() => router.push("/cart")}
+          onClick={() => router.push("/checkout")}
           className="relative flex items-center gap-1 hover:text-[#035b77] transition"
         >
           <ShoppingCart size={18} />
