@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/app/context/AuthContext"; // make sure path is correct
+import { useAuth } from "@/app/context/AuthContext"; // adjust path if needed
 import MyCart from "./Components/MyCart";
 import Payment from "./Components/Payment";
 import Confirmation from "./Components/Confirmation";
@@ -21,16 +21,18 @@ const CartPage = () => {
     }
   }, [user, authLoading, router, redirectTo]);
 
-  // Step renderer
+  // Render current step
   const renderStep = () => {
     switch (step) {
       case "cart":
         return <MyCart onNext={() => setStep("payment")} />;
       case "payment":
-        return <Payment
-          onNext={() => setStep("confirmation")}
-          onBack={() => setStep("cart")}
-        />;
+        return (
+          <Payment
+            onNext={() => setStep("confirmation")}
+            onBack={() => setStep("cart")}
+          />
+        );
       case "confirmation":
         return <Confirmation onBack={() => setStep("payment")} />;
       default:
@@ -38,7 +40,7 @@ const CartPage = () => {
     }
   };
 
-  // Show loader while checking auth or redirecting
+  // Show loader while checking auth
   if (authLoading || !user) {
     return (
       <div className="flex justify-center items-center h-screen">
