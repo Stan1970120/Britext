@@ -1,44 +1,70 @@
-// app/(admin)/books/page.tsx
-import Link from "next/link";
+"use client";
 
-export default function BooksPage() {
+import { useEffect, useState } from "react";
+import { Book } from "../../types/books";
+import { API } from "../../constant/api";
+import BookTabs from "./components/BookTabs";
+import BookCard from "./components/BookCard";
+import EmptyState from "./components/EmptyState";
+
+export default function AdminBooksPage() {
+  const [status, setStatus] = useState<"draft" | "published">("draft");
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchBooks = async () => {
+    setLoading(true);
+    const res = await fetch(API.ADMIN_BOOKS(status), {
+      credentials: "include",
+    });
+    const data: Book[] = await res.json();
+    setBooks(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchBooks();
+  }, [status]);
+
+  const publishBook = async (id: string) => {
+    await fetch(API.PUBLISH_BOOK(id), {
+      method: "PATCH",
+      credentials: "include",
+    });
+    fetchBooks();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold">Books</h1>
-        <Link
-          href="/books/upload"
-          className="bg-slate-900 text-white px-5 py-2 rounded-lg"
+        <h1 className="text-2xl font-semibold">My Books</h1>
+
+        <a
+          href="/admin/books/create"
+          className="bg-[#035b77] text-white px-6 py-3 rounded-full"
         >
-          Upload Book
-        </Link>
+          + New Book
+        </a>
       </div>
 
-      <div className="bg-white rounded-xl shadow overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="p-3 text-left">Title</th>
-              <th>Price</th>
-              <th>Stock</th>
-              <th>ISBN</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="border-t">
-              <td className="p-3">Digital Marketing 101</td>
-              <td>₦5,000</td>
-              <td>120</td>
-              <td>978-123456</td>
-              <td className="space-x-2">
-                <button className="text-blue-600">Edit</button>
-                <button className="text-red-600">Delete</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <BookTabs active={status} onChange={setStatus} />
+
+      {loading ? (
+        <p>Loading...</p>
+      ) : books.length === 0 ? (
+        <EmptyState text={`No ${status} books`} />
+      ) : (
+        <div className="grid gap-5 md:grid-cols-2">
+          {books.map((book) => (
+            <BookCard
+              key={book._id}
+              book={book}
+              onPublish={publishBook}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
