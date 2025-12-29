@@ -1,73 +1,97 @@
 "use client";
 
-import React, { useState } from "react";
-import { Bookmark, BookmarkCheck, Trash2 } from "lucide-react";
+import React from "react";
+import { Bookmark, Trash2 } from "lucide-react";
+import { useAuth } from "@/app/context/AuthContext";
 
-type CartItem = {
-  id: string;
-  title: string;
-  category: string;
-  price: number;
-  savedForLater: boolean;
+export type CartItem = {
+  _id: string;
+  book: {
+    _id: string;
+    title: string;
+    category: string;
+    price: number;
+  };
 };
 
 interface MyCartProps {
+  cartItems: CartItem[];
+  setCartItems: React.Dispatch<React.SetStateAction<CartItem[]>>;
   onNext: () => void;
 }
 
-const MyCart: React.FC<MyCartProps> = ({ onNext }) => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    { id: "987425798654", title: "Build Your Family Bank", category: "Fictional Book", price: 700, savedForLater: false },
-    { id: "987425798655", title: "Learn React", category: "Programming", price: 500, savedForLater: false },
-  ]);
+const MyCart: React.FC<MyCartProps> = ({
+  cartItems,
+  setCartItems,
+  onNext,
+}) => {
+  const { token } = useAuth();
 
-  const handleRemove = (index: number) => setCartItems(cartItems.filter((_, i) => i !== index));
-  const handleSaveForLater = (index: number) =>
-    setCartItems((prev) =>
-      prev.map((item, i) => (i === index ? { ...item, savedForLater: !item.savedForLater } : item))
-    );
+  // 🗑 Remove from cart
+  const removeFromCart = async (cartItemId: string) => {
+    try {
+      await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/cart/${cartItemId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-  const totalAmount = cartItems.reduce((sum, item) => sum + item.price, 0);
+      // update UI instantly
+      setCartItems((prev) =>
+        prev.filter((item) => item._id !== cartItemId)
+      );
+    } catch (err) {
+      console.error("Failed to remove item");
+    }
+  };
+
+  const totalAmount = cartItems.reduce(
+    (sum, item) => sum + item.book.price,
+    0
+  );
 
   return (
-    <div className="bg-white py-8 px-4 md:px-20 transition-all">
-      {/* Cart Header */}
+    <div className="bg-white py-8 px-4 md:px-20">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900">My Cart</h1>
-        <p className="text-sm text-gray-600">{cartItems.length} items</p>
+        <h1 className="text-2xl font-semibold">My Cart</h1>
+        <p className="text-sm text-gray-600">
+          {cartItems.length} items
+        </p>
       </div>
 
-      {/* Empty cart handling */}
       {cartItems.length === 0 ? (
-        <p className="text-center text-gray-500 py-20">Your cart is empty. Add some items before checkout.</p>
+        <p className="text-center text-gray-500 py-20">
+          Your cart is empty
+        </p>
       ) : (
         <>
-          {/* Cart Items */}
           <div className="space-y-5 mb-10">
-            {cartItems.map((item, index) => (
+            {cartItems.map((item) => (
               <div
-                key={item.id}
-                className="flex justify-between items-center bg-white border rounded-2xl shadow-sm p-5 hover:shadow-md transition"
+                key={item._id}
+                className="flex justify-between items-center border rounded-2xl p-5"
               >
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">{item.title}</h2>
-                  <p className="text-sm text-gray-500">#{item.id}</p>
-                  <p className="text-sm text-gray-400">{item.category}</p>
+                  <h2 className="text-lg font-semibold">
+                    {item.book.title}
+                  </h2>
+                  <p className="text-sm text-gray-400">
+                    {item.book.category}
+                  </p>
 
                   <div className="flex items-center gap-4 mt-3 text-sm">
-                    <button
-                      onClick={() => handleSaveForLater(index)}
-                      className={`flex items-center gap-1 transition ${
-                        item.savedForLater ? "text-[#035b77]" : "text-gray-600 hover:text-[#035b77]"
-                      }`}
-                    >
-                      {item.savedForLater ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
-                      {item.savedForLater ? "Saved" : "Save for later"}
+                    <button className="flex items-center gap-1 text-gray-600 hover:text-[#035b77]">
+                      <Bookmark size={14} />
+                      Save for later
                     </button>
 
                     <button
-                      onClick={() => handleRemove(index)}
-                      className="flex items-center gap-1 text-red-500 hover:text-red-600"
+                      onClick={() => removeFromCart(item._id)}
+                      className="flex items-center gap-1 text-red-500"
                     >
                       <Trash2 size={14} />
                       Remove
@@ -75,24 +99,25 @@ const MyCart: React.FC<MyCartProps> = ({ onNext }) => {
                   </div>
                 </div>
 
-                <p className="text-lg font-semibold text-gray-900">${item.price}</p>
+                <p className="text-lg font-semibold">
+                  ₦{item.book.price.toLocaleString()}
+                </p>
               </div>
             ))}
           </div>
 
-          {/* Total & Pay Now */}
           <div className="border-t pt-6">
-            <div className="flex justify-between items-center mb-4">
-              <p className="text-lg font-medium text-gray-700">Total Amount</p>
-              <p className="text-xl font-semibold text-gray-900">${totalAmount}</p>
+            <div className="flex justify-between mb-4">
+              <p className="text-lg font-medium">Total</p>
+              <p className="text-xl font-semibold">
+                ₦{totalAmount.toLocaleString()}
+              </p>
             </div>
 
             <button
               onClick={onNext}
               disabled={cartItems.length === 0}
-              className={`w-full bg-[#035b77] text-white py-3 rounded-full font-semibold hover:bg-[#02485d] transition ${
-                cartItems.length === 0 ? "opacity-50 cursor-not-allowed" : ""
-              }`}
+              className="w-full bg-[#035b77] text-white py-3 rounded-full disabled:opacity-50"
             >
               Pay Now →
             </button>

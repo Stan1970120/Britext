@@ -1,15 +1,27 @@
-// types/book.ts
+export type BookStatus = "draft" | "published";
+
 export interface Book {
-    id?: string;
+    _id: string;
     title: string;
-    pages: number;
-    price: number;
-    quantity: number;
-    isbn10?: string;
-    isbn13?: string;
-    publishedDate?: string;
-    edition?: string;
-    description: string;
-    fileUrl?: string;
-    coverImage?: string;
+    author: string;
+    category: string;
+    language: string;
+
+    summary?: string;
+    price?: number;
+
+    coverImage: string; // URL from backend
+
+    status: BookStatus;
+
+    createdAt: string;
+    updatedAt?: string;
+    publishedAt?: string;
+}
+
+export interface Chapter {
+    _id: string;
+    title: string;
+    content: string; // TipTap JSON or HTML
+    order: number;
 }
