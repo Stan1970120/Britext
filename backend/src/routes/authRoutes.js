@@ -2,8 +2,7 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
-import { protect, adminOnly } from "../middleware/authMiddleware.js"; // import middleware
-
+import { protect, adminOnly } from "../middleware/adminMiddleware.js";
 const router = express.Router();
 
 // POST /api/auth/signup
