@@ -23,7 +23,7 @@ export default function SignInPage() {
 
   const timer = setTimeout(() => {
     if (user.role === "admin") {
-      router.replace("/admin/dashboard");
+      router.replace("/dashboard");
     } else {
       router.replace("/checkout");
     }
