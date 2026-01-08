@@ -1,23 +1,24 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL;
+import { REST_API } from "./index"; // Import the one that has the fallback logic
 
 export const API = {
-  CREATE_BOOK: `${BASE}/api/admin/books`,
+  // Use REST_API instead of BASE
+  CREATE_BOOK: `${REST_API}/admin/books`,
 
   ADMIN_BOOKS: (status) =>
-    `${BASE}/api/admin/books?status=${status}`,
+    `${REST_API}/admin/books?status=${status}`,
 
   GET_BOOK: (id) =>
-    `${BASE}/api/admin/books/${id}`,
+    `${REST_API}/admin/books/${id}`,
 
   ADD_CHAPTER: (id) =>
-    `${BASE}/api/admin/books/${id}/chapters`,
+    `${REST_API}/admin/books/${id}/chapters`,
 
   GET_CHAPTERS: (id) =>
-    `${BASE}/api/admin/books/${id}/chapters`,
+    `${REST_API}/admin/books/${id}/chapters`,
 
   PREVIEW_BOOK: (id) =>
-    `${BASE}/api/admin/books/${id}/preview`,
+    `${REST_API}/admin/books/${id}/preview`,
 
   PUBLISH_BOOK: (id) =>
-    `${BASE}/api/admin/books/${id}/publish`,
+    `${REST_API}/admin/books/${id}/publish`,
 };
