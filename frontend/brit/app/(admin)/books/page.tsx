@@ -41,7 +41,7 @@ export default function AdminBooksPage() {
         <h1 className="text-2xl font-semibold">My Books</h1>
 
         <a
-          href="/admin/books/create"
+          href="/create"
           className="bg-[#035b77] text-white px-6 py-3 rounded-full"
         >
           + New Book
