@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation"; // Added for redirection
 
 // Type Imports
 import { DashboardStats, Transaction } from "@/app/types/analytics";
@@ -10,6 +11,9 @@ import { Book } from "@/app/types/books";
 // Constant Imports
 import { API } from "@/app/constant/api";
 
+// Context Import
+import { useAuth } from "@/app/context/AuthContext"; // Import the auth hook
+
 // Component Imports
 import BookTabs from "./components/BookTabs";
 import BookCard from "./components/BookCard";
@@ -17,6 +21,8 @@ import EmptyState from "./components/EmptyState";
 import StatsOverview from "./components/StatsOverview";
 
 export default function AdminDashboard() {
+  const router = useRouter();
+  const { logout } = useAuth(); // Destructure logout from context
   const [status, setStatus] = useState<"draft" | "published">("draft");
   const [books, setBooks] = useState<Book[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -56,18 +62,35 @@ export default function AdminDashboard() {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
+  // Handle Logout Logic
+  const handleLogout = async () => {
+    await logout();
+    router.replace("/login"); // Redirect to login after clearing session
+  };
+
   return (
     <div className="min-h-screen bg-gray-50/50 p-6 space-y-8 text-gray-900">
       
       {/* SECTION 1: Header */}
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Executive Dashboard</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight">Dashboard</h1>
           <p className="text-gray-500 text-sm">Manage manuscripts and monitor global store sales.</p>
         </div>
-        <Link href="/create" className="bg-[#035b77] text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-[#024a61] transition-all">
-          + New Manuscript
-        </Link>
+        
+        <div className="flex items-center gap-3">
+          {/* Logout Button */}
+          <button 
+            onClick={handleLogout}
+            className="px-6 py-3 rounded-xl font-bold text-gray-600 hover:bg-gray-100 transition-all"
+          >
+            Logout
+          </button>
+
+          <Link href="/create" className="bg-[#035b77] text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-[#024a61] transition-all">
+            + New Manuscript
+          </Link>
+        </div>
       </div>
 
       {/* SECTION 2: E-commerce Analytics Cards */}
