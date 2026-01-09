@@ -3,7 +3,18 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { protect, adminOnly } from "../middleware/adminMiddleware.js";
+
 const router = express.Router();
+
+// Helper to set the secure cookie
+const setTokenCookie = (res, token) => {
+  res.cookie("token", token, {
+    httpOnly: true, // Security: prevents client-side JS from reading the token
+    secure: true,   // Required for HTTPS (Render/Vercel)
+    sameSite: "none", // Required for cross-domain (Vercel -> Render)
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+  });
+};
 
 // POST /api/auth/signup
 router.post("/signup", async (req, res) => {
@@ -31,6 +42,7 @@ router.post("/signup", async (req, res) => {
       { expiresIn: "1d" }
     );
 
+    setTokenCookie(res, token); // ✨ Set the cookie
     res.status(201).json({ token, user });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -58,10 +70,23 @@ router.post("/login", async (req, res) => {
       { expiresIn: "1d" }
     );
 
+    setTokenCookie(res, token); // ✨ Set the cookie
     res.json({ token, user });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+});
+
+// ✨ NEW: POST /api/auth/logout
+// Use this to clear your old "user" session so you can log back in as "admin"
+router.post("/logout", (req, res) => {
+  res.cookie("token", "", {
+    httpOnly: true,
+    expires: new Date(0),
+    sameSite: "none",
+    secure: true,
+  });
+  res.status(200).json({ message: "Logged out successfully" });
 });
 
 // ✅ Checkout route (users must be logged in)

@@ -24,7 +24,7 @@ interface AuthContextType {
     password: string;
     sex?: string;
   }) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>; // Updated to Promise for backend sync
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,6 +66,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const res = await fetch(`${REST_API}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // 🔐 Critical for Cross-Domain Cookies (Vercel to Render)
+        credentials: "include", 
         body: JSON.stringify({ email, password }),
       });
 
@@ -90,6 +92,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const res = await fetch(`${REST_API}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // 🔐 Critical for Cross-Domain Cookies
+        credentials: "include", 
         body: JSON.stringify(payload),
       });
 
@@ -102,11 +106,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
+  const logout = async () => {
+    try {
+      // 🔐 Notify backend to clear the secure cookie
+      await fetch(`${REST_API}/auth/logout`, { 
+        method: "POST", 
+        credentials: "include" 
+      });
+    } catch (err) {
+      console.error("Logout error:", err);
+    } finally {
+      // Always clear local state regardless of server response
+      setUser(null);
+      setToken(null);
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+    }
   };
 
   return (

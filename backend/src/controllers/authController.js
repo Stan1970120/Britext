@@ -22,12 +22,10 @@ export const register = async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      role: "user", // 🔐 forced
+      role: "user", 
     });
 
-    res.status(201).json({
-      message: "Account created successfully",
-    });
+    res.status(201).json({ message: "Account created successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -49,16 +47,21 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
 
     const token = jwt.sign(
-      {
-        id: user._id,
-        role: user.role,
-      },
+      { id: user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
+    // 🍪 SET COOKIE: This allows the browser to remember you as an Admin
+    res.cookie("token", token, {
+      httpOnly: true, // Prevents XSS attacks
+      secure: true,   // Required for HTTPS (Render/Vercel)
+      sameSite: "none", // Critical for Cross-Domain cookies
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
     res.json({
-      token,
+      token, // Also sending it in JSON for your current frontend setup
       user: {
         id: user._id,
         name: user.name,
@@ -69,4 +72,18 @@ export const login = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+};
+
+/**
+ * LOGOUT 
+ * This is the "Refresh" button for your session.
+ */
+export const logout = (req, res) => {
+  res.cookie("token", "", {
+    httpOnly: true,
+    expires: new Date(0),
+    sameSite: "none",
+    secure: true,
+  });
+  res.status(200).json({ message: "Logged out. Please log in again to see Admin stats." });
 };
