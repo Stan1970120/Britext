@@ -11,6 +11,8 @@ import bookRoutes from "./routes/bookRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import adminBookRoutes from "./routes/adminBookRoutes.js";
+// ✨ New Publish Book Routes
+import publishBookRoutes from "./routes/publishbook.routes.js"; 
 
 // Middleware
 import { protect } from "./middleware/adminMiddleware.js";
@@ -23,12 +25,11 @@ const app = express();
     Middleware
 ======================= */
 
-// 🌐 Updated CORS Configuration
 app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "https://britext.vercel.app", // ✨ Added your new Vercel URL
+      "https://britext.vercel.app", 
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -36,7 +37,6 @@ app.use(
   })
 );
 
-// This helps handle the "Preflight" handshake mentioned in your error log
 app.options("*", cors()); 
 
 app.use(express.json());
@@ -56,20 +56,22 @@ mongoose
 // Auth
 app.use("/api/auth", authRoutes);
 
-// Books (guest + auth supported via optionalAuth in routes)
+// Books (guest + auth supported)
 app.use("/api/books", bookRoutes);
 
-// Cart (auth required)
+// Cart & Wishlist (auth required)
 app.use("/api/cart", protect, cartRoutes);
-
-// Wishlist (auth required)
 app.use("/api/wishlist", protect, wishlistRoutes);
 
-// Admin (auth + adminOnly inside routes)
+// Admin Base
 app.use("/api/admin", adminRoutes);
 
 // Admin Book Management
 app.use("/api/admin", adminBookRoutes);
+
+// ✨ Publish Book System (Handles Stats, Finalizing, and Locked Reader View)
+// This mounts your new routes so they are accessible via /api/publishbook
+app.use("/api/publishbook", publishBookRoutes);
 
 /* =======================
     Health Check
