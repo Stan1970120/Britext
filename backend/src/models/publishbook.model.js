@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const publishBookSchema = new mongoose.Schema({
   title: { type: String, required: true },
@@ -6,21 +6,30 @@ const publishBookSchema = new mongoose.Schema({
   summary: { type: String },
   category: { 
     type: String, 
-    enum: ["Educational", "Fiction", "Non-Fiction", "Professional & Technical", "Faith Based", "Lifestyle", "Journal & Notes"],
+    enum: [
+      "Educational", 
+      "Fiction", 
+      "Non-Fiction", 
+      "Professional & Technical", 
+      "Faith Based", 
+      "Lifestyle", 
+      "Journal & Notes"
+    ],
     default: "Fiction"
   },
   price: { type: Number, default: 0 },
   coverImage: { type: String },
   status: { type: String, enum: ['draft', 'published'], default: 'draft' },
   
-  // Chapter logic: Note that we might want to keep content hidden from public lists
+  // Chapter logic
   chapters: [{
     title: { type: String },
-    content: { type: String }, // This remains locked behind payment logic
+    content: { type: String }, // Locked behind payment logic in the controller
     order: { type: Number }
   }],
   
-  createdAt: { type: Date, default: Date.now }
-});
+}, { timestamps: true }); // Adding timestamps automatically handles createdAt and updatedAt
 
-module.exports = mongoose.model('PublishBook', publishBookSchema);
+// ✨ The fix for Render: Use 'export default' instead of 'module.exports'
+const PublishBook = mongoose.model('PublishBook', publishBookSchema);
+export default PublishBook;
