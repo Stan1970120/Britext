@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link"; // Better than <a> for Next.js performance
 import { Book } from "../../types/books";
-import { API } from "../../constant/api";
+import { API } from "@/app/constant/api";
 import BookTabs from "./components/BookTabs";
 import BookCard from "./components/BookCard";
 import EmptyState from "./components/EmptyState";

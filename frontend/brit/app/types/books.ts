@@ -1,6 +1,9 @@
+import { ReactNode } from "react";
+
 export type BookStatus = "draft" | "published";
 
 export interface Book {
+    description: ReactNode;
     _id: string;
     title: string;
     author: string;
