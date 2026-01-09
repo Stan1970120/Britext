@@ -13,7 +13,7 @@ import {
 } from '../controllers/publishbook.controller.js';
 
 // Import your middleware
-import { verifyAdmin } from '../middlewares/publishbook.middleware.js';
+import { verifyAdmin } from '../middleware/publishbook.middleware.js';
 
 /* ==========================================
     ADMIN ENDPOINTS (Requires verifyAdmin)
