@@ -18,20 +18,10 @@ const Header = () => {
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Updated Logout Logic for Maximum Reliability
   const handleLogout = async () => {
-    try {
-      setMobileMenuOpen(false);
-      await logout(); 
-      
-      // Forces a full refresh to the landing page, clearing all SPA state 
-      // and preventing 404s on protected route groups
-      window.location.href = "/"; 
-    } catch (error) {
-      console.error("Logout failed:", error);
-      // Fallback redirect if something goes wrong
-      window.location.href = "/";
-    }
+    await logout();
+    setMobileMenuOpen(false);
+    router.push("/");
   };
 
   return (
