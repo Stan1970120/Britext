@@ -1,24 +1,33 @@
-import { REST_API } from "./index"; // Import the one that has the fallback logic
+import { REST_API } from "./index"; 
 
 export const API = {
-  // Use REST_API instead of BASE
+  // Book Management
   CREATE_BOOK: `${REST_API}/admin/books`,
-
-  ADMIN_BOOKS: (status) =>
+  
+  ADMIN_BOOKS: (status) => 
     `${REST_API}/admin/books?status=${status}`,
 
-  GET_BOOK: (id) =>
+  GET_BOOK: (id) => 
     `${REST_API}/admin/books/${id}`,
 
-  ADD_CHAPTER: (id) =>
-    `${REST_API}/admin/books/${id}/chapters`,
+  // Publishing Logic
+  PUBLISH_BOOK: (id) => 
+    `${REST_API}/admin/books/${id}/publish`,
 
-  GET_CHAPTERS: (id) =>
-    `${REST_API}/admin/books/${id}/chapters`,
-
-  PREVIEW_BOOK: (id) =>
+  PREVIEW_BOOK: (id) => 
     `${REST_API}/admin/books/${id}/preview`,
 
-  PUBLISH_BOOK: (id) =>
-    `${REST_API}/admin/books/${id}/publish`,
+  // Chapter Logic
+  GET_CHAPTERS: (id) => 
+    `${REST_API}/admin/books/${id}/chapters`,
+
+  ADD_CHAPTER: (id) => 
+    `${REST_API}/admin/books/${id}/chapters`,
+
+  // Added: Specifically for PUT requests to a single chapter
+  UPDATE_CHAPTER: (bookId, chapterId) => 
+    `${REST_API}/admin/books/${bookId}/chapters/${chapterId}`,
+
+  // Added: Essential for the Dashboard Cards and Transactions
+  GET_ADMIN_STATS: `${REST_API}/admin/stats`,
 };
