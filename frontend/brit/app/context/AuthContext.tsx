@@ -24,7 +24,7 @@ interface AuthContextType {
     password: string;
     sex?: string;
   }) => Promise<void>;
-  logout: () => Promise<void>; // Updated to Promise for backend sync
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,15 +42,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Load auth from localStorage on first mount
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const storedToken = localStorage.getItem("token");
+    const checkAuth = () => {
+      try {
+        const storedUser = localStorage.getItem("user");
+        const storedToken = localStorage.getItem("token");
 
-    if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser));
-      setToken(storedToken);
-    }
+        if (storedUser && storedToken) {
+          setUser(JSON.parse(storedUser));
+          setToken(storedToken);
+        }
+      } catch (error) {
+        console.error("Error parsing stored user:", error);
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    setLoading(false);
+    checkAuth();
   }, []);
 
   const saveAuth = (userData: User, jwt: string) => {
@@ -66,7 +76,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const res = await fetch(`${REST_API}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // 🔐 Critical for Cross-Domain Cookies (Vercel to Render)
         credentials: "include", 
         body: JSON.stringify({ email, password }),
       });
@@ -92,7 +101,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const res = await fetch(`${REST_API}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // 🔐 Critical for Cross-Domain Cookies
         credentials: "include", 
         body: JSON.stringify(payload),
       });
@@ -107,20 +115,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
+    setLoading(true);
     try {
-      // 🔐 Notify backend to clear the secure cookie
+      // 1. Notify backend to clear secure cookies
       await fetch(`${REST_API}/auth/logout`, { 
         method: "POST", 
         credentials: "include" 
       });
     } catch (err) {
-      console.error("Logout error:", err);
+      console.error("Logout backend sync failed:", err);
     } finally {
-      // Always clear local state regardless of server response
+      // 2. Clear Local State
       setUser(null);
       setToken(null);
+      
+      // 3. Clear Storage
       localStorage.removeItem("user");
       localStorage.removeItem("token");
+      
+      setLoading(false);
     }
   };
 
