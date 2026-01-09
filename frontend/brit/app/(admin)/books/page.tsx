@@ -1,45 +1,22 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Link from "next/link"; // Better than <a> for Next.js performance
-import { Book } from "../../types/books";
+import Link from "next/link";
+import { Book } from "@/app/types/books";
 import { API } from "@/app/constant/api";
 import BookTabs from "./components/BookTabs";
 import BookCard from "./components/BookCard";
 import EmptyState from "./components/EmptyState";
+import StatsOverview from "./components/StatsOverview";
 
-// 1. New Component for KDP-style Overview Stats
-const StatsOverview = ({ books }: { books: Book[] }) => {
-  const published = books.filter((b) => b.status === "published").length;
-  const drafts = books.filter((b) => b.status === "draft").length;
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-      <div className="p-6 bg-white border rounded-xl shadow-sm">
-        <p className="text-sm text-gray-500 uppercase font-bold">Total Catalog</p>
-        <p className="text-3xl font-semibold">{books.length}</p>
-      </div>
-      <div className="p-6 bg-green-50 border border-green-100 rounded-xl shadow-sm">
-        <p className="text-sm text-green-600 uppercase font-bold">Live on Store</p>
-        <p className="text-3xl font-semibold text-green-700">{published}</p>
-      </div>
-      <div className="p-6 bg-blue-50 border border-blue-100 rounded-xl shadow-sm">
-        <p className="text-sm text-blue-600 uppercase font-bold">In Progress</p>
-        <p className="text-3xl font-semibold text-blue-700">{drafts}</p>
-      </div>
-    </div>
-  );
-};
-
-export default function AdminBooksPage() {
+export default function AdminDashboard() {
   const [status, setStatus] = useState<"draft" | "published">("draft");
   const [books, setBooks] = useState<Book[]>([]);
-  const [allBooks, setAllBooks] = useState<Book[]>([]); // Storing all for stats
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 2. Optimized Fetch with Error Handling (Fixes the .map() crash)
-  const fetchBooks = useCallback(async () => {
+  // 1. Unified Fetch Logic
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -53,96 +30,101 @@ export default function AdminBooksPage() {
         return;
       }
 
-      if (!res.ok) throw new Error("Failed to fetch books");
-
       const data = await res.json();
       
-      // Safety check: Ensure data is an array before setting state
       if (Array.isArray(data)) {
         setBooks(data);
-        // If it's the first load, we could fetch all books once for the stats
-        if (allBooks.length === 0) setAllBooks(data); 
       } else {
         setBooks([]);
       }
     } catch (err) {
-      setError("Could not connect to the server.");
-      setBooks([]);
+      setError("Connection failed. Check your backend status.");
     } finally {
       setLoading(false);
     }
-  }, [status, allBooks.length]);
+  }, [status]);
 
   useEffect(() => {
-    fetchBooks();
-  }, [fetchBooks]);
-
-  const publishBook = async (id: string) => {
-    try {
-      const res = await fetch(API.PUBLISH_BOOK(id), {
-        method: "PATCH",
-        credentials: "include",
-      });
-      if (res.ok) fetchBooks();
-    } catch (err) {
-      alert("Failed to publish book.");
-    }
-  };
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
-      {/* Header Section */}
-      <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-gray-50/50 p-6 space-y-8">
+      
+      {/* SECTION 1: Header & Quick Actions */}
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">KDP Admin Dashboard</h1>
-          <p className="text-gray-500">Manage your manuscript catalog and store presence.</p>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Executive Dashboard</h1>
+          <p className="text-gray-500">Manage manuscripts, monitor sales, and publish to the global store.</p>
         </div>
-
-        <Link
-          href="/create"
-          className="bg-[#035b77] hover:bg-[#024a61] text-white px-8 py-3 rounded-full transition-all shadow-md font-medium"
-        >
-          + Create New Title
-        </Link>
+        <div className="flex gap-3">
+          <Link href="/create" className="bg-[#035b77] text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-[#024a61] transition-all">
+            + New Manuscript
+          </Link>
+        </div>
       </div>
 
-      {/* 3. Stats Section */}
-      <StatsOverview books={allBooks.length > 0 ? allBooks : books} />
+      {/* SECTION 2: E-commerce Analytics Cards */}
+      <div className="max-w-7xl mx-auto">
+        <StatsOverview books={books} />
+      </div>
 
-      <hr className="border-gray-200" />
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* SECTION 3: Book Management (Left 2 Columns) */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <BookTabs active={status} onChange={setStatus} />
+              <div className="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                MODE: {status === 'draft' ? 'EDIT/PREVIEW' : 'LIVE STORE'}
+              </div>
+            </div>
 
-      {/* 4. Tabs & Filter Section */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <BookTabs active={status} onChange={setStatus} />
-          <span className="text-sm text-gray-400 font-mono">
-            Status: <span className="uppercase">{status}</span>
-          </span>
+            {error ? (
+              <div className="p-4 bg-red-50 text-red-600 rounded-xl border border-red-100 text-sm italic">
+                {error}
+              </div>
+            ) : loading ? (
+              <div className="py-20 flex justify-center"><div className="animate-spin h-8 w-8 border-4 border-[#035b77] border-t-transparent rounded-full"></div></div>
+            ) : books.length === 0 ? (
+              <EmptyState text={`No ${status} books found in the database.`} />
+            ) : (
+              <div className="grid gap-4">
+                {books.map((book) => (
+                  <BookCard key={book._id} book={book} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        {error && (
-          <div className="p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
-            {error}
+        {/* SECTION 4: Recent Activity & Transactions (Right 1 Column) */}
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+            <h3 className="font-bold text-gray-900 mb-4">Recent Transactions</h3>
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex justify-between items-center text-sm border-b border-gray-50 pb-3">
+                  <div>
+                    <p className="font-medium text-gray-800">Order #120{i}</p>
+                    <p className="text-xs text-gray-400">2 mins ago</p>
+                  </div>
+                  <p className="font-bold text-green-600">+$14.99</p>
+                </div>
+              ))}
+              <button className="w-full py-2 text-xs font-bold text-[#035b77] hover:bg-gray-50 rounded-lg">View All Transactions</button>
+            </div>
           </div>
-        )}
 
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#035b77]"></div>
+          <div className="bg-gradient-to-br from-[#035b77] to-[#024a61] p-6 rounded-2xl text-white shadow-xl">
+            <h3 className="font-bold mb-1">Store Tip</h3>
+            <p className="text-xs opacity-80 leading-relaxed">
+              Books with professional cover images see 40% higher conversion rates. Use the 2:3 aspect ratio for best results.
+            </p>
           </div>
-        ) : books.length === 0 ? (
-          <EmptyState text={`You have no ${status} books yet.`} />
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
-            {books.map((book) => (
-              <BookCard
-                key={book._id}
-                book={book}
-                onPublish={publishBook}
-              />
-            ))}
-          </div>
-        )}
+        </div>
+
       </div>
     </div>
   );
