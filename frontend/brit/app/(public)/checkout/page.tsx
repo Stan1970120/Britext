@@ -31,7 +31,7 @@ const CartPage = () => {
   // 🔐 Redirect if not logged in
   useEffect(() => {
     if (!authLoading && !user) {
-      router.replace(`/signin?redirect=${redirectTo}`);
+      router.replace(`/auth?redirect=${redirectTo}`);
     }
   }, [user, authLoading, router, redirectTo]);
 
