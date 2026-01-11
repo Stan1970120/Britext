@@ -26,7 +26,7 @@ const Header = () => {
       
       // Forces a full refresh to the landing page, clearing all SPA state 
       // and preventing 404s on protected route groups
-      window.location.href = "/auth"; 
+      window.location.href = "/"; 
     } catch (error) {
       console.error("Logout failed:", error);
       // Fallback redirect if something goes wrong
