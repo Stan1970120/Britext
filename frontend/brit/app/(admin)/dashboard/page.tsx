@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useRouter } from "next/navigation"; // Added for redirection
 
 // Type Imports
 import { DashboardStats, Transaction } from "@/app/types/analytics";
@@ -12,7 +12,7 @@ import { Book } from "@/app/types/books";
 import { API } from "@/app/constant/api";
 
 // Context Import
-import { useAuth } from "@/app/context/AuthContext"; // Import the auth hook
+import { useAuth } from "@/app/context/AuthContext";
 
 // Component Imports
 import BookTabs from "./components/BookTabs";
@@ -22,7 +22,9 @@ import StatsOverview from "./components/StatsOverview";
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const { logout } = useAuth(); // Destructure logout from context
+  // 1. Get the token directly from your AuthContext
+  const { logout, token, loading: authLoading } = useAuth(); 
+  
   const [status, setStatus] = useState<"draft" | "published">("draft");
   const [books, setBooks] = useState<Book[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -30,17 +32,36 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchDashboardData = useCallback(async () => {
+    // 2. If there is no token yet, don't fetch (prevents 401 on initial flicker)
+    if (!token) return;
+
     try {
       setLoading(true);
       setError(null);
       
+      const headers = {
+        "Content-Type": "application/json",
+        // 3. SECURE THE REQUEST: Attach the Bearer token here
+        "Authorization": `Bearer ${token}`
+      };
+
       const [booksRes, statsRes] = await Promise.all([
-        fetch(API.ADMIN_BOOKS(status), { credentials: "include" }),
-        fetch(API.GET_ADMIN_STATS, { credentials: "include" })
+        fetch(API.ADMIN_BOOKS(status), { 
+          method: "GET",
+          headers, 
+          credentials: "include" 
+        }),
+        fetch(API.GET_ADMIN_STATS, { 
+          method: "GET",
+          headers, 
+          credentials: "include" 
+        })
       ]);
 
       if (booksRes.status === 401 || statsRes.status === 401) {
         setError("Unauthorized: Please log in as Admin.");
+        // Optional: auto-redirect to login if unauthorized
+        // router.push("/login");
         return;
       }
 
@@ -56,30 +77,33 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [status]);
+  }, [status, token]); // Add token to dependency array
 
   useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+    // Only fetch if auth is finished loading
+    if (!authLoading) {
+      fetchDashboardData();
+    }
+  }, [fetchDashboardData, authLoading]);
 
-  // Handle Logout Logic
   const handleLogout = async () => {
     await logout();
-    router.replace("/login"); // Redirect to login after clearing session
+    router.replace("/signin");
   };
+
+  // 4. Loading State for Auth
+  if (authLoading) return <div className="p-10 text-center">Verifying Admin Session...</div>;
 
   return (
     <div className="min-h-screen bg-gray-50/50 p-6 space-y-8 text-gray-900">
-      
-      {/* SECTION 1: Header */}
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+       {/* ... existing JSX remains the same ... */}
+       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight">Dashboard</h1>
           <p className="text-gray-500 text-sm">Manage manuscripts and monitor global store sales.</p>
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Logout Button */}
           <button 
             onClick={handleLogout}
             className="px-6 py-3 rounded-xl font-bold text-gray-600 hover:bg-gray-100 transition-all"
@@ -93,7 +117,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* SECTION 2: E-commerce Analytics Cards */}
       <div className="max-w-7xl mx-auto">
         <StatsOverview 
           draftCount={stats?.totalDrafts || 0} 
@@ -104,8 +127,6 @@ export default function AdminDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* SECTION 3: Book Management */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
             <div className="flex items-center justify-between mb-6">
@@ -132,7 +153,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* SECTION 4: Real Transaction History */}
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
           <h3 className="font-bold mb-4">Recent Transactions</h3>
           <div className="space-y-4">
