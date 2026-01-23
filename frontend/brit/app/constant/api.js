@@ -30,12 +30,16 @@ export const API = {
   PUBLISH_BOOK: (id) => 
     `${REST_API}/publishbook/admin/books/${id}/publish`,
 
-  // Update/Add Chapters (Used for the PATCH requests)
+  // Update/Add Chapters (Used for PATCH requests)
   UPDATE_CHAPTERS: (id) => 
     `${REST_API}/publishbook/admin/books/${id}/chapters`,
 
-  // Specifically for your ChaptersPage component to fix the TS error
+  // Specifically for saving new chapters in ChaptersPage
   ADD_CHAPTER: (id) => 
+    `${REST_API}/publishbook/admin/books/${id}/chapters`,
+
+  // ✨ Added: Fixes build error "Property 'GET_CHAPTERS' does not exist"
+  GET_CHAPTERS: (id) => 
     `${REST_API}/publishbook/admin/books/${id}/chapters`,
 
   /* ======================================================
@@ -49,7 +53,7 @@ export const API = {
   /* ======================================================
      🛠️ LEGACY / SPECIFIC ROUTE ACCESS
   ====================================================== */
-  // For PREVIEW logic if still using older admin routes
+  // For PREVIEW logic
   PREVIEW_BOOK: (id) => 
     `${REST_API}/admin/books/${id}/preview`,
 
