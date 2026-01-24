@@ -101,7 +101,7 @@ export default function ChapterEditorPage() {
       {/* Top Navigation */}
       <div className="border-b px-6 py-4 flex justify-between items-center bg-gray-50">
         <div className="flex items-center gap-4">
-          <Link href="/admin" className="text-gray-500 hover:text-black">← Back</Link>
+          <Link href="/dashboard" className="text-gray-500 hover:text-black">← Back</Link>
           <h1 className="font-bold text-lg">Manuscript Editor</h1>
           {message && (
             <span className={`text-sm ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
