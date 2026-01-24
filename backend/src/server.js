@@ -1,17 +1,16 @@
-// server.js
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
+import cookieParser from "cookie-parser"; 
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
-import adminRoutes from "./routes/adminRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js"; // General admin stats/users
 import bookRoutes from "./routes/bookRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
-import adminBookRoutes from "./routes/adminBookRoutes.js";
-// ✨ New Publish Book Routes
+// ✨ Redundant adminBookRoutes removed to avoid 404/401 conflicts
 import publishBookRoutes from "./routes/publishbook.routes.js"; 
 
 // Middleware
@@ -39,6 +38,8 @@ app.use(
 
 app.options("*", cors()); 
 
+// ✅ Essential for verifyAdmin middleware to read req.cookies
+app.use(cookieParser()); 
 app.use(express.json());
 
 /* =======================
@@ -53,25 +54,25 @@ mongoose
     Routes
 ======================= */
 
-// Auth
+// 1. Authentication
 app.use("/api/auth", authRoutes);
 
-// Books (guest + auth supported)
+// 2. Public / General Store
 app.use("/api/books", bookRoutes);
 
-// Cart & Wishlist (auth required)
+// 3. User Specific (Auth Required)
 app.use("/api/cart", protect, cartRoutes);
 app.use("/api/wishlist", protect, wishlistRoutes);
 
-// Admin Base
-app.use("/api/admin", adminRoutes);
+/** * 🛠️ ADMIN & PUBLISHING SYSTEM
+ * Consolidated into publishbook for Manuscript/Chapter management
+ */
 
-// Admin Book Management
-app.use("/api/admin", adminBookRoutes);
-
-// ✨ Publish Book System (Handles Stats, Finalizing, and Locked Reader View)
-// This mounts your new routes so they are accessible via /api/publishbook
+// ✨ Priority 1: Handles Stats, Chapter Editor, and Publishing
 app.use("/api/publishbook", publishBookRoutes);
+
+// ✨ Priority 2: General Admin (Revenue, User Management, etc.)
+app.use("/api/admin", adminRoutes);
 
 /* =======================
     Health Check
