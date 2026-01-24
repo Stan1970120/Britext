@@ -18,19 +18,20 @@ const Header = () => {
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Updated Logout Logic for Maximum Reliability
   const handleLogout = async () => {
     try {
       setMobileMenuOpen(false);
+      
+      // 1. Clear the Auth state (Context + LocalStorage)
       await logout(); 
       
-      // Forces a full refresh to the landing page, clearing all SPA state 
-      // and preventing 404s on protected route groups
-      window.location.href = "/"; 
+      // 2. Use replace to overwrite history. 
+      // This prevents the browser from trying to re-render the 
+      // protected /admin route after the user is null.
+      window.location.replace("/"); 
     } catch (error) {
       console.error("Logout failed:", error);
-      // Fallback redirect if something goes wrong
-      window.location.href = "/";
+      window.location.replace("/");
     }
   };
 
@@ -52,7 +53,6 @@ const Header = () => {
 
       {/* RIGHT SECTION: AUTH & NAVIGATION */}
       <div className="hidden md:flex items-center gap-6 text-gray-700 text-sm">
-        {/* Admin Dashboard Link */}
         {user?.role === "admin" && (
           <button 
             onClick={() => router.push("/admin")} 
@@ -63,7 +63,6 @@ const Header = () => {
           </button>
         )}
 
-        {/* My Books (Only for logged in users) */}
         {user && (
           <button 
             onClick={() => router.push("/my-books")} 
@@ -74,15 +73,15 @@ const Header = () => {
           </button>
         )}
 
-        {/* Profile / Login Toggle */}
         {user ? (
           <div className="flex items-center gap-4 border-l pl-6">
             <button 
               onClick={() => router.push("/profile")} 
               className="flex items-center gap-2 font-medium text-gray-900 hover:text-[#035b77] transition"
             >
+              {/* Added safe navigation ?. to prevent crash during state clear */}
               <div className="w-8 h-8 bg-[#035b77] text-white rounded-full flex items-center justify-center text-xs font-bold">
-                {user.firstName[0]}{user.lastName[0]}
+                {user?.firstName?.[0] || ""}{user?.lastName?.[0] || ""}
               </div>
               <span>Profile</span>
             </button>
@@ -126,7 +125,7 @@ const Header = () => {
           {user && (
             <div className="border-b pb-4">
               <p className="text-sm text-gray-500">Logged in as</p>
-              <p className="font-bold text-[#035b77]">{user.firstName} {user.lastName}</p>
+              <p className="font-bold text-[#035b77]">{user?.firstName} {user?.lastName}</p>
             </div>
           )}
           
