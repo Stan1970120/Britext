@@ -1,5 +1,3 @@
-
-
 import express from 'express';
 const router = express.Router();
 
@@ -11,7 +9,7 @@ import {
     updateChapters, 
     finalizePublish, 
     getReaderView,
-    getStoreBooks // Ensure this is exported in your controller
+    getStoreBooks 
 } from '../controllers/publishbook.controller.js';
 
 // Import your middleware
@@ -30,7 +28,15 @@ router.get('/admin/books', verifyAdmin, getAdminBooks);
 // 3. Create a New Manuscript
 router.post('/admin/books', verifyAdmin, createBook);
 
-// 4. Update/Add Chapters (The Chapter Editor)
+/**
+ * 📖 CHAPTER EDITOR ROUTES
+ * We use the same controller 'updateChapters' for both loading and saving.
+ */
+
+// ✨ NEW: Fetch chapters to load them into the editor (Fixes the 404)
+router.get('/admin/books/:id/chapters', verifyAdmin, updateChapters);
+
+// Update or Add Chapters (The Save button)
 router.patch('/admin/books/:id/chapters', verifyAdmin, updateChapters);
 
 // 5. Finalize Publication (The Publishing Portal)
