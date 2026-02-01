@@ -23,12 +23,19 @@ export default function CreateBookPage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
+    
+    // Retrieve token from localStorage as a fallback for the cookie
+    const token = localStorage.getItem("token");
 
     try {
       const res = await fetch(API.CREATE_BOOK, {
         method: "POST",
-        body: formData, // Sending as FormData for file support
-        credentials: "include",
+        body: formData, // Sending as FormData for Multer on the backend
+        credentials: "include", // Essential for sending cookies
+        headers: {
+          // Explicitly send the token in the header as well to avoid 401/400 issues
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
       });
 
       if (res.ok) {
@@ -48,7 +55,7 @@ export default function CreateBookPage() {
   return (
     <div className="max-w-3xl mx-auto p-6">
       <div className="mb-8">
-        <Link href="/books" className="text-sm text-[#035b77] hover:underline">
+        <Link href="/" className="text-sm text-[#035b77] hover:underline">
           ← Back to Dashboard
         </Link>
         <h1 className="text-3xl font-bold mt-4">Create New Book</h1>

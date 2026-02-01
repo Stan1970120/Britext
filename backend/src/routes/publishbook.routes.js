@@ -1,4 +1,5 @@
 import express from 'express';
+import multer from 'multer'; // 1. Import multer
 const router = express.Router();
 
 // Import your controller functions
@@ -16,6 +17,13 @@ import {
 import { verifyAdmin } from '../middleware/publishbook.middleware.js';
 
 /* ==========================================
+    📦 MULTER CONFIGURATION
+   ========================================== */
+// We store files in an 'uploads' folder. 
+// Note: Ensure this folder exists or use a more robust storage solution for production.
+const upload = multer({ dest: 'uploads/' }); 
+
+/* ==========================================
     ADMIN ENDPOINTS (Requires verifyAdmin)
    ========================================== */
 
@@ -26,14 +34,14 @@ router.get('/admin/stats', verifyAdmin, getStats);
 router.get('/admin/books', verifyAdmin, getAdminBooks);
 
 // 3. Create a New Manuscript
-router.post('/admin/books', verifyAdmin, createBook);
+// ✨ UPDATED: Added upload.single('cover') to handle the image file from FormData
+router.post('/admin/books', verifyAdmin, upload.single('cover'), createBook);
 
 /**
  * 📖 CHAPTER EDITOR ROUTES
- * We use the same controller 'updateChapters' for both loading and saving.
  */
 
-// ✨ NEW: Fetch chapters to load them into the editor (Fixes the 404)
+// Fetch chapters to load them into the editor
 router.get('/admin/books/:id/chapters', verifyAdmin, updateChapters);
 
 // Update or Add Chapters (The Save button)

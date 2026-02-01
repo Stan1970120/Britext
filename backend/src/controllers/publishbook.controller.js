@@ -5,25 +5,20 @@ import Order from '../models/publishbook_order.model.js';
 // 1. ADMIN DASHBOARD LOGIC
 // ==========================================
 
-// GET STATS: For the dashboard cards
 export const getStats = async (req, res) => {
   try {
-    // Fetch all books and completed orders
     const books = await PublishBook.find() || [];
     const orders = await Order.find({ paymentStatus: 'completed' }).populate('bookId') || [];
     
-    // Safely calculate revenue (handles cases where amountPaid might be missing)
     const totalRevenue = orders.reduce((sum, order) => sum + (order.amountPaid || 0), 0);
 
     res.json({
       totalDrafts: books.filter(b => b.status === 'draft').length,
       liveStoreCount: books.filter(b => b.status === 'published').length,
       dailyRevenue: totalRevenue,
-      // Prevent division by zero if there are no books
       conversionRate: books.length > 0 ? ((orders.length / books.length) * 100).toFixed(1) : 0,
       recentTransactions: orders.slice(-5).map(o => ({
           _id: o._id,
-          // Use optional chaining to prevent crash if book was deleted
           bookTitle: o.bookId?.title || "Deleted Book",
           amount: o.amountPaid,
           timestamp: o.purchasedAt
@@ -35,13 +30,10 @@ export const getStats = async (req, res) => {
   }
 };
 
-// GET ADMIN BOOKS: For the Draft/Published tabs
 export const getAdminBooks = async (req, res) => {
   try {
     const { status } = req.query; 
-    // If no status is provided, fetch all books
     const query = status ? { status } : {};
-    
     const books = await PublishBook.find(query).sort({ createdAt: -1 });
     res.json(books);
   } catch (err) {
@@ -54,30 +46,45 @@ export const getAdminBooks = async (req, res) => {
 // 2. MANUSCRIPT & EDITING LOGIC
 // ==========================================
 
-// CREATE BOOK: Initial Manuscript creation
+// UPDATED: Now supports Multer (req.file) and FormData (req.body)
 export const createBook = async (req, res) => {
   try {
-    if (!req.body.title) {
-        return res.status(400).json({ message: "Book title is required" });
+    // 1. With Multer, fields are in req.body. 
+    // Ensure we check 'title' which is 'required' in your model.
+    const { title, description } = req.body;
+
+    if (!title) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Book title is required" 
+      });
     }
 
+    // 2. Multer puts file info in req.file
+    // We store the path. On Render, this will be 'uploads/filename'
+    const coverImagePath = req.file ? req.file.path : "";
+
     const newBook = new PublishBook({
-      title: req.body.title,
-      // Link the book to the admin who created it
+      title: title,
+      summary: description, // Mapping frontend 'description' to model 'summary'
+      coverImage: coverImagePath,
       authorId: req.admin?.id || req.admin?._id,
       status: 'draft',
-      chapters: [] // Initialize empty chapters array
+      chapters: [] 
     });
 
     const savedBook = await newBook.save();
     res.status(201).json(savedBook);
   } catch (err) {
     console.error("Create Book Error:", err);
-    res.status(500).json({ message: "Failed to create book draft", error: err.message });
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to create book draft", 
+      error: err.message 
+    });
   }
 };
 
-// UPDATE CHAPTERS: Saves editor content
 export const updateChapters = async (req, res) => {
   try {
     const { chapters } = req.body;
@@ -104,10 +111,8 @@ export const updateChapters = async (req, res) => {
 // 3. PUBLISHING & STOREFRONT LOGIC
 // ==========================================
 
-// GET STORE BOOKS: For the public bookstore (Live books only)
 export const getStoreBooks = async (req, res) => {
   try {
-    // Exclude full chapter content for the list view to save bandwidth
     const books = await PublishBook.find({ status: 'published' }).select('-chapters.content');
     res.json(books);
   } catch (err) {
@@ -115,7 +120,6 @@ export const getStoreBooks = async (req, res) => {
   }
 };
 
-// FINALIZE PUBLISH: Price/Category/Live status
 export const finalizePublish = async (req, res) => {
   try {
     const { id } = req.params;
@@ -133,20 +137,16 @@ export const finalizePublish = async (req, res) => {
   }
 };
 
-// READER VIEW: Protected view
 export const getReaderView = async (req, res) => {
   try {
     const book = await PublishBook.findById(req.params.id);
     if (!book) return res.status(404).json({ message: "Book not found" });
 
-    // If free, show everything
     if (book.price <= 0) return res.json(book);
 
-    // Check user from verifyUser middleware (req.user)
     const userId = req.user?.id || req.user?._id; 
     if (!userId) return res.json(lockBookHelper(book)); 
 
-    // Check if user has a completed order for this book
     const hasPaid = await Order.findOne({ 
       userId, 
       bookId: book._id, 
@@ -167,7 +167,6 @@ export const getReaderView = async (req, res) => {
 // ==========================================
 
 const lockBookHelper = (book) => {
-  // Map through chapters and obscure the content field
   const lockedChapters = (book.chapters || []).map(ch => ({
     title: ch.title,
     order: ch.order,

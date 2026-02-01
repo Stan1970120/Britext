@@ -3,14 +3,14 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser"; 
+import path from "path"; // 1. Import path for folder handling
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
-import adminRoutes from "./routes/adminRoutes.js"; // General admin stats/users
+import adminRoutes from "./routes/adminRoutes.js"; 
 import bookRoutes from "./routes/bookRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
-// ✨ Redundant adminBookRoutes removed to avoid 404/401 conflicts
 import publishBookRoutes from "./routes/publishbook.routes.js"; 
 
 // Middleware
@@ -38,9 +38,12 @@ app.use(
 
 app.options("*", cors()); 
 
-// ✅ Essential for verifyAdmin middleware to read req.cookies
 app.use(cookieParser()); 
 app.use(express.json());
+
+// 2. ✨ ADDED: Static folder for uploads
+// This makes http://your-api.com/uploads/image.jpg accessible
+app.use("/uploads", express.static("uploads")); 
 
 /* =======================
     Database
@@ -65,13 +68,8 @@ app.use("/api/cart", protect, cartRoutes);
 app.use("/api/wishlist", protect, wishlistRoutes);
 
 /** * 🛠️ ADMIN & PUBLISHING SYSTEM
- * Consolidated into publishbook for Manuscript/Chapter management
  */
-
-// ✨ Priority 1: Handles Stats, Chapter Editor, and Publishing
 app.use("/api/publishbook", publishBookRoutes);
-
-// ✨ Priority 2: General Admin (Revenue, User Management, etc.)
 app.use("/api/admin", adminRoutes);
 
 /* =======================
