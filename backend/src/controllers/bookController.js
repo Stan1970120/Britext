@@ -3,16 +3,19 @@ import Cart from "../models/Cart.js";
 import Wishlist from "../models/Wishlist.js";
 
 /**
- * GET /api/books
- * Used by: book-store/page.tsx
+ * GET /api/books (Public Storefront)
  */
 export const getBooks = async (req, res) => {
   try {
     const { category } = req.query;
     const userId = req.user?.id;
 
-    const filter =
-      category && category !== "All Books" ? { category } : {};
+    // 1. CRITICAL: Only show books that are actually published
+    const filter = { status: "published" };
+
+    if (category && category !== "All Books") {
+      filter.category = category;
+    }
 
     const books = await Book.find(filter).sort({ createdAt: -1 });
 
@@ -20,47 +23,50 @@ export const getBooks = async (req, res) => {
     let wishlistBookIds = [];
 
     if (userId) {
-      const cart = await Cart.findOne({ userId });
-      const wishlist = await Wishlist.findOne({ userId });
+      const [cart, wishlist] = await Promise.all([
+        Cart.findOne({ userId }),
+        Wishlist.findOne({ userId })
+      ]);
 
-      cartBookIds =
-        cart?.items.map((item) => item.bookId.toString()) || [];
-
-      wishlistBookIds =
-        wishlist?.books.map((id) => id.toString()) || [];
+      cartBookIds = cart?.items.map((item) => item.bookId.toString()) || [];
+      wishlistBookIds = wishlist?.books.map((id) => id.toString()) || [];
     }
 
     const enrichedBooks = books.map((book) => ({
       ...book.toObject(),
+      // Ensure the frontend 'image' key maps to the database 'coverImage'
+      image: book.coverImage, 
       isInCart: cartBookIds.includes(book._id.toString()),
       isWishlisted: wishlistBookIds.includes(book._id.toString()),
     }));
 
     res.json(enrichedBooks);
   } catch (err) {
-    console.error(err);
+    console.error("Storefront Fetch Error:", err);
     res.status(500).json({ message: "Failed to fetch books" });
   }
 };
 
 /**
- * GET /api/books/:id
- * Used by: book-store/[id]/page.tsx
+ * GET /api/books/:id (Public Details)
  */
 export const getBookDetails = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const book = await Book.findById(req.params.id);
+    // Ensure even details only show for published books
+    const book = await Book.findOne({ _id: req.params.id, status: "published" });
 
     if (!book)
-      return res.status(404).json({ message: "Book not found" });
+      return res.status(404).json({ message: "Book not found or not yet published" });
 
     let isInCart = false;
     let isWishlisted = false;
 
     if (userId) {
-      const cart = await Cart.findOne({ userId });
-      const wishlist = await Wishlist.findOne({ userId });
+      const [cart, wishlist] = await Promise.all([
+        Cart.findOne({ userId }),
+        Wishlist.findOne({ userId })
+      ]);
 
       isInCart = cart?.items.some(
         (item) => item.bookId.toString() === book._id.toString()
@@ -73,6 +79,7 @@ export const getBookDetails = async (req, res) => {
 
     res.json({
       ...book.toObject(),
+      image: book.coverImage,
       isInCart,
       isWishlisted,
     });
@@ -88,6 +95,11 @@ export const getBookDetails = async (req, res) => {
 export const rateBook = async (req, res) => {
   try {
     const { rating } = req.body;
+    
+    // Safety check: Rating should be between 1 and 5
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ message: "Invalid rating value" });
+    }
 
     const book = await Book.findByIdAndUpdate(
       req.params.id,
