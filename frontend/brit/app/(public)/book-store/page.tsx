@@ -64,8 +64,9 @@ const BookStore = () => {
     if (!authLoading) fetchBooks();
   }, [fetchBooks, authLoading]);
 
+  // Updated to accept event to stop propagation
   const handleAddToCart = async (e: React.MouseEvent, bookId: string) => {
-    e.stopPropagation(); // ✋ Prevents navigation
+    e.stopPropagation(); 
     if (!token) return router.push("/login");
     try {
       const res = await fetch(`${REST_API}/cart`, {
@@ -82,8 +83,9 @@ const BookStore = () => {
     }
   };
 
+  // Updated to accept event to stop propagation
   const handleWishlist = async (e: React.MouseEvent, bookId: string) => {
-    e.stopPropagation(); // ✋ Prevents navigation
+    e.stopPropagation();
     if (!token) return router.push("/login");
     try {
       const res = await fetch(`${REST_API}/wishlist`, {
@@ -101,7 +103,7 @@ const BookStore = () => {
   };
 
   const handleRateBook = async (e: React.MouseEvent, bookId: string, starRating: number) => {
-    e.stopPropagation(); // ✋ Prevents navigation
+    e.stopPropagation();
     if (!token) return router.push("/login");
     try {
       const res = await fetch(`${REST_API}/publishbook/rate`, {
@@ -134,13 +136,12 @@ const BookStore = () => {
         {(isLoading || authLoading) && <Loader2 className="animate-spin text-sky-500" size={24} />}
       </div>
 
-      {/* Categories Scroller */}
-      <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide">
+      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2 mb-8">
         {categories.map((category) => (
           <button
             key={category}
             onClick={() => setSelectedCategory(category)}
-            className={`px-4 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+            className={`px-1 py-2 rounded-lg text-[11px] md:text-xs font-medium transition-all text-center flex items-center justify-center min-h-[44px] ${
               selectedCategory === category 
                 ? "bg-sky-500 text-white shadow-sm" 
                 : "bg-sky-50 text-gray-700 hover:bg-sky-100"
@@ -165,18 +166,16 @@ const BookStore = () => {
               onClick={() => handleViewDetails(book._id)}
               className="rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition bg-white overflow-hidden relative flex flex-col cursor-pointer"
             >
-              {/* Wishlist Button */}
               <button
                 onClick={(e) => handleWishlist(e, book._id)}
-                className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm p-1.5 rounded-full shadow-sm hover:bg-white transition z-20"
+                className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm p-1.5 rounded-full shadow-sm hover:bg-white transition z-10"
               >
                 <Heart
                   size={18}
-                  className={`transition-colors ${book.isWishlisted ? "fill-red-500 text-red-500" : "text-gray-400 hover:text-red-500"}`}
+                  className={`transition ${book.isWishlisted ? "fill-red-500 text-red-500" : "text-gray-600"}`}
                 />
               </button>
 
-              {/* Cover Image Area */}
               <div className="flex justify-center items-center py-6 bg-gray-50/50">
                 <div className="relative w-32 h-48 rounded-md shadow-md overflow-hidden border border-gray-100 bg-white">
                   <Image
@@ -189,29 +188,26 @@ const BookStore = () => {
                 </div>
               </div>
 
-              {/* Content Area */}
               <div className="p-4 flex flex-col flex-1">
                 <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">
                   {book.category} • <span className="text-sky-600">{book.author}</span>
                 </p>
-                <h2 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2 min-h-[40px]">
+                <h2 className="text-sm font-bold text-gray-900 mb-2 hover:text-sky-600 line-clamp-2 min-h-[40px]">
                   {book.title}
                 </h2>
 
-                {/* Rating Stars */}
                 <div className="flex items-center gap-1 mb-3">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star 
                       key={star} 
                       size={14} 
                       onClick={(e) => handleRateBook(e, book._id, star)}
-                      className={`cursor-pointer transition ${star <= Math.round(book.rating || 0) ? "fill-yellow-400 text-yellow-400" : "text-gray-200 hover:text-yellow-300"}`} 
+                      className={`cursor-pointer transition ${star <= Math.round(book.rating || 0) ? "fill-yellow-400 text-yellow-400" : "text-gray-200 hover:text-yellow-200"}`} 
                     />
                   ))}
                   <span className="text-xs text-gray-400 ml-1">({book.rating?.toFixed(1) || "0.0"})</span>
                 </div>
 
-                {/* Footer / Price & Button */}
                 <div className="mt-auto pt-3 border-t border-gray-50">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-gray-900 font-black text-base">${book.price?.toFixed(2)}</span>
@@ -220,12 +216,10 @@ const BookStore = () => {
                     onClick={(e) => handleAddToCart(e, book._id)}
                     disabled={book.isInCart}
                     className={`w-full flex items-center justify-center gap-2 rounded-lg text-sm font-bold py-2.5 transition ${
-                      book.isInCart 
-                        ? "bg-emerald-50 text-emerald-600 cursor-default" 
-                        : "bg-sky-500 hover:bg-sky-600 text-white shadow-sm"
+                      book.isInCart ? "bg-gray-100 text-gray-400 cursor-default" : "bg-sky-500 hover:bg-sky-600 text-white shadow-sm"
                     }`}
                   >
-                    {book.isInCart ? "Added to Cart ✓" : "Add to cart 🛒"}
+                    {book.isInCart ? "In Cart 🛒" : "Add to cart 🛒"}
                   </button>
                 </div>
               </div>
