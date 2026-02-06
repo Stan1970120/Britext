@@ -20,14 +20,8 @@ interface Book {
 }
 
 const categories = [
-  "All Books",
-  "Educational",
-  "Fiction",
-  "Non-Fiction",
-  "Professional & Technical",
-  "Faith Based",
-  "Lifestyle",
-  "Journal & Notes",
+  "All Books", "Educational", "Fiction", "Non-Fiction", 
+  "Professional & Technical", "Faith Based", "Lifestyle", "Journal & Notes",
 ];
 
 const BookStore = () => {
@@ -40,32 +34,22 @@ const BookStore = () => {
   const IMAGE_BASE = "https://britext.onrender.com";
 
   const fetchBooks = useCallback(async () => {
-    if (authLoading) return;
-
     setIsLoading(true);
     try {
-      // 1. Properly format the query string
       const categoryParam = selectedCategory !== "All Books" 
         ? `?category=${encodeURIComponent(selectedCategory)}` 
         : "";
       
-      // 2. Point to the NEW publishbook route
       const res = await fetch(`${REST_API}/publishbook/store/books${categoryParam}`, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
       
-      if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-      
       const data = await res.json();
-      
-      // 3. ✨ CRITICAL SAFETY CHECK: Ensure data is an array before setting state
-      // This prevents the "l.map is not a function" crash
       if (data && Array.isArray(data)) {
         setBooks(data);
       } else {
-        console.warn("API returned non-array data:", data);
         setBooks([]);
       }
     } catch (error) {
@@ -74,11 +58,11 @@ const BookStore = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedCategory, token, authLoading]);
+  }, [selectedCategory, token]);
 
   useEffect(() => {
-    fetchBooks();
-  }, [fetchBooks]);
+    if (!authLoading) fetchBooks();
+  }, [fetchBooks, authLoading]);
 
   const handleAddToCart = async (bookId: string) => {
     if (!token) return router.push("/login");
@@ -119,8 +103,9 @@ const BookStore = () => {
   const getImageUrl = (path: string) => {
     if (!path) return "https://via.placeholder.com/150?text=No+Cover"; 
     if (path.startsWith("http")) return path;
-    // Ensure we don't double up slashes
-    const cleanPath = path.startsWith("/") ? path.substring(1) : path;
+    
+    // Fix Windows-style backslashes and ensure clean leading slash
+    const cleanPath = path.replace(/\\/g, "/").replace(/^\//, "");
     return `${IMAGE_BASE}/${cleanPath}`;
   };
 
@@ -136,7 +121,7 @@ const BookStore = () => {
           <button
             key={category}
             onClick={() => setSelectedCategory(category)}
-            className={`px-1 py-2 rounded-lg text-[11px] md:text-xs font-medium transition-all text-center flex items-center justify-center min-h-[44px] leading-tight ${
+            className={`px-1 py-2 rounded-lg text-[11px] md:text-xs font-medium transition-all text-center flex items-center justify-center min-h-[44px] ${
               selectedCategory === category 
                 ? "bg-sky-500 text-white shadow-sm" 
                 : "bg-sky-50 text-gray-700 hover:bg-sky-100"
@@ -147,7 +132,7 @@ const BookStore = () => {
         ))}
       </div>
 
-      {isLoading || authLoading ? (
+      {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-pulse">
           {[1, 2, 3, 4].map((n) => (
             <div key={n} className="h-80 bg-gray-100 rounded-xl border border-gray-200" />
@@ -156,34 +141,25 @@ const BookStore = () => {
       ) : books.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {books.map((book) => (
-            <div
-              key={book._id}
-              className="rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition bg-white overflow-hidden relative flex flex-col"
-            >
+            <div key={book._id} className="rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition bg-white overflow-hidden relative flex flex-col">
               <button
                 onClick={() => handleWishlist(book._id)}
                 className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm p-1.5 rounded-full shadow-sm hover:bg-white transition z-10"
               >
                 <Heart
                   size={18}
-                  className={`transition ${
-                    book.isWishlisted ? "fill-red-500 text-red-500" : "text-gray-600 hover:text-red-500"
-                  }`}
+                  className={`transition ${book.isWishlisted ? "fill-red-500 text-red-500" : "text-gray-600"}`}
                 />
               </button>
 
-              <div
-                onClick={() => handleViewDetails(book._id)}
-                className="flex justify-center items-center py-6 cursor-pointer bg-gray-50/50"
-              >
-                <div className="relative w-28 h-40 md:w-32 md:h-48 rounded-md shadow-md overflow-hidden border border-gray-100 bg-white">
+              <div onClick={() => handleViewDetails(book._id)} className="flex justify-center items-center py-6 cursor-pointer bg-gray-50/50">
+                <div className="relative w-32 h-48 rounded-md shadow-md overflow-hidden border border-gray-100 bg-white">
                   <Image
                     src={getImageUrl(book.coverImage)}
                     alt={book.title}
                     fill
-                    sizes="(max-width: 768px) 112px, 128px"
-                    className="object-cover rounded-md"
-                    priority={false}
+                    className="object-cover"
+                    unoptimized={true} // Helps if Render's image headers are tricky
                   />
                 </div>
               </div>
@@ -192,39 +168,26 @@ const BookStore = () => {
                 <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">
                   {book.category} • <span className="text-sky-600">{book.author}</span>
                 </p>
-
-                <h2
-                  onClick={() => handleViewDetails(book._id)}
-                  className="text-sm font-bold text-gray-900 mb-2 cursor-pointer hover:text-sky-600 transition line-clamp-2 min-h-[40px]"
-                >
+                <h2 onClick={() => handleViewDetails(book._id)} className="text-sm font-bold text-gray-900 mb-2 cursor-pointer hover:text-sky-600 line-clamp-2 min-h-[40px]">
                   {book.title}
                 </h2>
 
                 <div className="flex items-center gap-1 mb-3">
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      size={13}
-                      className={`transition ${
-                        star <= Math.round(book.rating || 0) ? "fill-yellow-400 text-yellow-400" : "text-gray-200"
-                      }`}
-                    />
+                    <Star key={star} size={13} className={star <= Math.round(book.rating || 0) ? "fill-yellow-400 text-yellow-400" : "text-gray-200"} />
                   ))}
                   <span className="text-xs text-gray-400 ml-1">({book.rating?.toFixed(1) || "0.0"})</span>
                 </div>
 
                 <div className="mt-auto pt-3 border-t border-gray-50">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-gray-900 font-black text-base">${book.price?.toFixed(2) || "0.00"}</span>
+                    <span className="text-gray-900 font-black text-base">${book.price?.toFixed(2)}</span>
                   </div>
-
                   <button
                     onClick={() => handleAddToCart(book._id)}
                     disabled={book.isInCart}
                     className={`w-full flex items-center justify-center gap-2 rounded-lg text-sm font-bold py-2.5 transition ${
-                      book.isInCart
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-sky-500 hover:bg-sky-600 text-white shadow-sm"
+                      book.isInCart ? "bg-gray-100 text-gray-400" : "bg-sky-500 hover:bg-sky-600 text-white shadow-sm"
                     }`}
                   >
                     {book.isInCart ? "In Cart 🛒" : "Add to cart 🛒"}
@@ -238,7 +201,6 @@ const BookStore = () => {
         <div className="text-center py-24 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
           <BookOpen className="mx-auto text-gray-300 mb-4" size={48} />
           <h3 className="text-lg font-medium text-gray-900">No books found</h3>
-          <p className="text-gray-500">We couldn&apos;t find any published books in this category.</p>
         </div>
       )}
     </div>
