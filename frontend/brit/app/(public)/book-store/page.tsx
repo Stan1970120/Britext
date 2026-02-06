@@ -39,27 +39,34 @@ const BookStore = () => {
   
   const IMAGE_BASE = "https://britext.onrender.com";
 
-  const fetchBooks = useCallback(async () => {
-    if (authLoading) return;
+ // Inside fetchBooks function
+const fetchBooks = useCallback(async () => {
+  if (authLoading) return;
 
-    setIsLoading(true);
-    try {
-      const categoryQuery = selectedCategory !== "All Books" ? `?category=${selectedCategory}` : "";
-      const res = await fetch(`${REST_API}/books${categoryQuery}`, {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-      
-      if (!res.ok) throw new Error("Failed to fetch");
-      const data = await res.json();
-      setBooks(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Failed to fetch books", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedCategory, token, authLoading]);
+  setIsLoading(true);
+  try {
+    const categoryQuery = selectedCategory !== "All Books" ? `&category=${selectedCategory}` : "";
+    
+    // ✨ UPDATED PATH: Pointing to the new publishbook route
+    // Note: Use '?' if no other params, but here we add category after
+    const res = await fetch(`${REST_API}/publishbook/store/books?${categoryQuery}`, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    
+    if (!res.ok) throw new Error("Failed to fetch");
+    const data = await res.json();
+    
+    // Safety check for array mapping
+    setBooks(Array.isArray(data) ? data : []);
+  } catch (error) {
+    console.error("Failed to fetch books", error);
+    setBooks([]); // Reset to empty array on error to prevent .map crashes
+  } finally {
+    setIsLoading(false);
+  }
+}, [selectedCategory, token, authLoading]);
 
   useEffect(() => {
     fetchBooks();

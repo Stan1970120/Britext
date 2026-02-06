@@ -30,15 +30,30 @@ export const getStats = async (req, res) => {
   }
 };
 
+/**
+ * ✨ UPDATED: Handles both listing ALL books and fetching ONE book by ID
+ */
 export const getAdminBooks = async (req, res) => {
   try {
+    const { id } = req.params;
+    
+    // If an ID is provided in the URL, fetch that specific book
+    if (id) {
+      const book = await PublishBook.findById(id);
+      if (!book) return res.status(404).json({ message: "Book not found" });
+      return res.json(book);
+    }
+
+    // Otherwise, handle list view with status filter
     const { status } = req.query; 
     const query = status ? { status } : {};
     const books = await PublishBook.find(query).sort({ createdAt: -1 });
-    res.json(books);
+    
+    // Always return an array for .map() safety
+    res.json(Array.isArray(books) ? books : []);
   } catch (err) {
     console.error("Fetch Admin Books Error:", err);
-    res.status(500).json({ message: "Error fetching book list" });
+    res.status(500).json({ message: "Error fetching book data", error: err.message });
   }
 };
 
@@ -46,27 +61,19 @@ export const getAdminBooks = async (req, res) => {
 // 2. MANUSCRIPT & EDITING LOGIC
 // ==========================================
 
-// UPDATED: Now supports Multer (req.file) and FormData (req.body)
 export const createBook = async (req, res) => {
   try {
-    // 1. With Multer, fields are in req.body. 
-    // Ensure we check 'title' which is 'required' in your model.
-    const { title, description } = req.body;
+    const { title, description, category, author } = req.body;
 
-    if (!title) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Book title is required" 
-      });
-    }
+    if (!title) return res.status(400).json({ success: false, message: "Book title is required" });
 
-    // 2. Multer puts file info in req.file
-    // We store the path. On Render, this will be 'uploads/filename'
     const coverImagePath = req.file ? req.file.path : "";
 
     const newBook = new PublishBook({
-      title: title,
-      summary: description, // Mapping frontend 'description' to model 'summary'
+      title,
+      author: author || "Unknown Author",
+      category: category || "Uncategorized",
+      summary: description, 
       coverImage: coverImagePath,
       authorId: req.admin?.id || req.admin?._id,
       status: 'draft',
@@ -77,11 +84,7 @@ export const createBook = async (req, res) => {
     res.status(201).json(savedBook);
   } catch (err) {
     console.error("Create Book Error:", err);
-    res.status(500).json({ 
-      success: false, 
-      message: "Failed to create book draft", 
-      error: err.message 
-    });
+    res.status(500).json({ success: false, message: "Failed to create book draft", error: err.message });
   }
 };
 
@@ -90,15 +93,8 @@ export const updateChapters = async (req, res) => {
     const { chapters } = req.body;
     const { id } = req.params;
 
-    const updatedBook = await PublishBook.findByIdAndUpdate(
-      id,
-      { chapters },
-      { new: true }
-    );
-
-    if (!updatedBook) {
-        return res.status(404).json({ message: "Book not found" });
-    }
+    const updatedBook = await PublishBook.findByIdAndUpdate(id, { chapters }, { new: true });
+    if (!updatedBook) return res.status(404).json({ message: "Book not found" });
 
     res.json(updatedBook);
   } catch (err) {
@@ -113,8 +109,13 @@ export const updateChapters = async (req, res) => {
 
 export const getStoreBooks = async (req, res) => {
   try {
+    // Return published books with mapped 'image' field for frontend compatibility
     const books = await PublishBook.find({ status: 'published' }).select('-chapters.content');
-    res.json(books);
+    const enriched = books.map(b => ({
+      ...b.toObject(),
+      image: b.coverImage // Ensure frontend gets 'image'
+    }));
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ message: "Error fetching store books" });
   }
@@ -130,7 +131,6 @@ export const finalizePublish = async (req, res) => {
     );
 
     if (!updatedBook) return res.status(404).json({ message: "Book not found" });
-    
     res.json(updatedBook);
   } catch (err) {
     res.status(500).json({ message: "Failed to publish book" });
@@ -157,25 +157,15 @@ export const getReaderView = async (req, res) => {
 
     res.json(book);
   } catch (err) {
-    console.error("Reader View Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
-
-// ==========================================
-// HELPERS
-// ==========================================
 
 const lockBookHelper = (book) => {
   const lockedChapters = (book.chapters || []).map(ch => ({
     title: ch.title,
     order: ch.order,
-    content: "LOCKED: Please purchase this book to access the full content."
+    content: "LOCKED"
   }));
-  
-  return { 
-    ...book.toObject(), 
-    chapters: lockedChapters, 
-    isLocked: true 
-  };
+  return { ...book.toObject(), chapters: lockedChapters, isLocked: true };
 };
