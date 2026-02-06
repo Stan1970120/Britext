@@ -34,7 +34,7 @@ const BookStore = () => {
   const IMAGE_BASE = "https://britext.onrender.com";
 
   const fetchBooks = useCallback(async () => {
-    setIsLoading(true);
+    // Only show full-page loader on first load or category change
     try {
       const categoryParam = selectedCategory !== "All Books" 
         ? `?category=${encodeURIComponent(selectedCategory)}` 
@@ -47,8 +47,6 @@ const BookStore = () => {
       const data = await res.json();
       if (data && Array.isArray(data)) {
         setBooks(data);
-      } else {
-        setBooks([]);
       }
     } catch (error) {
       console.error("Failed to fetch books:", error);
@@ -61,21 +59,34 @@ const BookStore = () => {
     if (!authLoading) fetchBooks();
   }, [fetchBooks, authLoading]);
 
+  // Utility to update local state immediately (instant feedback)
+  const updateLocalState = (bookId: string, updates: Partial<Book>) => {
+    setBooks(currentBooks => 
+      currentBooks.map(book => book._id === bookId ? { ...book, ...updates } : book)
+    );
+  };
+
   /* --------------------------- ACTIONS --------------------------- */
 
   const handleAddToCart = async (e: React.MouseEvent, bookId: string) => {
     e.preventDefault();
     e.stopPropagation();
     if (!token) return router.push("/login");
+
+    // Instant UI change
+    updateLocalState(bookId, { isInCart: true });
+
     try {
       const res = await fetch(`${REST_API}/cart`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ bookId }),
       });
-      if (res.ok) fetchBooks(); 
+      if (!res.ok) throw new Error("Server error");
     } catch (error) {
-      console.error("Add to cart failed", error);
+      // Rollback on error
+      updateLocalState(bookId, { isInCart: false });
+      console.error("Add to cart failed (Check backend 500 error)");
     }
   };
 
@@ -83,34 +94,47 @@ const BookStore = () => {
     e.preventDefault();
     e.stopPropagation();
     if (!token) return router.push("/login");
+
+    const book = books.find(b => b._id === bookId);
+    const newStatus = !book?.isWishlisted;
+
+    // Instant UI change (Heart fills up immediately)
+    updateLocalState(bookId, { isWishlisted: newStatus });
+
     try {
       const res = await fetch(`${REST_API}/wishlist`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ bookId }),
       });
-      if (res.ok) fetchBooks(); 
+      if (!res.ok) throw new Error("Server error");
+      // Note: Data is now saved in DB, refresh will keep it filled
     } catch (error) {
-      console.error("Wishlist toggle failed", error);
+      // Rollback UI if server fails
+      updateLocalState(bookId, { isWishlisted: !newStatus });
+      console.error("Wishlist toggle failed (Check backend 500 error)");
     }
   };
 
   const handleRateBook = async (e: React.MouseEvent, bookId: string, starRating: number) => {
     e.preventDefault();
     e.stopPropagation();
-    // Logic: If no token, we can still allow the UI to update locally or just proceed if your backend allows public rating
+    
+    // Instant UI update for the rating display
+    updateLocalState(bookId, { rating: starRating });
+
     try {
       const res = await fetch(`${REST_API}/publishbook/rate`, {
         method: "POST",
         headers: { 
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ bookId, rating: starRating }),
       });
-      if (res.ok) fetchBooks(); 
+      if (!res.ok) throw new Error("Rating error");
     } catch (error) {
-      console.error("Rating failed", error);
+      console.error("Rating failed");
     }
   };
 
@@ -154,18 +178,17 @@ const BookStore = () => {
               key={book._id} 
               className="group rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition bg-white overflow-hidden relative flex flex-col"
             >
-              {/* NAVIGATION LAYER (Hidden clickable area) */}
               <div 
                 className="absolute inset-0 z-0 cursor-pointer" 
                 onClick={() => router.push(`/book-store/${book._id}`)} 
               />
 
-              {/* INTERACTIVE LAYER (Z-index 10 to be on top) */}
+              {/* Heart Button */}
               <button
                 onClick={(e) => handleWishlist(e, book._id)}
-                className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm p-1.5 rounded-full shadow-sm hover:bg-white transition z-10"
+                className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm p-1.5 rounded-full shadow-sm hover:bg-white transition z-10"
               >
-                <Heart size={18} className={`transition ${book.isWishlisted ? "fill-red-500 text-red-500" : "text-gray-600"}`} />
+                <Heart size={18} className={`transition ${book.isWishlisted ? "fill-red-500 text-red-500" : "text-gray-400"}`} />
               </button>
 
               <div className="flex justify-center items-center py-6 bg-gray-50/50 relative">
@@ -176,11 +199,10 @@ const BookStore = () => {
 
               <div className="p-4 flex flex-col flex-1 relative z-10 pointer-events-none">
                 <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">{book.category} • <span className="text-sky-600">{book.author}</span></p>
-                <h2 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2 min-h-[40px] pointer-events-auto" onClick={() => router.push(`/book-store/${book._id}`)}>
+                <h2 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2 min-h-[40px] pointer-events-auto cursor-pointer" onClick={() => router.push(`/book-store/${book._id}`)}>
                   {book.title}
                 </h2>
 
-                {/* Rating Stars */}
                 <div className="flex items-center gap-1 mb-3 pointer-events-auto">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star 
@@ -204,7 +226,7 @@ const BookStore = () => {
                       book.isInCart ? "bg-emerald-500 text-white cursor-default" : "bg-sky-500 hover:bg-sky-600 text-white shadow-sm"
                     }`}
                   >
-                    {book.isInCart ? "In Cart 🛒" : "Add to cart 🛒"}
+                    {book.isInCart ? "Added to cart ✅" : "Add to cart 🛒"}
                   </button>
                 </div>
               </div>

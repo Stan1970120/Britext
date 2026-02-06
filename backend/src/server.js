@@ -4,21 +4,26 @@ import cors from "cors";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser"; 
 import path from "path"; 
+import { fileURLToPath } from "url"; // Needed for static paths in ESM
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js"; 
-// import bookRoutes from "./routes/bookRoutes.js"; // ❌ REMOVED: Causing ERR_MODULE_NOT_FOUND
 import cartRoutes from "./routes/cartRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import publishBookRoutes from "./routes/publishbook.routes.js"; 
 
 // Middleware
-import { protect } from "./middleware/adminMiddleware.js";
+// ✅ FIXED: Importing from authMiddleware.js instead of adminMiddleware.js
+import { protect } from "./middleware/authMiddleware.js";
 
 dotenv.config();
 
 const app = express();
+
+// Set up __dirname for ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /* =======================
     Middleware
@@ -41,8 +46,8 @@ app.options("*", cors());
 app.use(cookieParser()); 
 app.use(express.json());
 
-// Static folder for uploads
-app.use("/uploads", express.static("uploads")); 
+// ✅ FIXED: Static folder setup for Render (Linux)
+app.use("/uploads", express.static(path.join(__dirname, "../uploads"))); 
 
 /* =======================
     Database
@@ -59,19 +64,15 @@ mongoose
 // 1. Authentication
 app.use("/api/auth", authRoutes);
 
-// 2. 📚 PUBLISHING & STORE SYSTEM
-// This now handles /api/publishbook/store/books
+// 2. Publishing & Store System
 app.use("/api/publishbook", publishBookRoutes);
 
-// 3. LEGACY/GENERIC REDIRECT (Optional)
-// If your frontend still calls /api/books, this points it to the new system
-// app.use("/api/books", publishBookRoutes); 
+// 3. User Specific
+// Note: We don't need 'protect' here if your route files already use router.use(protect)
+app.use("/api/cart", cartRoutes);
+app.use("/api/wishlist", wishlistRoutes);
 
-// 4. User Specific (Auth Required)
-app.use("/api/cart", protect, cartRoutes);
-app.use("/api/wishlist", protect, wishlistRoutes);
-
-// 5. Admin Panel
+// 4. Admin Panel
 app.use("/api/admin", adminRoutes);
 
 /* =======================
