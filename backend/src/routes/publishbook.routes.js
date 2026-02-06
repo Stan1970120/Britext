@@ -13,9 +13,10 @@ import {
     rateBook 
 } from '../controllers/publishbook.controller.js';
 
-// ✅ CORRECTED: Matching your path /src/middleware/authMiddleware.js
 import { verifyAdmin } from '../middleware/publishbook.middleware.js';
-import { verifyToken } from '../middleware/authMiddleware.js'; 
+
+// ✅ FIXED: Using 'protect' to match the export name in authMiddleware.js
+import { protect } from '../middleware/authMiddleware.js'; 
 
 const upload = multer({ dest: 'uploads/' }); 
 
@@ -25,10 +26,13 @@ const upload = multer({ dest: 'uploads/' });
 
 router.get('/admin/stats', verifyAdmin, getStats);
 router.get('/admin/books', verifyAdmin, getAdminBooks);
+
+// Route for single book preview/edit
 router.get('/admin/books/:id', verifyAdmin, getAdminBooks);
 
 router.post('/admin/books', verifyAdmin, upload.single('cover'), createBook);
 
+// Chapters logic
 router.get('/admin/books/:id/chapters', verifyAdmin, getAdminBooks); 
 router.patch('/admin/books/:id/chapters', verifyAdmin, updateChapters);
 
@@ -41,7 +45,7 @@ router.patch('/admin/books/:id/publish', verifyAdmin, finalizePublish);
 router.get('/store/books', getStoreBooks);
 router.get('/store/books/:id', getReaderView); 
 
-// Uses verifyToken from your authMiddleware.js
-router.post('/rate', verifyToken, rateBook);
+// ✅ FIXED: Changed 'verifyToken' to 'protect'
+router.post('/rate', protect, rateBook);
 
 export default router;
