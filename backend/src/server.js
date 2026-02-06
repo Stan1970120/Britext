@@ -3,12 +3,12 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser"; 
-import path from "path"; // 1. Import path for folder handling
+import path from "path"; 
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js"; 
-import bookRoutes from "./routes/bookRoutes.js";
+// import bookRoutes from "./routes/bookRoutes.js"; // ❌ REMOVED: Causing ERR_MODULE_NOT_FOUND
 import cartRoutes from "./routes/cartRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import publishBookRoutes from "./routes/publishbook.routes.js"; 
@@ -41,8 +41,7 @@ app.options("*", cors());
 app.use(cookieParser()); 
 app.use(express.json());
 
-// 2. ✨ ADDED: Static folder for uploads
-// This makes http://your-api.com/uploads/image.jpg accessible
+// Static folder for uploads
 app.use("/uploads", express.static("uploads")); 
 
 /* =======================
@@ -60,23 +59,26 @@ mongoose
 // 1. Authentication
 app.use("/api/auth", authRoutes);
 
-// 2. Public / General Store
-app.use("/api/books", bookRoutes);
+// 2. 📚 PUBLISHING & STORE SYSTEM
+// This now handles /api/publishbook/store/books
+app.use("/api/publishbook", publishBookRoutes);
 
-// 3. User Specific (Auth Required)
+// 3. LEGACY/GENERIC REDIRECT (Optional)
+// If your frontend still calls /api/books, this points it to the new system
+// app.use("/api/books", publishBookRoutes); 
+
+// 4. User Specific (Auth Required)
 app.use("/api/cart", protect, cartRoutes);
 app.use("/api/wishlist", protect, wishlistRoutes);
 
-/** * 🛠️ ADMIN & PUBLISHING SYSTEM
- */
-app.use("/api/publishbook", publishBookRoutes);
+// 5. Admin Panel
 app.use("/api/admin", adminRoutes);
 
 /* =======================
     Health Check
 ======================= */
 app.get("/", (req, res) => {
-  res.send("Prep Center API running 🚀");
+  res.send("Britext API running 🚀");
 });
 
 /* =======================
