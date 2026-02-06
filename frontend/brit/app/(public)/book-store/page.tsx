@@ -39,34 +39,42 @@ const BookStore = () => {
   
   const IMAGE_BASE = "https://britext.onrender.com";
 
- // Inside fetchBooks function
-const fetchBooks = useCallback(async () => {
-  if (authLoading) return;
+  const fetchBooks = useCallback(async () => {
+    if (authLoading) return;
 
-  setIsLoading(true);
-  try {
-    const categoryQuery = selectedCategory !== "All Books" ? `&category=${selectedCategory}` : "";
-    
-    // ✨ UPDATED PATH: Pointing to the new publishbook route
-    // Note: Use '?' if no other params, but here we add category after
-    const res = await fetch(`${REST_API}/publishbook/store/books?${categoryQuery}`, {
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
-    
-    if (!res.ok) throw new Error("Failed to fetch");
-    const data = await res.json();
-    
-    // Safety check for array mapping
-    setBooks(Array.isArray(data) ? data : []);
-  } catch (error) {
-    console.error("Failed to fetch books", error);
-    setBooks([]); // Reset to empty array on error to prevent .map crashes
-  } finally {
-    setIsLoading(false);
-  }
-}, [selectedCategory, token, authLoading]);
+    setIsLoading(true);
+    try {
+      // 1. Properly format the query string
+      const categoryParam = selectedCategory !== "All Books" 
+        ? `?category=${encodeURIComponent(selectedCategory)}` 
+        : "";
+      
+      // 2. Point to the NEW publishbook route
+      const res = await fetch(`${REST_API}/publishbook/store/books${categoryParam}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      
+      if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+      
+      const data = await res.json();
+      
+      // 3. ✨ CRITICAL SAFETY CHECK: Ensure data is an array before setting state
+      // This prevents the "l.map is not a function" crash
+      if (data && Array.isArray(data)) {
+        setBooks(data);
+      } else {
+        console.warn("API returned non-array data:", data);
+        setBooks([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch books:", error);
+      setBooks([]); 
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedCategory, token, authLoading]);
 
   useEffect(() => {
     fetchBooks();
@@ -109,9 +117,11 @@ const fetchBooks = useCallback(async () => {
   const handleViewDetails = (bookId: string) => router.push(`/book-store/${bookId}`);
 
   const getImageUrl = (path: string) => {
-    if (!path) return "/placeholder.png"; 
+    if (!path) return "https://via.placeholder.com/150?text=No+Cover"; 
     if (path.startsWith("http")) return path;
-    return `${IMAGE_BASE}/${path}`;
+    // Ensure we don't double up slashes
+    const cleanPath = path.startsWith("/") ? path.substring(1) : path;
+    return `${IMAGE_BASE}/${cleanPath}`;
   };
 
   return (
@@ -121,7 +131,6 @@ const fetchBooks = useCallback(async () => {
         {(isLoading || authLoading) && <Loader2 className="animate-spin text-sky-500" size={24} />}
       </div>
 
-      {/* ✨ Categories Grid: 3 mobile, 4 tablet, 8 desktop */}
       <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2 mb-8">
         {categories.map((category) => (
           <button
@@ -151,7 +160,6 @@ const fetchBooks = useCallback(async () => {
               key={book._id}
               className="rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition bg-white overflow-hidden relative flex flex-col"
             >
-              {/* Wishlist Button */}
               <button
                 onClick={() => handleWishlist(book._id)}
                 className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm p-1.5 rounded-full shadow-sm hover:bg-white transition z-10"
@@ -164,7 +172,6 @@ const fetchBooks = useCallback(async () => {
                 />
               </button>
 
-              {/* Book Image */}
               <div
                 onClick={() => handleViewDetails(book._id)}
                 className="flex justify-center items-center py-6 cursor-pointer bg-gray-50/50"
@@ -174,12 +181,13 @@ const fetchBooks = useCallback(async () => {
                     src={getImageUrl(book.coverImage)}
                     alt={book.title}
                     fill
+                    sizes="(max-width: 768px) 112px, 128px"
                     className="object-cover rounded-md"
+                    priority={false}
                   />
                 </div>
               </div>
 
-              {/* Book Details */}
               <div className="p-4 flex flex-col flex-1">
                 <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">
                   {book.category} • <span className="text-sky-600">{book.author}</span>
@@ -192,7 +200,6 @@ const fetchBooks = useCallback(async () => {
                   {book.title}
                 </h2>
 
-                {/* Rating */}
                 <div className="flex items-center gap-1 mb-3">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star
@@ -206,7 +213,6 @@ const fetchBooks = useCallback(async () => {
                   <span className="text-xs text-gray-400 ml-1">({book.rating?.toFixed(1) || "0.0"})</span>
                 </div>
 
-                {/* Price & Action */}
                 <div className="mt-auto pt-3 border-t border-gray-50">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-gray-900 font-black text-base">${book.price?.toFixed(2) || "0.00"}</span>
