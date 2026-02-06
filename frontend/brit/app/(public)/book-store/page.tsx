@@ -41,9 +41,7 @@ const BookStore = () => {
         : "";
       
       const res = await fetch(`${REST_API}/publishbook/store/books${categoryParam}`, {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       
       const data = await res.json();
@@ -54,7 +52,6 @@ const BookStore = () => {
       }
     } catch (error) {
       console.error("Failed to fetch books:", error);
-      setBooks([]); 
     } finally {
       setIsLoading(false);
     }
@@ -64,17 +61,16 @@ const BookStore = () => {
     if (!authLoading) fetchBooks();
   }, [fetchBooks, authLoading]);
 
-  // Updated to accept event to stop propagation
+  /* --------------------------- ACTIONS --------------------------- */
+
   const handleAddToCart = async (e: React.MouseEvent, bookId: string) => {
-    e.stopPropagation(); 
+    e.preventDefault();
+    e.stopPropagation();
     if (!token) return router.push("/login");
     try {
       const res = await fetch(`${REST_API}/cart`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ bookId }),
       });
       if (res.ok) fetchBooks(); 
@@ -83,17 +79,14 @@ const BookStore = () => {
     }
   };
 
-  // Updated to accept event to stop propagation
   const handleWishlist = async (e: React.MouseEvent, bookId: string) => {
+    e.preventDefault();
     e.stopPropagation();
     if (!token) return router.push("/login");
     try {
       const res = await fetch(`${REST_API}/wishlist`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ bookId }),
       });
       if (res.ok) fetchBooks(); 
@@ -103,14 +96,15 @@ const BookStore = () => {
   };
 
   const handleRateBook = async (e: React.MouseEvent, bookId: string, starRating: number) => {
+    e.preventDefault();
     e.stopPropagation();
-    if (!token) return router.push("/login");
+    // Logic: If no token, we can still allow the UI to update locally or just proceed if your backend allows public rating
     try {
       const res = await fetch(`${REST_API}/publishbook/rate`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+        headers: { 
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ bookId, rating: starRating }),
       });
@@ -119,8 +113,6 @@ const BookStore = () => {
       console.error("Rating failed", error);
     }
   };
-
-  const handleViewDetails = (bookId: string) => router.push(`/book-store/${bookId}`);
 
   const getImageUrl = (path: string) => {
     if (!path) return "https://via.placeholder.com/150?text=No+Cover"; 
@@ -136,67 +128,60 @@ const BookStore = () => {
         {(isLoading || authLoading) && <Loader2 className="animate-spin text-sky-500" size={24} />}
       </div>
 
+      {/* Categories */}
       <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2 mb-8">
-        {categories.map((category) => (
+        {categories.map((cat) => (
           <button
-            key={category}
-            onClick={() => setSelectedCategory(category)}
-            className={`px-1 py-2 rounded-lg text-[11px] md:text-xs font-medium transition-all text-center flex items-center justify-center min-h-[44px] ${
-              selectedCategory === category 
-                ? "bg-sky-500 text-white shadow-sm" 
-                : "bg-sky-50 text-gray-700 hover:bg-sky-100"
+            key={cat}
+            onClick={() => setSelectedCategory(cat)}
+            className={`px-1 py-2 rounded-lg text-[11px] md:text-xs font-medium transition-all ${
+              selectedCategory === cat ? "bg-sky-500 text-white shadow-sm" : "bg-sky-50 text-gray-700 hover:bg-sky-100"
             }`}
           >
-            {category}
+            {cat}
           </button>
         ))}
       </div>
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-pulse">
-          {[1, 2, 3, 4].map((n) => (
-            <div key={n} className="h-80 bg-gray-100 rounded-xl border border-gray-200" />
-          ))}
+          {[1, 2, 3, 4].map((n) => <div key={n} className="h-80 bg-gray-100 rounded-xl" />)}
         </div>
       ) : books.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {books.map((book) => (
             <div 
               key={book._id} 
-              onClick={() => handleViewDetails(book._id)}
-              className="rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition bg-white overflow-hidden relative flex flex-col cursor-pointer"
+              className="group rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition bg-white overflow-hidden relative flex flex-col"
             >
+              {/* NAVIGATION LAYER (Hidden clickable area) */}
+              <div 
+                className="absolute inset-0 z-0 cursor-pointer" 
+                onClick={() => router.push(`/book-store/${book._id}`)} 
+              />
+
+              {/* INTERACTIVE LAYER (Z-index 10 to be on top) */}
               <button
                 onClick={(e) => handleWishlist(e, book._id)}
                 className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm p-1.5 rounded-full shadow-sm hover:bg-white transition z-10"
               >
-                <Heart
-                  size={18}
-                  className={`transition ${book.isWishlisted ? "fill-red-500 text-red-500" : "text-gray-600"}`}
-                />
+                <Heart size={18} className={`transition ${book.isWishlisted ? "fill-red-500 text-red-500" : "text-gray-600"}`} />
               </button>
 
-              <div className="flex justify-center items-center py-6 bg-gray-50/50">
+              <div className="flex justify-center items-center py-6 bg-gray-50/50 relative">
                 <div className="relative w-32 h-48 rounded-md shadow-md overflow-hidden border border-gray-100 bg-white">
-                  <Image
-                    src={getImageUrl(book.coverImage)}
-                    alt={book.title}
-                    fill
-                    className="object-cover"
-                    unoptimized={true}
-                  />
+                  <Image src={getImageUrl(book.coverImage)} alt={book.title} fill className="object-cover" unoptimized />
                 </div>
               </div>
 
-              <div className="p-4 flex flex-col flex-1">
-                <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">
-                  {book.category} • <span className="text-sky-600">{book.author}</span>
-                </p>
-                <h2 className="text-sm font-bold text-gray-900 mb-2 hover:text-sky-600 line-clamp-2 min-h-[40px]">
+              <div className="p-4 flex flex-col flex-1 relative z-10 pointer-events-none">
+                <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">{book.category} • <span className="text-sky-600">{book.author}</span></p>
+                <h2 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2 min-h-[40px] pointer-events-auto" onClick={() => router.push(`/book-store/${book._id}`)}>
                   {book.title}
                 </h2>
 
-                <div className="flex items-center gap-1 mb-3">
+                {/* Rating Stars */}
+                <div className="flex items-center gap-1 mb-3 pointer-events-auto">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <Star 
                       key={star} 
@@ -208,15 +193,15 @@ const BookStore = () => {
                   <span className="text-xs text-gray-400 ml-1">({book.rating?.toFixed(1) || "0.0"})</span>
                 </div>
 
-                <div className="mt-auto pt-3 border-t border-gray-50">
+                <div className="mt-auto pt-3 border-t border-gray-50 pointer-events-auto">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-gray-900 font-black text-base">${book.price?.toFixed(2)}</span>
                   </div>
                   <button
                     onClick={(e) => handleAddToCart(e, book._id)}
                     disabled={book.isInCart}
-                    className={`w-full flex items-center justify-center gap-2 rounded-lg text-sm font-bold py-2.5 transition ${
-                      book.isInCart ? "bg-gray-100 text-gray-400 cursor-default" : "bg-sky-500 hover:bg-sky-600 text-white shadow-sm"
+                    className={`w-full flex items-center justify-center gap-2 rounded-lg text-sm font-bold py-2.5 transition z-20 ${
+                      book.isInCart ? "bg-emerald-500 text-white cursor-default" : "bg-sky-500 hover:bg-sky-600 text-white shadow-sm"
                     }`}
                   >
                     {book.isInCart ? "In Cart 🛒" : "Add to cart 🛒"}
