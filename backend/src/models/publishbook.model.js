@@ -2,9 +2,7 @@ import mongoose from 'mongoose';
 
 const publishBookSchema = new mongoose.Schema({
   title: { type: String, required: true },
-  // Keep 'author' as the display name (e.g., "John Doe")
   author: { type: String, default: 'Admin' }, 
-  // ✨ ADDED: authorId to link the book to the actual Admin User ID
   authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, 
   summary: { type: String },
   category: { 
@@ -24,6 +22,16 @@ const publishBookSchema = new mongoose.Schema({
   coverImage: { type: String },
   status: { type: String, enum: ['draft', 'published'], default: 'draft' },
   
+  // ✨ ADDED: Rating Fields for Persistence
+  rating: { 
+    type: Number, 
+    default: 0 
+  },
+  numReviews: { 
+    type: Number, 
+    default: 0 
+  },
+
   // Chapter logic
   chapters: [{
     title: { type: String },

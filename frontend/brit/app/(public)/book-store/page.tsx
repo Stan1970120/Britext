@@ -14,6 +14,7 @@ interface Book {
   category: string;
   price: number;
   rating: number;
+  numReviews?: number; // Added to help track ratings
   coverImage: string;
   isInCart: boolean;
   isWishlisted: boolean;
@@ -44,6 +45,8 @@ const BookStore = () => {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       
+      if (!res.ok) throw new Error("Failed to fetch");
+
       const data = await res.json();
       if (data && Array.isArray(data)) {
         setBooks(data);
@@ -73,20 +76,31 @@ const BookStore = () => {
     e.stopPropagation();
     if (!token) return router.push("/login");
 
-    // Instant UI change
+    // 1. Optimistic Update
     updateLocalState(bookId, { isInCart: true });
 
     try {
       const res = await fetch(`${REST_API}/cart`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { 
+          "Content-Type": "application/json", 
+          Authorization: `Bearer ${token}` 
+        },
         body: JSON.stringify({ bookId }),
       });
-      if (!res.ok) throw new Error("Server error");
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Server error");
+      }
+      
+      // 2. Success - Refresh to sync with DB state
+      fetchBooks();
     } catch (error) {
-      // Rollback on error
+      // 3. Rollback on error
       updateLocalState(bookId, { isInCart: false });
-      console.error("Add to cart failed (Check backend 500 error)");
+      console.error("Add to cart failed:", error);
+      alert("Failed to add to cart. Please try again.");
     }
   };
 
@@ -96,23 +110,28 @@ const BookStore = () => {
     if (!token) return router.push("/login");
 
     const book = books.find(b => b._id === bookId);
-    const newStatus = !book?.isWishlisted;
+    const oldStatus = book?.isWishlisted || false;
 
-    // Instant UI change (Heart fills up immediately)
-    updateLocalState(bookId, { isWishlisted: newStatus });
+    // Optimistic Update
+    updateLocalState(bookId, { isWishlisted: !oldStatus });
 
     try {
       const res = await fetch(`${REST_API}/wishlist`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { 
+          "Content-Type": "application/json", 
+          Authorization: `Bearer ${token}` 
+        },
         body: JSON.stringify({ bookId }),
       });
-      if (!res.ok) throw new Error("Server error");
-      // Note: Data is now saved in DB, refresh will keep it filled
+      
+      if (!res.ok) throw new Error("Wishlist failed");
+      
+      // Keep state or re-fetch to ensure sync
+      fetchBooks();
     } catch (error) {
-      // Rollback UI if server fails
-      updateLocalState(bookId, { isWishlisted: !newStatus });
-      console.error("Wishlist toggle failed (Check backend 500 error)");
+      updateLocalState(bookId, { isWishlisted: oldStatus });
+      console.error("Wishlist toggle failed:", error);
     }
   };
 
@@ -120,7 +139,11 @@ const BookStore = () => {
     e.preventDefault();
     e.stopPropagation();
     
-    // Instant UI update for the rating display
+    // Save old rating for rollback
+    const book = books.find(b => b._id === bookId);
+    const oldRating = book?.rating || 0;
+
+    // Optimistic Update
     updateLocalState(bookId, { rating: starRating });
 
     try {
@@ -132,8 +155,13 @@ const BookStore = () => {
         },
         body: JSON.stringify({ bookId, rating: starRating }),
       });
+      
       if (!res.ok) throw new Error("Rating error");
+      
+      // Refresh to get the actual calculated average from DB
+      fetchBooks(); 
     } catch (error) {
+      updateLocalState(bookId, { rating: oldRating });
       console.error("Rating failed");
     }
   };
@@ -183,7 +211,6 @@ const BookStore = () => {
                 onClick={() => router.push(`/book-store/${book._id}`)} 
               />
 
-              {/* Heart Button */}
               <button
                 onClick={(e) => handleWishlist(e, book._id)}
                 className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm p-1.5 rounded-full shadow-sm hover:bg-white transition z-10"

@@ -6,13 +6,12 @@ const wishlistSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      unique: true, // one wishlist per user
+      unique: true,
     },
-
     books: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Book",
+        ref: "PublishBook", // ✨ Critical: Must match your model name
       },
     ],
   },
