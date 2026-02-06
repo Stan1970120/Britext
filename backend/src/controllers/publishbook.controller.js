@@ -2,6 +2,7 @@ import PublishBook from '../models/publishbook.model.js';
 import Order from '../models/publishbook_order.model.js';
 import Wishlist from '../models/Wishlist.js';
 import Cart from '../models/Cart.js';
+import Review from '../models/Review.js'; // Ensure this model exists
 
 export const getStats = async (req, res) => {
   try {
@@ -91,7 +92,6 @@ export const getStoreBooks = async (req, res) => {
 
     const books = await PublishBook.find(query).select('-chapters.content');
     
-    // Check user interaction status
     const userId = req.user?.id;
     let wishlistIds = [];
     let cartIds = [];
@@ -129,6 +129,37 @@ export const finalizePublish = async (req, res) => {
     res.json(updatedBook);
   } catch (err) {
     res.status(500).json({ message: "Failed to publish book" });
+  }
+};
+
+// ✨ Added RateBook Logic
+export const rateBook = async (req, res) => {
+  try {
+    const { bookId, rating } = req.body;
+    const userId = req.user?.id || req.user?._id;
+
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    // Update or create user review
+    await Review.findOneAndUpdate(
+      { bookId, userId },
+      { rating },
+      { upsert: true, new: true }
+    );
+
+    // Recalculate Average
+    const reviews = await Review.find({ bookId });
+    const avg = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+
+    const updatedBook = await PublishBook.findByIdAndUpdate(
+      bookId,
+      { rating: avg },
+      { new: true }
+    );
+
+    res.json({ success: true, rating: updatedBook.rating });
+  } catch (err) {
+    res.status(500).json({ message: "Rating failed" });
   }
 };
 
