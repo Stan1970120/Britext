@@ -18,7 +18,7 @@ const Footer = () => {
               <Link href="/career" className="hover:underline">Career</Link>
             </li>
             <li>
-              <Link href="/about" className="hover:underline">About BriText</Link>
+              <Link href="/about" className="hover:underline">About EnjoyReads</Link>
             </li>
             <li>
               <Link href="/products" className="hover:underline">Our Products</Link>
@@ -34,7 +34,7 @@ const Footer = () => {
               <Link href="/advertise" className="hover:underline">Advertise your products</Link>
             </li>
             <li>
-              <Link href="/self-publish" className="hover:underline">Self Publish with Britext</Link>
+              <Link href="/self-publish" className="hover:underline">Self Publish with EnjoyReads</Link>
             </li>
           </ul>
         </div>
@@ -44,7 +44,7 @@ const Footer = () => {
           <h3 className="font-semibold mb-3 text-white">Our Payment Products</h3>
           <ul className="space-y-2 text-sm">
             <li>
-              <Link href="/pay" className="hover:underline">Payment with Britext</Link>
+              <Link href="/pay" className="hover:underline">Payment with EnjoyReads</Link>
             </li>
           </ul>
         </div>
@@ -65,9 +65,9 @@ const Footer = () => {
 
         {/* Column 5 */}
         <div className="col-span-2 sm:col-span-3 lg:col-span-1">
-          <h2 className="text-2xl font-semibold text-white mb-2">Britext</h2>
+          <h2 className="text-2xl font-semibold text-white mb-2">EnjoyReads</h2>
           <p className="text-sm text-gray-200 leading-relaxed">
-            Britext is an online platform professionally built for all series of items,
+            EnjoyReads is an online platform professionally built for all series of items,
             from books to home accessories. We deliver the best product and sell only quality.
           </p>
         </div>
@@ -114,7 +114,7 @@ const Footer = () => {
         </Link>
           </motion.div>
           <p className="text-center mt-4 sm:text-center">
-          © 2025–2025 Britext Policy, Inc. or its affiliate
+          &copy; {new Date().getFullYear()} EnjoyReads. All rights reserved.
         </p>
     </footer>
   );
