@@ -87,7 +87,7 @@ const Footer = () => {
         viewport={{ once: true }}
       >
         <Link
-          href="https://www.facebook.com/share/17RSMUKvps/"
+          href="https://https://web.facebook.com/"
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-blue-400 transition-all transform hover:scale-110"
