@@ -104,7 +104,7 @@ const Footer = () => {
           <FaTiktok size={22} />
         </Link>
         <Link
-          href="https://youtube.com/@dividingthewordoftruthtv?si=H9fGQcYaEfoL0OIb
+          href="https://wa.me/+234803030919
 "
           target="_blank"
           rel="noopener noreferrer"
