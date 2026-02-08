@@ -4,7 +4,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser"; 
 import path from "path"; 
-import { fileURLToPath } from "url"; // Needed for static paths in ESM
+import fs from "fs"; // Added to ensure uploads directory exists
+import { fileURLToPath } from "url";
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
@@ -13,22 +14,18 @@ import cartRoutes from "./routes/cartRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import publishBookRoutes from "./routes/publishbook.routes.js"; 
 
-// Middleware
-// ✅ FIXED: Importing from authMiddleware.js instead of adminMiddleware.js
 import { protect } from "./middleware/authMiddleware.js";
 
 dotenv.config();
 
 const app = express();
 
-// Set up __dirname for ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /* =======================
     Middleware
 ======================= */
-
 app.use(
   cors({
     origin: [
@@ -42,12 +39,20 @@ app.use(
 );
 
 app.options("*", cors()); 
-
 app.use(cookieParser()); 
 app.use(express.json());
 
-// ✅ FIXED: Static folder setup for Render (Linux)
-app.use("/uploads", express.static(path.join(__dirname, "../uploads"))); 
+/* =======================
+    Static Folder Fix
+======================= */
+// This logic checks if uploads is in the root or src. 
+// Render usually puts everything in /opt/render/project/src/
+const uploadPath = fs.existsSync(path.join(__dirname, "../uploads"))
+  ? path.join(__dirname, "../uploads")
+  : path.join(__dirname, "uploads");
+
+app.use("/uploads", express.static(uploadPath));
+console.log(`📁 Static files being served from: ${uploadPath}`);
 
 /* =======================
     Database
@@ -60,26 +65,20 @@ mongoose
 /* =======================
     Routes
 ======================= */
-
-// 1. Authentication
 app.use("/api/auth", authRoutes);
-
-// 2. Publishing & Store System
 app.use("/api/publishbook", publishBookRoutes);
-
-// 3. User Specific
-// Note: We don't need 'protect' here if your route files already use router.use(protect)
 app.use("/api/cart", cartRoutes);
 app.use("/api/wishlist", wishlistRoutes);
-
-// 4. Admin Panel
 app.use("/api/admin", adminRoutes);
 
-/* =======================
-    Health Check
-======================= */
 app.get("/", (req, res) => {
   res.send("Britext API running 🚀");
+});
+
+// Global Error Handler to catch 500s and log them to Render console
+app.use((err, req, res, next) => {
+  console.error("💥 Global Error:", err.stack);
+  res.status(500).json({ message: "Internal Server Error", error: err.message });
 });
 
 /* =======================
