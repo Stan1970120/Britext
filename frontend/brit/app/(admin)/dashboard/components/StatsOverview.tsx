@@ -19,25 +19,27 @@ export default function StatsOverview({
   const stats = [
     {
       label: "Inventory (Drafts)",
-      value: draftCount,
+      value: draftCount || 0,
       icon: <FiLayers className="text-blue-600" />,
       bg: "bg-blue-50",
     },
     {
       label: "Live on Store",
-      value: liveCount,
+      value: liveCount || 0,
       icon: <FiBookOpen className="text-green-600" />,
       bg: "bg-green-50",
     },
     {
       label: "Daily Revenue",
-      value: `$${revenue.toFixed(2)}`,
+      // ✨ Casting to Number to prevent .toFixed is not a function error
+      value: `$${Number(revenue || 0).toFixed(2)}`,
       icon: <FiDollarSign className="text-amber-600" />,
       bg: "bg-amber-50",
     },
     {
       label: "Store Conversion",
-      value: `${conversion.toFixed(1)}%`,
+      // ✨ Casting to Number to prevent .toFixed is not a function error
+      value: `${Number(conversion || 0).toFixed(1)}%`,
       icon: <FiActivity className="text-purple-600" />,
       bg: "bg-purple-50",
     },

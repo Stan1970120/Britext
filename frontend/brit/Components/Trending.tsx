@@ -11,7 +11,7 @@ interface Book {
   title: string;
   author: string;
   category: string;
-  oldPrice?: number | null;
+  
   newPrice: number;
   rating: number;
   img: string;
@@ -57,7 +57,7 @@ const TrendingPost = () => {
           title: "Decoded - The Science Behind Why We Buy",
           author: "Rory Sutherland",
           category: "Fictional",
-          oldPrice: 600,
+          
           newPrice: 500,
           rating: 2.5,
           img: "/images/Dont.jpg",
@@ -67,7 +67,7 @@ const TrendingPost = () => {
           title: "Great Economic Thinkers",
           author: "Jonathan Conlin",
           category: "Fictional",
-          oldPrice: 900,
+          
           newPrice: 670,
           rating: 3.6,
           img: "/images/f&p.jpg",
@@ -77,7 +77,7 @@ const TrendingPost = () => {
           title: "The Business of Choice",
           author: "Mathew Willcox",
           category: "Fictional",
-          oldPrice: 300,
+         
           newPrice: 100,
           rating: 2.9,
           img: "/images/l&f.jpg",
@@ -87,7 +87,7 @@ const TrendingPost = () => {
           title: "Secret of Power Negotiating",
           author: "Roger Dawson",
           category: "Fictional",
-          oldPrice: 1000,
+         
           newPrice: 750,
           rating: 4.8,
           img: "/images/r&g.jpg",
@@ -97,7 +97,7 @@ const TrendingPost = () => {
           title: "Creative Thinking",
           author: "Jonathan Conlin",
           category: "Fictional",
-          oldPrice: 700,
+         
           newPrice: 550,
           rating: 3.9,
           img: "/images/f&p.jpg",
@@ -107,7 +107,7 @@ const TrendingPost = () => {
           title: "Unlocking Negotiation Skills",
           author: "Roger Dawson",
           category: "Fictional",
-          oldPrice: 800,
+          
           newPrice: 620,
           rating: 4.4,
           img: "/images/r&g.jpg",
@@ -241,11 +241,7 @@ const TrendingPost = () => {
 
                     {/* Price */}
                     <div className="flex items-center gap-2 mt-2">
-                      {book.oldPrice && (
-                        <span className="text-gray-400 line-through text-xs">
-                          ${book.oldPrice}
-                        </span>
-                      )}
+                     
                       <span className="text-black font-semibold text-sm">
                         ${book.newPrice}
                       </span>

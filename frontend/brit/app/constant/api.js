@@ -2,14 +2,14 @@ import { REST_API } from "./index";
 
 export const API = {
   /* ======================================================
-     📊 DASHBOARD & ANALYTICS
-     Mounted on: /api/publishbook/admin/stats
+      📊 DASHBOARD & ANALYTICS
+      Mounted on: /api/publishbook/admin/stats
   ====================================================== */
   GET_ADMIN_STATS: `${REST_API}/publishbook/admin/stats`,
 
   /* ======================================================
-     📚 BOOK MANAGEMENT (Admin)
-     Mounted on: /api/publishbook/admin/books
+      📚 BOOK MANAGEMENT (Admin)
+      Mounted on: /api/publishbook/admin/books
   ====================================================== */
   // Fetch Books by Status (Draft/Published)
   ADMIN_BOOKS: (status) => 
@@ -18,15 +18,15 @@ export const API = {
   // Create a New Manuscript
   CREATE_BOOK: `${REST_API}/publishbook/admin/books`,
 
-  // Fetch a single book for editing
+  // ✨ FIXED: Added /publishbook prefix to match controller logic
   GET_BOOK: (id) => 
-    `${REST_API}/admin/books/${id}`,
+    `${REST_API}/publishbook/admin/books/${id}`,
 
   /* ======================================================
-     🚀 PUBLISHING & CHAPTERS
-     These match your publishbook.routes.js logic
+      🚀 PUBLISHING & CHAPTERS
+      These match your publishbook.routes.js logic
   ====================================================== */
-  // Finalize Publication
+  // Finalize Publication (Moves book to Storefront)
   PUBLISH_BOOK: (id) => 
     `${REST_API}/publishbook/admin/books/${id}/publish`,
 
@@ -38,12 +38,12 @@ export const API = {
   ADD_CHAPTER: (id) => 
     `${REST_API}/publishbook/admin/books/${id}/chapters`,
 
-  // ✨ Added: Fixes build error "Property 'GET_CHAPTERS' does not exist"
+  // Fixes build error "Property 'GET_CHAPTERS' does not exist"
   GET_CHAPTERS: (id) => 
     `${REST_API}/publishbook/admin/books/${id}/chapters`,
 
   /* ======================================================
-     📖 PUBLIC STORE & READER VIEW
+      📖 PUBLIC STORE & READER VIEW
   ====================================================== */
   STORE_BOOKS: `${REST_API}/publishbook/store/books`,
 
@@ -51,13 +51,14 @@ export const API = {
     `${REST_API}/publishbook/store/books/${id}`,
 
   /* ======================================================
-     🛠️ LEGACY / SPECIFIC ROUTE ACCESS
+      🛠️ LEGACY / SPECIFIC ROUTE ACCESS
+      Ensuring these also use the consolidated /publishbook prefix
   ====================================================== */
   // For PREVIEW logic
   PREVIEW_BOOK: (id) => 
-    `${REST_API}/admin/books/${id}/preview`,
+    `${REST_API}/publishbook/admin/books/${id}/preview`,
 
   // Specifically for PUT requests to a single existing chapter
   UPDATE_CHAPTER: (bookId, chapterId) => 
-    `${REST_API}/admin/books/${bookId}/chapters/${chapterId}`,
+    `${REST_API}/publishbook/admin/books/${bookId}/chapters/${chapterId}`,
 };

@@ -30,9 +30,6 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * Helper to handle non-JSON responses
-   */
   const safeJsonResponse = async <T,>(response: Response): Promise<T | null> => {
     const contentType = response.headers.get("content-type");
     if (contentType && contentType.includes("application/json")) {
@@ -71,7 +68,6 @@ export default function AdminDashboard() {
         return;
       }
 
-      // Explicitly typing the expected responses
       const booksData = await safeJsonResponse<Book[]>(booksRes);
       const statsData = await safeJsonResponse<DashboardStats>(statsRes);
 
@@ -83,7 +79,6 @@ export default function AdminDashboard() {
       setStats(statsData);
 
     } catch (err: unknown) {
-      // Correctly handling the 'unknown' error type for ESLint
       const errorMessage = err instanceof Error ? err.message : "An unexpected connection error occurred.";
       setError(errorMessage);
       console.error("Dashboard Fetch Error:", err);
@@ -152,7 +147,6 @@ export default function AdminDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Books List */}
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm min-h-[400px]">
             <div className="flex items-center justify-between mb-6">
@@ -201,7 +195,8 @@ export default function AdminDashboard() {
                       {new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
-                  <p className="font-bold text-green-600">+${tx.amount.toFixed(2)}</p>
+                  {/* ✨ FIX: Added Number() casting here to prevent crashes */}
+                  <p className="font-bold text-green-600">+${Number(tx.amount || 0).toFixed(2)}</p>
                 </div>
               ))
             )}

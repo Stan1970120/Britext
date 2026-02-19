@@ -1,9 +1,12 @@
 import jwt from 'jsonwebtoken';
 
 export const verifyAdmin = (req, res, next) => {
-  // 1. Check for token in Cookies (standard for your Next.js setup)
-  // 2. Fallback to Authorization Header (standard for mobile or external tools)
-  const token = req.cookies?.admin_token || req.headers.authorization?.split(" ")[1];
+  // 1. Check for token in multiple cookie names or Authorization Header
+  // This ensures that even if the cookie name is 'token' or 'admin_token', it works.
+  const token = 
+    req.cookies?.admin_token || 
+    req.cookies?.token || 
+    req.headers.authorization?.split(" ")[1];
 
   if (!token) {
     return res.status(401).json({ 
@@ -35,13 +38,10 @@ export const verifyAdmin = (req, res, next) => {
   }
 };
 
-// Optional: Add a standard verifyUser for the Bookstore readers
 export const verifyUser = (req, res, next) => {
   const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
 
   if (!token) {
-    // We don't block here because guests can still browse, 
-    // we just don't attach a user to req.
     return next();
   }
 
@@ -50,6 +50,6 @@ export const verifyUser = (req, res, next) => {
     req.user = decoded;
     next();
   } catch (err) {
-    next(); // Move to next anyway, controller will handle 'unpaid' logic
+    next(); 
   }
 };

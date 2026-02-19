@@ -1,7 +1,7 @@
 import express from 'express';
+import multer from 'multer';
 const router = express.Router();
 
-// Import your controller functions
 import { 
     getStats, 
     getAdminBooks, 
@@ -9,48 +9,43 @@ import {
     updateChapters, 
     finalizePublish, 
     getReaderView,
-    getStoreBooks 
+    getStoreBooks,
+    rateBook 
 } from '../controllers/publishbook.controller.js';
 
-// Import your middleware
 import { verifyAdmin } from '../middleware/publishbook.middleware.js';
 
+// ✅ FIXED: Using 'protect' to match the export name in authMiddleware.js
+import { protect } from '../middleware/authMiddleware.js'; 
+
+const upload = multer({ dest: 'uploads/' }); 
+
 /* ==========================================
-    ADMIN ENDPOINTS (Requires verifyAdmin)
+    ADMIN ENDPOINTS
    ========================================== */
 
-// 1. Dashboard Stats (The 4 cards)
 router.get('/admin/stats', verifyAdmin, getStats);
-
-// 2. Fetch Books by Status (For the Draft/Published tabs)
 router.get('/admin/books', verifyAdmin, getAdminBooks);
 
-// 3. Create a New Manuscript
-router.post('/admin/books', verifyAdmin, createBook);
+// Route for single book preview/edit
+router.get('/admin/books/:id', verifyAdmin, getAdminBooks);
 
-/**
- * 📖 CHAPTER EDITOR ROUTES
- * We use the same controller 'updateChapters' for both loading and saving.
- */
+router.post('/admin/books', verifyAdmin, upload.single('cover'), createBook);
 
-// ✨ NEW: Fetch chapters to load them into the editor (Fixes the 404)
-router.get('/admin/books/:id/chapters', verifyAdmin, updateChapters);
-
-// Update or Add Chapters (The Save button)
+// Chapters logic
+router.get('/admin/books/:id/chapters', verifyAdmin, getAdminBooks); 
 router.patch('/admin/books/:id/chapters', verifyAdmin, updateChapters);
 
-// 5. Finalize Publication (The Publishing Portal)
 router.patch('/admin/books/:id/publish', verifyAdmin, finalizePublish);
 
-
 /* ==========================================
-    PUBLIC ENDPOINTS (Available to readers)
+    PUBLIC & USER ENDPOINTS
    ========================================== */
 
-// 6. Get Bookstore List (Only published books)
 router.get('/store/books', getStoreBooks);
-
-// 7. Protected Reader View (Checks for payment/locked content)
 router.get('/store/books/:id', getReaderView); 
+
+// ✅ FIXED: Changed 'verifyToken' to 'protect'
+router.post('/rate', protect, rateBook);
 
 export default router;

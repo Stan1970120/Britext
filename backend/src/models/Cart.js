@@ -2,12 +2,11 @@ import mongoose from "mongoose";
 
 const cartItemSchema = new mongoose.Schema(
   {
-    book: {
+    bookId: { // Changed from 'book' to 'bookId' to match controller
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Book",
+      ref: "PublishBook", // ✨ Critical: Must match your model name
       required: true,
     },
-
     quantity: {
       type: Number,
       default: 1,
@@ -19,13 +18,12 @@ const cartItemSchema = new mongoose.Schema(
 
 const cartSchema = new mongoose.Schema(
   {
-    user: {
+    userId: { // Changed from 'user' to 'userId' to match controller
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      unique: true, // one cart per user
+      unique: true, 
     },
-
     items: [cartItemSchema],
   },
   { timestamps: true }

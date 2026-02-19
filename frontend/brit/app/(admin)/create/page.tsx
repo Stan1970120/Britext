@@ -48,17 +48,17 @@ export default function CreateBookPage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
+    
+    // Retrieve token from localStorage as a fallback for the cookie
     const token = localStorage.getItem("token");
-
-    // ✨ NEW: Append chapters as a JSON string
-    // Multer doesn't handle arrays well by default, so stringify it
-    formData.append("chapters", JSON.stringify(chapters));
 
     try {
       const res = await fetch(API.CREATE_BOOK, {
         method: "POST",
-        body: formData,
+        body: formData, // Sending as FormData for Multer on the backend
+        credentials: "include", // Essential for sending cookies
         headers: {
+          // Explicitly send the token in the header as well to avoid 401/400 issues
           ...(token ? { "Authorization": `Bearer ${token}` } : {}),
         },
       });

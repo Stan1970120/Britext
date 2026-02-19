@@ -1,10 +1,11 @@
-// frontend/brit/constants/index.ts// 
 export const REST_API = (() => {
-    const api = process.env.NEXT_PUBLIC_REST_API;
+    let api = process.env.NEXT_PUBLIC_REST_API || "https://britext.onrender.com";
 
-    if (!api) {
-        console.warn("⚠️ NEXT_PUBLIC_REST_API is not defined. Using fallback.");
-        return "https://britext.onrender.com/api";
+    // ✨ Auto-fix: Ensure it doesn't end with a slash, then add /api
+    api = api.replace(/\/$/, "");
+
+    if (!api.endsWith("/api")) {
+        api = `${api}/api`;
     }
 
     return api;
