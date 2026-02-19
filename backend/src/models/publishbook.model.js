@@ -2,7 +2,8 @@ import mongoose from 'mongoose';
 
 const publishBookSchema = new mongoose.Schema({
   title: { type: String, required: true },
-  author: { type: String, default: 'Admin' },
+  author: { type: String, default: 'Admin' }, 
+  authorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, 
   summary: { type: String },
   category: { 
     type: String, 
@@ -21,15 +22,24 @@ const publishBookSchema = new mongoose.Schema({
   coverImage: { type: String },
   status: { type: String, enum: ['draft', 'published'], default: 'draft' },
   
+  // ✨ ADDED: Rating Fields for Persistence
+  rating: { 
+    type: Number, 
+    default: 0 
+  },
+  numReviews: { 
+    type: Number, 
+    default: 0 
+  },
+
   // Chapter logic
   chapters: [{
     title: { type: String },
-    content: { type: String }, // Locked behind payment logic in the controller
+    content: { type: String }, 
     order: { type: Number }
   }],
   
-}, { timestamps: true }); // Adding timestamps automatically handles createdAt and updatedAt
+}, { timestamps: true });
 
-// ✨ The fix for Render: Use 'export default' instead of 'module.exports'
 const PublishBook = mongoose.model('PublishBook', publishBookSchema);
 export default PublishBook;

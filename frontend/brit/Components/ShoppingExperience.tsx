@@ -45,23 +45,23 @@ const ShoppingExperience = () => {
           variants={textItem}
           className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-gray-900 leading-snug"
         >
-          Experience the Best feeling <br className="hidden sm:block" /> of Shopping
+          Join our community <br className="hidden sm:block" /> of EnjoyReads
         </motion.h2>
 
         <motion.p
           variants={textItem}
           className="text-xs sm:text-sm md:text-base text-gray-800 leading-relaxed"
         >
-          Experience the best feeling of easy online shopping with Britext, your all-in-one
+          Experience the best feeling of digital reading with like minds and stay updated with the latest book releases and stories on EnjoyReads. Your ultimate
           destination for favourite books and stories. 
         </motion.p>
 
         <motion.div variants={textItem}>
           <Link
-            href="/book-store"
+            href="/https://whatsapp.com/channel/0029VbBsDWK2v1IzHgXGXu2i"
             className="inline-flex items-center justify-center px-4 sm:px-6 py-2 mt-2 border border-gray-700 rounded-full text-gray-800 font-medium hover:bg-gray-900 hover:text-white transition duration-300"
           >
-            View more
+            Let&apos;s Get Started
             <span className="ml-2 text-lg">➜</span>
           </Link>
         </motion.div>

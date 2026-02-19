@@ -1,30 +1,29 @@
 import Cart from "../models/Cart.js";
-import Book from "../models/Book.js";
+import PublishBook from "../models/publishbook.model.js";
 
-/**
- * POST /api/cart
- * Add book to cart (auth required)
- */
 export const addToCart = async (req, res) => {
   try {
-    const userId = req.user.id;
+    // 1. Fix: Ensure userId is extracted safely from either req.user.id or req.user._id
+    const userId = req.user?.id || req.user?._id;
     const { bookId, quantity = 1 } = req.body;
+
+    if (!bookId) {
+      return res.status(400).json({ message: "Book ID is required" });
+    }
 
     let cart = await Cart.findOne({ userId });
 
-    // Create cart if none exists
     if (!cart) {
       cart = await Cart.create({
         userId,
         items: [{ bookId, quantity }],
       });
-
       return res.status(201).json(cart);
     }
 
-    // Prevent duplicates (server-side)
+    // 2. Fix: Check if bookId exists to prevent .toString() errors if database is inconsistent
     const existingItem = cart.items.find(
-      (item) => item.bookId.toString() === bookId
+      (item) => item.bookId && item.bookId.toString() === bookId
     );
 
     if (existingItem) {
@@ -36,74 +35,61 @@ export const addToCart = async (req, res) => {
     await cart.save();
     res.json(cart);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to add to cart" });
+    console.error("Add to Cart Error:", err); // ✨ Logging the real error helps you see it in Render logs
+    res.status(500).json({ message: "Failed to add to cart", error: err.message });
   }
 };
 
-/**
- * GET /api/cart
- * Used by Cart page (real totals)
- */
 export const getCart = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id || req.user?._id;
 
-    const cart = await Cart.findOne({ userId }).populate(
-      "items.bookId"
-    );
+    // ✨ populate with the specific model to avoid "ref" confusion
+    const cart = await Cart.findOne({ userId }).populate({
+      path: "items.bookId",
+      model: "PublishBook" 
+    });
 
     if (!cart) {
-      return res.json({
-        items: [],
-        subtotal: 0,
-        totalItems: 0,
-      });
+      return res.json({ items: [], subtotal: 0, totalItems: 0 });
     }
 
     let subtotal = 0;
     let totalItems = 0;
 
-    const items = cart.items.map((item) => {
-      const price = item.bookId.price;
-      const itemTotal = price * item.quantity;
+    // 3. Fix: Filter out any items where bookId might be null (if a book was deleted)
+    const items = cart.items
+      .filter(item => item.bookId !== null) 
+      .map((item) => {
+        const price = item.bookId.price || 0;
+        const itemTotal = price * item.quantity;
+        subtotal += itemTotal;
+        totalItems += item.quantity;
 
-      subtotal += itemTotal;
-      totalItems += item.quantity;
+        return {
+          book: item.bookId,
+          quantity: item.quantity,
+          itemTotal,
+        };
+      });
 
-      return {
-        book: item.bookId,
-        quantity: item.quantity,
-        itemTotal,
-      };
-    });
-
-    res.json({
-      items,
-      subtotal,
-      totalItems,
-    });
+    res.json({ items, subtotal, totalItems });
   } catch (err) {
-    console.error(err);
+    console.error("Get Cart Error:", err);
     res.status(500).json({ message: "Failed to fetch cart" });
   }
 };
 
-/**
- * DELETE /api/cart/:bookId
- * Remove item from cart
- */
 export const removeFromCart = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id || req.user?._id;
     const { bookId } = req.params;
-
+    
     const cart = await Cart.findOne({ userId });
-
-    if (!cart) return res.json(cart);
+    if (!cart) return res.json({ items: [] });
 
     cart.items = cart.items.filter(
-      (item) => item.bookId.toString() !== bookId
+      (item) => item.bookId && item.bookId.toString() !== bookId
     );
 
     await cart.save();
@@ -113,16 +99,11 @@ export const removeFromCart = async (req, res) => {
   }
 };
 
-/**
- * POST-LOGIN MERGE
- * Merge guest cart into user cart
- */
+// Exporting mergeGuestCart for use in login controller
 export const mergeGuestCart = async (userId, guestItems = []) => {
-  if (!guestItems.length) return;
-
+  if (!guestItems || !guestItems.length) return;
+  
   let cart = await Cart.findOne({ userId });
-
-  // Create cart if none exists
   if (!cart) {
     await Cart.create({
       userId,
@@ -136,10 +117,8 @@ export const mergeGuestCart = async (userId, guestItems = []) => {
 
   guestItems.forEach((guestItem) => {
     const existing = cart.items.find(
-      (item) =>
-        item.bookId.toString() === guestItem.bookId
+      (item) => item.bookId && item.bookId.toString() === guestItem.bookId
     );
-
     if (existing) {
       existing.quantity += guestItem.quantity || 1;
     } else {
@@ -149,6 +128,5 @@ export const mergeGuestCart = async (userId, guestItems = []) => {
       });
     }
   });
-
   await cart.save();
 };

@@ -3,27 +3,29 @@ import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser"; 
+import path from "path"; 
+import fs from "fs"; // Added to ensure uploads directory exists
+import { fileURLToPath } from "url";
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
-import adminRoutes from "./routes/adminRoutes.js"; // General admin stats/users
-import bookRoutes from "./routes/bookRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js"; 
 import cartRoutes from "./routes/cartRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
-// ✨ Redundant adminBookRoutes removed to avoid 404/401 conflicts
 import publishBookRoutes from "./routes/publishbook.routes.js"; 
 
-// Middleware
-import { protect } from "./middleware/adminMiddleware.js";
+import { protect } from "./middleware/authMiddleware.js";
 
 dotenv.config();
 
 const app = express();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 /* =======================
     Middleware
 ======================= */
-
 app.use(
   cors({
     origin: [
@@ -37,10 +39,20 @@ app.use(
 );
 
 app.options("*", cors()); 
-
-// ✅ Essential for verifyAdmin middleware to read req.cookies
 app.use(cookieParser()); 
 app.use(express.json());
+
+/* =======================
+    Static Folder Fix
+======================= */
+// This logic checks if uploads is in the root or src. 
+// Render usually puts everything in /opt/render/project/src/
+const uploadPath = fs.existsSync(path.join(__dirname, "../uploads"))
+  ? path.join(__dirname, "../uploads")
+  : path.join(__dirname, "uploads");
+
+app.use("/uploads", express.static(uploadPath));
+console.log(`📁 Static files being served from: ${uploadPath}`);
 
 /* =======================
     Database
@@ -53,32 +65,20 @@ mongoose
 /* =======================
     Routes
 ======================= */
-
-// 1. Authentication
 app.use("/api/auth", authRoutes);
-
-// 2. Public / General Store
-app.use("/api/books", bookRoutes);
-
-// 3. User Specific (Auth Required)
-app.use("/api/cart", protect, cartRoutes);
-app.use("/api/wishlist", protect, wishlistRoutes);
-
-/** * 🛠️ ADMIN & PUBLISHING SYSTEM
- * Consolidated into publishbook for Manuscript/Chapter management
- */
-
-// ✨ Priority 1: Handles Stats, Chapter Editor, and Publishing
 app.use("/api/publishbook", publishBookRoutes);
-
-// ✨ Priority 2: General Admin (Revenue, User Management, etc.)
+app.use("/api/cart", cartRoutes);
+app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/admin", adminRoutes);
 
-/* =======================
-    Health Check
-======================= */
 app.get("/", (req, res) => {
-  res.send("Prep Center API running 🚀");
+  res.send("Britext API running 🚀");
+});
+
+// Global Error Handler to catch 500s and log them to Render console
+app.use((err, req, res, next) => {
+  console.error("💥 Global Error:", err.stack);
+  res.status(500).json({ message: "Internal Server Error", error: err.message });
 });
 
 /* =======================
