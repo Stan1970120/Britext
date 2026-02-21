@@ -22,19 +22,16 @@ const publishBookSchema = new mongoose.Schema({
   coverImage: { type: String },
   status: { type: String, enum: ['draft', 'published'], default: 'draft' },
   
-  // ✨ ADDED: Rating Fields for Persistence
-  rating: { 
-    type: Number, 
-    default: 0 
-  },
-  numReviews: { 
-    type: Number, 
-    default: 0 
-  },
+  rating: { type: Number, default: 0 },
+  numReviews: { type: Number, default: 0 },
 
-  // Chapter logic
+  // ✨ UPDATED: Added estimatedPages
+  estimatedPages: { type: Number, default: 1 },
+
+  // ✨ UPDATED: Chapter logic with heading
   chapters: [{
-    title: { type: String },
+    title: { type: String },   // e.g., "Chapter 1"
+    heading: { type: String }, // e.g., "The Midnight Discovery"
     content: { type: String }, 
     order: { type: Number }
   }],

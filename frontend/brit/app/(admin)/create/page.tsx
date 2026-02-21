@@ -84,7 +84,7 @@ export default function CreateBookPage() {
     <div className="max-w-4xl mx-auto p-6">
       <div className="mb-8 flex justify-between items-end">
         <div>
-          <Link href="/" className="text-sm text-[#035b77] hover:underline">
+          <Link href="/dashboard" className="text-sm text-[#035b77] hover:underline">
             ← Back to Dashboard
           </Link>
           <h1 className="text-3xl font-bold mt-4 text-[#035b77]">Create New Book</h1>
