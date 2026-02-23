@@ -1,10 +1,10 @@
+import 'dotenv/config'; // ✅ MUST BE LINE 1 - Loads vars before any other imports
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
-import dotenv from "dotenv";
 import cookieParser from "cookie-parser"; 
 import path from "path"; 
-import fs from "fs"; // Added to ensure uploads directory exists
+import fs from "fs"; 
 import { fileURLToPath } from "url";
 
 // Routes
@@ -16,7 +16,7 @@ import publishBookRoutes from "./routes/publishbook.routes.js";
 
 import { protect } from "./middleware/authMiddleware.js";
 
-dotenv.config();
+// dotenv.config(); // ❌ Remove this, it's too late here
 
 const app = express();
 
@@ -43,16 +43,13 @@ app.use(cookieParser());
 app.use(express.json());
 
 /* =======================
-    Static Folder Fix
+    Static Folder (Keep as fallback)
 ======================= */
-// This logic checks if uploads is in the root or src. 
-// Render usually puts everything in /opt/render/project/src/
 const uploadPath = fs.existsSync(path.join(__dirname, "../uploads"))
   ? path.join(__dirname, "../uploads")
   : path.join(__dirname, "uploads");
 
 app.use("/uploads", express.static(uploadPath));
-console.log(`📁 Static files being served from: ${uploadPath}`);
 
 /* =======================
     Database
@@ -66,7 +63,8 @@ mongoose
     Routes
 ======================= */
 app.use("/api/auth", authRoutes);
-app.use("/api/publishbook", publishBookRoutes);
+// ✅ Standardizing route name to match your frontend calls
+app.use("/api/publish-books", publishBookRoutes); 
 app.use("/api/cart", cartRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/admin", adminRoutes);
@@ -75,15 +73,11 @@ app.get("/", (req, res) => {
   res.send("Britext API running 🚀");
 });
 
-// Global Error Handler to catch 500s and log them to Render console
 app.use((err, req, res, next) => {
   console.error("💥 Global Error:", err.stack);
   res.status(500).json({ message: "Internal Server Error", error: err.message });
 });
 
-/* =======================
-    Server
-======================= */
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () =>
   console.log(`🚀 Server running on port ${PORT}`)
