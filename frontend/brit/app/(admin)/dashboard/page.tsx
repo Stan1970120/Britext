@@ -1,232 +1,226 @@
 "use client";
 
-import { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { API } from "../../constant/api";
+import { 
+  BookOpen, 
+  Plus, 
+  BarChart3, 
+  Layers, 
+  Loader2, 
+  ExternalLink,
+  ChevronRight,
+  TrendingUp
+} from "lucide-react";
 import Link from "next/link";
-import { Plus, Trash2, BookOpen, Type, Hash, FileText, UploadCloud } from "lucide-react";
+import { REST_API } from "../../constant";
+import { useAuth } from "@/app/context/AuthContext";
 
-interface Chapter {
+// 1. Defined Interfaces (Fixes the "any" ESLint error)
+interface Book {
+  _id: string;
   title: string;
-  heading: string;
-  content: string;
+  author?: string;
+  coverImage?: string;
+  category: string;
+  price: number;
+  createdAt: string;
 }
 
-export default function CreateBookPage() {
+interface DashboardStats {
+  totalBooks: number;
+  totalChapters: number;
+  categories: number;
+}
+
+export default function AdminDashboard() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [manuscriptName, setManuscriptName] = useState<string | null>(null);
+  const { token, loading: authLoading } = useAuth();
   
-  const [chapters, setChapters] = useState<Chapter[]>([
-    { title: "Chapter 1", heading: "", content: "" }
-  ]);
+  // 2. State management with explicit types
+  const [stats, setStats] = useState<DashboardStats>({ 
+    totalBooks: 0, 
+    totalChapters: 0, 
+    categories: 0 
+  });
+  const [books, setBooks] = useState<Book[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const calculateTotalPages = () => {
-    const totalWords = chapters.reduce((acc, ch) => acc + ch.content.split(/\s+/).filter(Boolean).length, 0);
-    return Math.max(1, Math.ceil(totalWords / 250));
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) setPreview(URL.createObjectURL(file));
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) setManuscriptName(file.name);
-  };
-
-  const addChapter = () => {
-    setChapters([...chapters, { title: `Chapter ${chapters.length + 1}`, heading: "", content: "" }]);
-  };
-
-  const removeChapter = (index: number) => {
-    setChapters(chapters.filter((_, i) => i !== index));
-  };
-
-  const updateChapter = (index: number, field: keyof Chapter, value: string) => {
-    const newChapters = [...chapters];
-    newChapters[index][field] = value;
-    setChapters(newChapters);
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setLoading(true);
-
-    const formData = new FormData(e.currentTarget);
-    const token = localStorage.getItem("token");
-
-    // Add metadata for the database
-    formData.append("estimatedPages", calculateTotalPages().toString());
-    formData.append("chapters", JSON.stringify(chapters));
-
-    try {
-      const res = await fetch(API.CREATE_BOOK, {
-        method: "POST",
-        body: formData,
-        headers: {
-          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-        },
-      });
-
-      if (res.ok) {
-        // ✅ Redirecting to Admin Dashboard instead of /books
-        router.push("/dashboard"); 
-      } else {
-        const errData = await res.json();
-        alert(`Error: ${errData.message || "Failed to create book"}`);
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      // Don't fetch if the auth context is still loading the token
+      if (authLoading) return;
+      
+      // If no token exists, the session is invalid
+      if (!token) {
+        router.push("/login");
+        return;
       }
-    } catch (error) {
-      console.error("Upload error:", error);
-      alert("Network error occurred.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="mb-8 flex justify-between items-end">
-        <div>
-          <Link href="/dashboard" className="text-sm text-[#035b77] hover:underline">
-            ← Back to Dashboard
-          </Link>
-          <h1 className="text-3xl font-bold mt-4 text-[#035b77]">Create New Book</h1>
-          <p className="text-gray-500">Upload your cover and manuscript to AWS S3.</p>
-        </div>
-        
-        <div className="bg-sky-50 border border-sky-100 p-3 rounded-lg text-right">
-          <p className="text-xs text-sky-600 font-bold uppercase tracking-wider">Estimated Length</p>
-          <p className="text-xl font-black text-[#035b77] flex items-center justify-end gap-1">
-            <Hash size={18} /> {calculateTotalPages()} Pages
-          </p>
+      try {
+        const [statsRes, booksRes] = await Promise.all([
+          fetch(`${REST_API}/publish-books/admin/stats`, {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          fetch(`${REST_API}/publish-books/admin/books`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        ]);
+
+        if (statsRes.ok && booksRes.ok) {
+          const statsData = await statsRes.json();
+          const booksData = await booksRes.json();
+          setStats(statsData);
+          setBooks(booksData);
+        }
+      } catch (error) {
+        console.error("Dashboard Fetch Error:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [token, authLoading, router]);
+
+  // 3. Professional Loading State
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="animate-spin text-sky-600" size={40} />
+          <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Loading Studio</p>
         </div>
       </div>
+    );
+  }
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Basic Information */}
-        <div className="bg-white p-8 border rounded-xl shadow-sm space-y-6">
-          <h2 className="text-lg font-semibold border-b pb-2 flex items-center gap-2">
-            <BookOpen size={20}/> Book Assets
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium mb-2">Book Title</label>
-              <input name="title" required className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-[#035b77] outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Category</label>
-              <select name="category" className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-[#035b77] outline-none bg-white">
-                <option value="Fiction">Fiction</option>
-                <option value="Non-Fiction">Non-Fiction</option>
-                <option value="Educational">Educational</option>
-                <option value="Lifestyle">Lifestyle</option>
-              </select>
-            </div>
-          </div>
-
+  return (
+    <div className="p-6 md:p-12 bg-[#f8fafc] min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        
+        {/* --- Header Section --- */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div>
-            <label className="block text-sm font-medium mb-2">Description</label>
-            <textarea name="description" required rows={3} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-[#035b77] outline-none" />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
-            {/* Cover Upload */}
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-gray-700">Book Cover (Public)</label>
-              <div className="flex items-center gap-4 p-4 border-2 border-dashed rounded-lg bg-gray-50 hover:bg-gray-100 transition relative">
-                <input type="file" name="cover" accept="image/*" required onChange={handleImageChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                {preview ? (
-                  <img src={preview} alt="Preview" className="w-12 h-16 object-cover rounded shadow-md" />
-                ) : (
-                  <UploadCloud className="text-gray-400" size={24} />
-                )}
-                <span className="text-sm text-gray-500 font-medium">{preview ? "Change Cover" : "Upload Image"}</span>
-              </div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="bg-sky-100 text-sky-700 text-[10px] font-black px-2 py-0.5 rounded uppercase">Admin</span>
+              <span className="h-1 w-1 rounded-full bg-slate-300" />
+              <span className="text-slate-400 text-[10px] font-black uppercase tracking-widest">V2.4 Control Panel</span>
             </div>
-
-            {/* Manuscript Upload */}
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-gray-700">Full Manuscript (Private PDF)</label>
-              <div className="flex items-center gap-4 p-4 border-2 border-dashed rounded-lg bg-gray-50 hover:bg-gray-100 transition relative">
-                <input type="file" name="manuscript" accept=".pdf,.epub" required onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                <FileText className={manuscriptName ? "text-green-500" : "text-gray-400"} size={24} />
-                <span className="text-sm text-gray-500 font-medium truncate max-w-[150px]">
-                  {manuscriptName || "Upload PDF/EPUB"}
-                </span>
-              </div>
-            </div>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Manuscript Hub</h1>
+            <p className="text-slate-500 font-medium">Overview of your published works and reader engagement.</p>
           </div>
+          <Link 
+            href="/create" 
+            className="flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+          >
+            <Plus size={18} strokeWidth={3} /> New Project
+          </Link>
         </div>
 
-        {/* Chapters Section */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold text-[#035b77]">Online Reader Content</h2>
-            <button type="button" onClick={addChapter} className="flex items-center gap-2 bg-[#035b77] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#024a61] transition">
-              <Plus size={16} /> Add Chapter
-            </button>
-          </div>
-
-          {chapters.map((chapter, index) => (
-            <div key={index} className="bg-gray-50 p-6 border rounded-xl relative border-l-4 border-l-[#035b77]">
-              <button type="button" onClick={() => removeChapter(index)} className="absolute top-4 right-4 text-red-400 hover:text-red-600">
-                <Trash2 size={18} />
-              </button>
-              <div className="grid gap-4">
-                <div className="flex gap-4">
-                  <div className="w-1/3">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Chapter Title</label>
-                    <input
-                      value={chapter.title}
-                      onChange={(e) => updateChapter(index, "title", e.target.value)}
-                      className="bg-transparent text-lg font-bold outline-none border-b border-gray-300 focus:border-[#035b77] pb-1 w-full"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Heading</label>
-                    <div className="flex items-center gap-2 border-b border-gray-300 focus-within:border-[#035b77]">
-                      <Type size={16} className="text-gray-400" />
-                      <input
-                        value={chapter.heading}
-                        onChange={(e) => updateChapter(index, "heading", e.target.value)}
-                        className="bg-transparent text-lg font-medium outline-none py-1 w-full"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <textarea
-                    value={chapter.content}
-                    onChange={(e) => updateChapter(index, "content", e.target.value)}
-                    rows={6}
-                    className="w-full p-4 border rounded-lg focus:ring-2 focus:ring-[#035b77] outline-none bg-white mt-1 shadow-inner"
-                    placeholder="Enter chapter text here..."
-                  />
-                </div>
+        {/* --- Metrics Grid --- */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          {[
+            { label: "Total Library", value: stats.totalBooks, icon: BookOpen, color: "text-blue-600", bg: "bg-blue-50" },
+            { label: "Content Nodes", value: stats.totalChapters, icon: Layers, color: "text-emerald-600", bg: "bg-emerald-50" },
+            { label: "Active Genres", value: stats.categories || 0, icon: BarChart3, color: "text-violet-600", bg: "bg-violet-50" },
+          ].map((item, i) => (
+            <div key={i} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-6">
+              <div className={`${item.bg} ${item.color} p-5 rounded-3xl`}>
+                <item.icon size={28} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{item.label}</p>
+                <p className="text-3xl font-black text-slate-900 leading-none">{item.value}</p>
               </div>
             </div>
           ))}
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-[#035b77] text-white py-4 rounded-lg font-bold hover:bg-[#024a61] shadow-lg sticky bottom-6 z-30 flex items-center justify-center gap-3 transition-all"
-        >
-          {loading ? (
-            <>
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              Uploading to AWS S3...
-            </>
+        {/* --- Inventory Table --- */}
+        <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden">
+          <div className="p-10 border-b border-slate-50 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <TrendingUp className="text-sky-500" size={20} />
+              <h2 className="text-xl font-black text-slate-900 tracking-tight">Active Inventory</h2>
+            </div>
+            <div className="px-4 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-500">
+              {books.length} Entries
+            </div>
+          </div>
+
+          {books.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/30">
+                    <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Master Title</th>
+                    <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Metadata</th>
+                    <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Valuation</th>
+                    <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Ops</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {books.map((book) => (
+                    <tr key={book._id} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-10 py-6">
+                        <div className="flex items-center gap-5">
+                          <div className="h-14 w-10 bg-slate-200 rounded-lg overflow-hidden relative border border-slate-100 shadow-sm">
+                             {book.coverImage ? (
+                               <img src={book.coverImage} alt={book.title} className="w-full h-full object-cover" />
+                             ) : (
+                               <div className="flex items-center justify-center h-full"><BookOpen size={14} className="text-slate-400"/></div>
+                             )}
+                          </div>
+                          <div>
+                            <p className="font-black text-slate-900 text-base">{book.title}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">ID: {book._id.slice(-6)}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-10 py-6">
+                        <span className="text-[10px] font-black text-sky-700 bg-sky-100 px-3 py-1 rounded-full uppercase">
+                          {book.category}
+                        </span>
+                      </td>
+                      <td className="px-10 py-6 font-black text-slate-800">
+                        ${book.price?.toFixed(2)}
+                      </td>
+                      <td className="px-10 py-6 text-right">
+                        <div className="flex items-center gap-4">
+                          <button 
+                            onClick={() => router.push(`/book-store/${book._id}`)}
+                            className="p-3 bg-slate-50 text-slate-400 rounded-xl hover:text-sky-600 hover:bg-sky-50 transition-all"
+                          >
+                            <ExternalLink size={18} />
+                          </button>
+                          <button 
+                             onClick={() => router.push(`/create?edit=${book._id}`)}
+                             className="p-3 bg-slate-50 text-slate-400 rounded-xl hover:text-slate-900 hover:bg-slate-100 transition-all"
+                          >
+                            <ChevronRight size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
-            "Publish to EnjoyReads"
+            <div className="py-24 text-center">
+              <div className="bg-slate-50 w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto mb-6 border border-slate-100">
+                <BookOpen className="text-slate-300" size={32} />
+              </div>
+              <h3 className="font-black text-slate-900 text-xl tracking-tight">Your library is empty</h3>
+              <p className="text-slate-400 max-w-xs mx-auto mb-8 font-medium">You haven&apos;t added any digital manuscripts to your inventory yet.</p>
+              <Link href="/create" className="text-sky-600 font-black text-xs uppercase tracking-[0.2em] hover:text-sky-700">
+                + Initialise Project
+              </Link>
+            </div>
           )}
-        </button>
-      </form>
+        </div>
+      </div>
     </div>
   );
 }
