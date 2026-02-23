@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { REST_API } from "../../constant"; // Use REST_API consistently
+import { REST_API } from "../../constant"; 
 import Link from "next/link";
 import { Plus, Trash2, Hash, Image as ImageIcon, Loader2, Save, BookOpen } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
@@ -23,7 +23,6 @@ export default function CreateBookPage() {
     { title: "Chapter 1", heading: "", content: "" }
   ]);
 
-  // Logic to calculate length based on industry standard 250 words per page
   const calculateTotalPages = () => {
     const totalWords = chapters.reduce((acc, ch) => acc + ch.content.split(/\s+/).filter(Boolean).length, 0);
     return Math.max(1, Math.ceil(totalWords / 250));
@@ -57,11 +56,9 @@ export default function CreateBookPage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    
-    // ✅ Data alignment for the backend
     formData.append("estimatedPages", calculateTotalPages().toString());
     formData.append("chapters", JSON.stringify(chapters));
-    formData.append("category", "Fiction"); // Default category for draft
+    formData.append("category", "Uncategorized"); // Default background value
 
     try {
       const res = await fetch(`${REST_API}/publish-books/admin/books`, {
@@ -91,11 +88,11 @@ export default function CreateBookPage() {
       {/* Header Area */}
       <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <Link href="/" className="text-sm font-bold text-[#035b77] hover:underline flex items-center gap-1">
+          <Link href="/dashboard" className="text-sm font-bold text-[#035b77] hover:underline flex items-center gap-1">
             <ChevronLeft size={14} /> Back to Dashboard
           </Link>
           <h1 className="text-4xl font-black mt-2 text-gray-900 tracking-tight">Writer&apos;s Studio</h1>
-          <p className="text-gray-500 font-medium">Draft your masterpiece. Your work is stored as searchable text.</p>
+          <p className="text-gray-500 font-medium">Draft your masterpiece as searchable text.</p>
         </div>
         
         <div className="bg-white border border-gray-100 shadow-sm p-4 rounded-2xl text-right flex items-center gap-4">
@@ -133,7 +130,6 @@ export default function CreateBookPage() {
             </div>
           </div>
 
-          {/* Public Cover Upload Only */}
           <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-[1.5rem] p-6 bg-gray-50/50 hover:bg-gray-50 transition-colors">
              <label className="cursor-pointer text-center group">
                 {preview ? (
@@ -160,7 +156,7 @@ export default function CreateBookPage() {
           <div className="flex justify-between items-center sticky top-4 z-30 px-4 py-3 bg-[#035b77]/90 backdrop-blur-md rounded-2xl shadow-lg shadow-sky-900/20">
             <div className="flex items-center gap-2 text-white">
                <BookOpen size={20} />
-               <h2 className="font-black text-sm uppercase tracking-[0.2em]">Manuscript Chapters</h2>
+               <h2 className="font-black text-sm uppercase tracking-[0.2em]">Manuscript</h2>
             </div>
             <button 
               type="button" 
@@ -184,7 +180,7 @@ export default function CreateBookPage() {
               <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row gap-6 border-b border-gray-50 pb-6">
                   <div className="sm:w-1/3">
-                    <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1 block">Chapter Label</label>
+                    <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1 block">Chapter Title</label>
                     <input
                       value={chapter.title}
                       onChange={(e) => updateChapter(index, "title", e.target.value)}
@@ -193,12 +189,12 @@ export default function CreateBookPage() {
                     />
                   </div>
                   <div className="flex-1">
-                    <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1 block">Display Subtitle</label>
+                    <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1 block">Subtitle (Optional)</label>
                     <input
                       value={chapter.heading}
                       onChange={(e) => updateChapter(index, "heading", e.target.value)}
                       className="text-xl font-bold text-gray-800 outline-none w-full bg-transparent placeholder:text-gray-200"
-                      placeholder="The Beginning of the End..."
+                      placeholder="Enter subtitle..."
                     />
                   </div>
                 </div>
@@ -208,14 +204,13 @@ export default function CreateBookPage() {
                   onChange={(e) => updateChapter(index, "content", e.target.value)}
                   rows={15}
                   className="w-full p-0 border-none bg-transparent outline-none text-gray-700 leading-[1.8] font-serif text-xl placeholder:text-gray-200 resize-none"
-                  placeholder="Start writing your story here..."
+                  placeholder="Start writing..."
                 />
               </div>
             </div>
           ))}
         </div>
 
-        {/* Action Button */}
         <button
           type="submit"
           disabled={loading}
@@ -232,7 +227,6 @@ export default function CreateBookPage() {
   );
 }
 
-// Helper icon for back button
 function ChevronLeft({ size }: { size: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>;
 }
