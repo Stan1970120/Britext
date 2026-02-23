@@ -1,76 +1,55 @@
-import 'dotenv/config'; 
-import express from "express";
-import mongoose from "mongoose";
-import cors from "cors";
-import cookieParser from "cookie-parser"; 
-import path from "path"; 
-import fs from "fs"; 
-import { fileURLToPath } from "url";
+import express from 'express';
+const router = express.Router();
 
-// Routes
-import authRoutes from "./routes/authRoutes.js";
-import adminRoutes from "./routes/adminRoutes.js"; 
-import cartRoutes from "./routes/cartRoutes.js";
-import wishlistRoutes from "./routes/wishlistRoutes.js";
-import publishBookRoutes from "./routes/publishbook.routes.js"; 
+import { 
+    getStats, 
+    getAdminBooks, 
+    createBook, 
+    updateChapters, 
+    finalizePublish, 
+    getReaderView,
+    getStoreBooks,
+    rateBook,
+    downloadBook // ✨ NEW: Import the download controller
+} from '../controllers/publishbook.controller.js';
 
-const app = express();
+import { verifyAdmin, upload } from '../middleware/publishbook.middleware.js';
+import { protect } from '../middleware/authMiddleware.js'; 
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+/* ==========================================
+    ADMIN ENDPOINTS
+   ========================================== */
 
-/* =======================
-    Middleware
-======================= */
-app.use(
-  cors({
-    origin: ["http://localhost:3000", "https://britext.vercel.app"],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
+router.get('/admin/stats', verifyAdmin, getStats);
+router.get('/admin/books', verifyAdmin, getAdminBooks);
+router.get('/admin/books/:id', verifyAdmin, getAdminBooks);
+
+router.post(
+    '/admin/books', 
+    verifyAdmin, 
+    upload.fields([
+        { name: 'cover', maxCount: 1 },
+        { name: 'manuscript', maxCount: 1 }
+    ]), 
+    createBook
 );
 
-app.options("*", cors()); 
-app.use(cookieParser()); 
-app.use(express.json());
+router.patch('/admin/books/:id/chapters', verifyAdmin, updateChapters);
+router.patch('/admin/books/:id/publish', verifyAdmin, finalizePublish);
 
-/* =======================
-    Static Folder
-======================= */
-const uploadPath = fs.existsSync(path.join(__dirname, "../uploads"))
-  ? path.join(__dirname, "../uploads")
-  : path.join(__dirname, "uploads");
+/* ==========================================
+    STORE & USER ENDPOINTS
+   ========================================== */
 
-app.use("/uploads", express.static(uploadPath));
+router.get('/store/books', getStoreBooks);
+router.get('/store/books/:id', getReaderView); 
+router.post('/rate', protect, rateBook);
 
-/* =======================
-    Database
-======================= */
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error("❌ MongoDB error:", err));
+/**
+ * ✅ NEW: SECURE DOWNLOAD ROUTE
+ * This generates a 15-minute temporary link for the PDF/EPUB.
+ * We use 'protect' so only logged-in users can access it.
+ */
+router.get('/store/books/:id/download', protect, downloadBook);
 
-/* =======================
-    Routes
-======================= */
-app.use("/api/auth", authRoutes);
-app.use("/api/publish-books", publishBookRoutes); 
-app.use("/api/cart", cartRoutes);
-app.use("/api/wishlist", wishlistRoutes);
-app.use("/api/admin", adminRoutes);
-
-app.get("/", (req, res) => {
-  res.send("Britext API running 🚀");
-});
-
-app.use((err, req, res, next) => {
-  console.error("💥 Global Error:", err.stack);
-  res.status(500).json({ message: "Internal Server Error", error: err.message });
-});
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () =>
-  console.log(`🚀 Server running on port ${PORT}`)
-);
+export default router;
