@@ -24,14 +24,15 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { logout, token, loading: authLoading } = useAuth(); 
   
-  const [status, setStatus] = useState<"draft" | "published">("draft");
+  // State for filtering books by status
+  const [status, setStatus] = useState<"draft" | "published">("published"); 
   const [books, setBooks] = useState<Book[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * Helper to handle non-JSON responses
+   * Helper to handle non-JSON responses and prevent crashes
    */
   const safeJsonResponse = async <T,>(response: Response): Promise<T | null> => {
     const contentType = response.headers.get("content-type");
@@ -39,7 +40,7 @@ export default function AdminDashboard() {
       return await response.json() as T;
     }
     const errorText = await response.text();
-    console.error("Backend returned non-JSON response:", errorText.substring(0, 200));
+    console.error("Backend error (non-JSON):", errorText.substring(0, 200));
     return null;
   };
 
@@ -55,38 +56,39 @@ export default function AdminDashboard() {
         "Authorization": `Bearer ${token}`
       };
 
+      // Using your existing API constants correctly
       const [booksRes, statsRes] = await Promise.all([
-        fetch(API.ADMIN_BOOKS(status), { method: "GET", headers, credentials: "include" }),
-        fetch(API.GET_ADMIN_STATS, { method: "GET", headers, credentials: "include" })
+        fetch(API.ADMIN_BOOKS(status), { 
+          method: "GET", 
+          headers,
+          credentials: "include" 
+        }),
+        fetch(API.GET_ADMIN_STATS, { 
+          method: "GET", 
+          headers,
+          credentials: "include" 
+        })
       ]);
 
-      if (statsRes.status === 404) {
-        setError("Admin Stats endpoint not found (404). Please check backend route configuration.");
-        setLoading(false);
-        return;
-      }
-
       if (booksRes.status === 401 || statsRes.status === 401) {
-        setError("Session unauthorized. Please log in as an administrator.");
+        setError("Session unauthorized. Please log in again.");
         return;
       }
 
-      // Explicitly typing the expected responses
       const booksData = await safeJsonResponse<Book[]>(booksRes);
       const statsData = await safeJsonResponse<DashboardStats>(statsRes);
 
       if (!booksData || !statsData) {
-        throw new Error("The server returned an invalid response format (HTML instead of JSON).");
+        throw new Error("Invalid response format from server.");
       }
 
       setBooks(Array.isArray(booksData) ? booksData : []);
       setStats(statsData);
 
     } catch (err: unknown) {
-      // Correctly handling the 'unknown' error type for ESLint
-      const errorMessage = err instanceof Error ? err.message : "An unexpected connection error occurred.";
+      const errorMessage = err instanceof Error ? err.message : "Network error occurred.";
       setError(errorMessage);
-      console.error("Dashboard Fetch Error:", err);
+      console.error("Dashboard Sync Error:", err);
     } finally {
       setLoading(false);
     }
@@ -112,7 +114,7 @@ export default function AdminDashboard() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-4">
           <div className="animate-spin h-10 w-10 border-4 border-[#035b77] border-t-transparent rounded-full"></div>
-          <p className="text-gray-500 font-medium">Verifying Admin Session...</p>
+          <p className="text-gray-500 font-medium tracking-tight">Loading Admin Session...</p>
         </div>
       </div>
     );
@@ -121,27 +123,27 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50/50 p-6 space-y-8 text-gray-900">
       
-      {/* Header */}
+      {/* Dashboard Header */}
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Dashboard</h1>
-          <p className="text-gray-500 text-sm">Manage manuscripts and monitor global store sales.</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-[#035b77]">Manuscript Hub</h1>
+          <p className="text-gray-500 text-sm font-medium">Monitoring {books.length} active projects.</p>
         </div>
         
         <div className="flex items-center gap-3">
           <button 
             onClick={handleLogout}
-            className="px-6 py-3 rounded-xl font-bold text-gray-600 hover:bg-gray-100 transition-all"
+            className="px-6 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-all"
           >
             Logout
           </button>
-          <Link href="/create" className="bg-[#035b77] text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-[#024a61] transition-all">
-            + New Manuscript
+          <Link href="/create" className="bg-[#035b77] text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-[#024a61] transition-all flex items-center gap-2">
+            <span>+</span> New Manuscript
           </Link>
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Analytics Overview */}
       <div className="max-w-7xl mx-auto">
         <StatsOverview 
           draftCount={stats?.totalDrafts || 0} 
@@ -152,30 +154,31 @@ export default function AdminDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Books List */}
+        {/* Books Management Section */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm min-h-[400px]">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm min-h-[500px]">
+            <div className="flex items-center justify-between mb-8 border-b border-gray-50 pb-4">
               <BookTabs active={status} onChange={setStatus} />
             </div>
 
             {error ? (
-              <div className="p-6 bg-red-50 text-red-600 rounded-xl border border-red-100 flex flex-col items-center text-center">
-                <p className="font-semibold mb-2">Sync Error</p>
-                <p className="text-sm italic mb-4">{error}</p>
+              <div className="p-10 bg-red-50 text-red-600 rounded-2xl border border-red-100 text-center">
+                <p className="font-bold mb-2 tracking-tight text-lg">Connection Failure</p>
+                <p className="text-sm mb-6 text-red-500/80">{error}</p>
                 <button 
                   onClick={() => fetchDashboardData()}
-                  className="text-xs bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                  className="bg-red-600 text-white px-8 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-red-700 transition-colors"
                 >
                   Retry Connection
                 </button>
               </div>
             ) : loading ? (
-              <div className="py-20 flex justify-center">
+              <div className="py-24 flex flex-col items-center justify-center gap-4">
                 <div className="animate-spin h-8 w-8 border-4 border-[#035b77] border-t-transparent rounded-full"></div>
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">Synchronizing Data...</p>
               </div>
             ) : books.length === 0 ? (
-              <EmptyState text={`No ${status} books found.`} />
+              <EmptyState text={`No ${status} manuscripts found.`} />
             ) : (
               <div className="grid gap-4">
                 {books.map((book) => (
@@ -186,22 +189,26 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Transactions Sidebar */}
+        {/* Sales Sidebar */}
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-          <h3 className="font-bold mb-4">Recent Transactions</h3>
-          <div className="space-y-4">
+          <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2">
+             Recent Activity
+          </h3>
+          <div className="space-y-6">
             {!stats?.recentTransactions || stats.recentTransactions.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">No recent sales data.</p>
+              <div className="py-10 text-center border-2 border-dashed border-gray-50 rounded-xl">
+                <p className="text-xs text-gray-400 italic font-medium">No sales transactions yet.</p>
+              </div>
             ) : (
               stats.recentTransactions.map((tx: Transaction) => (
-                <div key={tx._id} className="flex justify-between items-center text-sm border-b border-gray-50 pb-3">
-                  <div className="max-w-[150px]">
-                    <p className="font-medium text-gray-800 truncate">{tx.bookTitle}</p>
-                    <p className="text-[10px] text-gray-400">
-                      {new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <div key={tx._id} className="flex justify-between items-start border-b border-gray-50 pb-4 last:border-0">
+                  <div className="max-w-[160px]">
+                    <p className="font-bold text-gray-900 text-sm truncate">{tx.bookTitle}</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                      {new Date(tx.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                     </p>
                   </div>
-                  <p className="font-bold text-green-600">+${tx.amount.toFixed(2)}</p>
+                  <p className="font-black text-emerald-600 text-sm">+${tx.amount.toFixed(2)}</p>
                 </div>
               ))
             )}
