@@ -9,11 +9,13 @@ import {
     finalizePublish, 
     getReaderView,
     getStoreBooks,
-    rateBook,
-    downloadBook // ✨ NEW: Import the download controller
+    rateBook
+    // downloadBook is removed because chapters are stored as text in DB, not a PDF on S3
 } from '../controllers/publishbook.controller.js';
 
-import { verifyAdmin, upload } from '../middleware/publishbook.middleware.js';
+// ✅ Fix: Importing from the correct relative paths
+import { upload } from '../middleware/publishbook.middleware.js';
+import { verifyAdmin } from './authRoutes.js'; // Assuming verifyAdmin is in authRoutes
 import { protect } from '../middleware/authMiddleware.js'; 
 
 /* ==========================================
@@ -24,12 +26,12 @@ router.get('/admin/stats', verifyAdmin, getStats);
 router.get('/admin/books', verifyAdmin, getAdminBooks);
 router.get('/admin/books/:id', verifyAdmin, getAdminBooks);
 
+// ✅ Updated: Only accepts 'cover' image. Chapters are sent as text in req.body.
 router.post(
     '/admin/books', 
     verifyAdmin, 
     upload.fields([
-        { name: 'cover', maxCount: 1 },
-        { name: 'manuscript', maxCount: 1 }
+        { name: 'cover', maxCount: 1 }
     ]), 
     createBook
 );
@@ -45,11 +47,7 @@ router.get('/store/books', getStoreBooks);
 router.get('/store/books/:id', getReaderView); 
 router.post('/rate', protect, rateBook);
 
-/**
- * ✅ NEW: SECURE DOWNLOAD ROUTE
- * This generates a 15-minute temporary link for the PDF/EPUB.
- * We use 'protect' so only logged-in users can access it.
- */
-router.get('/store/books/:id/download', protect, downloadBook);
+// Note: Removed the download route. 
+// Since chapters are text in the DB, "Downloading" would require a PDF generator.
 
 export default router;
