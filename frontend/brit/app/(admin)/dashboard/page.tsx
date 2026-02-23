@@ -1,224 +1,211 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { 
-  BookOpen, 
-  Plus, 
-  BarChart3, 
-  Layers, 
-  Loader2, 
-  ExternalLink,
-  ChevronRight,
-  TrendingUp
-} from "lucide-react";
 import Link from "next/link";
-import { REST_API } from "../../constant";
+
+// Type Imports
+import { DashboardStats, Transaction } from "@/app/types/analytics";
+import { Book } from "@/app/types/books";
+
+// Constant Imports
+import { API } from "@/app/constant/api";
+
+// Context Import
 import { useAuth } from "@/app/context/AuthContext";
 
-// 1. Defined Interfaces (Fixes the "any" ESLint error)
-interface Book {
-  _id: string;
-  title: string;
-  author?: string;
-  coverImage?: string;
-  category: string;
-  price: number;
-  createdAt: string;
-}
-
-interface DashboardStats {
-  totalBooks: number;
-  totalChapters: number;
-  categories: number;
-}
+// Component Imports
+import BookTabs from "./components/BookTabs";
+import BookCard from "./components/BookCard";
+import EmptyState from "./components/EmptyState";
+import StatsOverview from "./components/StatsOverview";
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const { token, loading: authLoading } = useAuth();
+  const { logout, token, loading: authLoading } = useAuth(); 
   
-  // 2. State management with explicit types
-  const [stats, setStats] = useState<DashboardStats>({ 
-    totalBooks: 0, 
-    totalChapters: 0, 
-    categories: 0 
-  });
+  const [status, setStatus] = useState<"draft" | "published">("draft");
   const [books, setBooks] = useState<Book[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      // Don't fetch if the auth context is still loading the token
-      if (authLoading) return;
+  /**
+   * Helper to handle non-JSON responses
+   */
+  const safeJsonResponse = async <T,>(response: Response): Promise<T | null> => {
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      return await response.json() as T;
+    }
+    const errorText = await response.text();
+    console.error("Backend returned non-JSON response:", errorText.substring(0, 200));
+    return null;
+  };
+
+  const fetchDashboardData = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      setLoading(true);
+      setError(null);
       
-      // If no token exists, the session is invalid
-      if (!token) {
-        router.push("/login");
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      };
+
+      const [booksRes, statsRes] = await Promise.all([
+        fetch(API.ADMIN_BOOKS(status), { method: "GET", headers, credentials: "include" }),
+        fetch(API.GET_ADMIN_STATS, { method: "GET", headers, credentials: "include" })
+      ]);
+
+      if (statsRes.status === 404) {
+        setError("Admin Stats endpoint not found (404). Please check backend route configuration.");
+        setLoading(false);
         return;
       }
 
-      try {
-        const [statsRes, booksRes] = await Promise.all([
-          fetch(`${REST_API}/publish-books/admin/stats`, {
-            headers: { Authorization: `Bearer ${token}` }
-          }),
-          fetch(`${REST_API}/publish-books/admin/books`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
-        ]);
-
-        if (statsRes.ok && booksRes.ok) {
-          const statsData = await statsRes.json();
-          const booksData = await booksRes.json();
-          setStats(statsData);
-          setBooks(booksData);
-        }
-      } catch (error) {
-        console.error("Dashboard Fetch Error:", error);
-      } finally {
-        setIsLoading(false);
+      if (booksRes.status === 401 || statsRes.status === 401) {
+        setError("Session unauthorized. Please log in as an administrator.");
+        return;
       }
-    };
 
-    fetchDashboardData();
-  }, [token, authLoading, router]);
+      // Explicitly typing the expected responses
+      const booksData = await safeJsonResponse<Book[]>(booksRes);
+      const statsData = await safeJsonResponse<DashboardStats>(statsRes);
 
-  // 3. Professional Loading State
-  if (isLoading) {
+      if (!booksData || !statsData) {
+        throw new Error("The server returned an invalid response format (HTML instead of JSON).");
+      }
+
+      setBooks(Array.isArray(booksData) ? booksData : []);
+      setStats(statsData);
+
+    } catch (err: unknown) {
+      // Correctly handling the 'unknown' error type for ESLint
+      const errorMessage = err instanceof Error ? err.message : "An unexpected connection error occurred.";
+      setError(errorMessage);
+      console.error("Dashboard Fetch Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [status, token]);
+
+  useEffect(() => {
+    if (!authLoading) {
+      if (!token) {
+        router.replace("/signin");
+      } else {
+        fetchDashboardData();
+      }
+    }
+  }, [fetchDashboardData, authLoading, token, router]);
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace("/signin");
+  };
+
+  if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="animate-spin text-sky-600" size={40} />
-          <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Loading Studio</p>
+          <div className="animate-spin h-10 w-10 border-4 border-[#035b77] border-t-transparent rounded-full"></div>
+          <p className="text-gray-500 font-medium">Verifying Admin Session...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 md:p-12 bg-[#f8fafc] min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50/50 p-6 space-y-8 text-gray-900">
+      
+      {/* Header */}
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight">Dashboard</h1>
+          <p className="text-gray-500 text-sm">Manage manuscripts and monitor global store sales.</p>
+        </div>
         
-        {/* --- Header Section --- */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="bg-sky-100 text-sky-700 text-[10px] font-black px-2 py-0.5 rounded uppercase">Admin</span>
-              <span className="h-1 w-1 rounded-full bg-slate-300" />
-              <span className="text-slate-400 text-[10px] font-black uppercase tracking-widest">V2.4 Control Panel</span>
-            </div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Manuscript Hub</h1>
-            <p className="text-slate-500 font-medium">Overview of your published works and reader engagement.</p>
-          </div>
-          <Link 
-            href="/create" 
-            className="flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={handleLogout}
+            className="px-6 py-3 rounded-xl font-bold text-gray-600 hover:bg-gray-100 transition-all"
           >
-            <Plus size={18} strokeWidth={3} /> New Project
+            Logout
+          </button>
+          <Link href="/create" className="bg-[#035b77] text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-[#024a61] transition-all">
+            + New Manuscript
           </Link>
         </div>
+      </div>
 
-        {/* --- Metrics Grid --- */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-          {[
-            { label: "Total Library", value: stats.totalBooks, icon: BookOpen, color: "text-blue-600", bg: "bg-blue-50" },
-            { label: "Content Nodes", value: stats.totalChapters, icon: Layers, color: "text-emerald-600", bg: "bg-emerald-50" },
-            { label: "Active Genres", value: stats.categories || 0, icon: BarChart3, color: "text-violet-600", bg: "bg-violet-50" },
-          ].map((item, i) => (
-            <div key={i} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-6">
-              <div className={`${item.bg} ${item.color} p-5 rounded-3xl`}>
-                <item.icon size={28} />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{item.label}</p>
-                <p className="text-3xl font-black text-slate-900 leading-none">{item.value}</p>
-              </div>
+      {/* Stats Cards */}
+      <div className="max-w-7xl mx-auto">
+        <StatsOverview 
+          draftCount={stats?.totalDrafts || 0} 
+          liveCount={stats?.liveStoreCount || 0}
+          revenue={stats?.dailyRevenue || 0}
+          conversion={stats?.conversionRate || 0}
+        />
+      </div>
+
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Books List */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm min-h-[400px]">
+            <div className="flex items-center justify-between mb-6">
+              <BookTabs active={status} onChange={setStatus} />
             </div>
-          ))}
+
+            {error ? (
+              <div className="p-6 bg-red-50 text-red-600 rounded-xl border border-red-100 flex flex-col items-center text-center">
+                <p className="font-semibold mb-2">Sync Error</p>
+                <p className="text-sm italic mb-4">{error}</p>
+                <button 
+                  onClick={() => fetchDashboardData()}
+                  className="text-xs bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Retry Connection
+                </button>
+              </div>
+            ) : loading ? (
+              <div className="py-20 flex justify-center">
+                <div className="animate-spin h-8 w-8 border-4 border-[#035b77] border-t-transparent rounded-full"></div>
+              </div>
+            ) : books.length === 0 ? (
+              <EmptyState text={`No ${status} books found.`} />
+            ) : (
+              <div className="grid gap-4">
+                {books.map((book) => (
+                  <BookCard key={book._id} book={book} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* --- Inventory Table --- */}
-        <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden">
-          <div className="p-10 border-b border-slate-50 flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <TrendingUp className="text-sky-500" size={20} />
-              <h2 className="text-xl font-black text-slate-900 tracking-tight">Active Inventory</h2>
-            </div>
-            <div className="px-4 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-slate-500">
-              {books.length} Entries
-            </div>
+        {/* Transactions Sidebar */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+          <h3 className="font-bold mb-4">Recent Transactions</h3>
+          <div className="space-y-4">
+            {!stats?.recentTransactions || stats.recentTransactions.length === 0 ? (
+              <p className="text-xs text-gray-400 italic">No recent sales data.</p>
+            ) : (
+              stats.recentTransactions.map((tx: Transaction) => (
+                <div key={tx._id} className="flex justify-between items-center text-sm border-b border-gray-50 pb-3">
+                  <div className="max-w-[150px]">
+                    <p className="font-medium text-gray-800 truncate">{tx.bookTitle}</p>
+                    <p className="text-[10px] text-gray-400">
+                      {new Date(tx.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <p className="font-bold text-green-600">+${tx.amount.toFixed(2)}</p>
+                </div>
+              ))
+            )}
           </div>
-
-          {books.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/30">
-                    <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Master Title</th>
-                    <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Metadata</th>
-                    <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Valuation</th>
-                    <th className="px-10 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Ops</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {books.map((book) => (
-                    <tr key={book._id} className="hover:bg-slate-50/50 transition-colors group">
-                      <td className="px-10 py-6">
-                        <div className="flex items-center gap-5">
-                          <div className="h-14 w-10 bg-slate-200 rounded-lg overflow-hidden relative border border-slate-100 shadow-sm">
-                             {book.coverImage ? (
-                               <img src={book.coverImage} alt={book.title} className="w-full h-full object-cover" />
-                             ) : (
-                               <div className="flex items-center justify-center h-full"><BookOpen size={14} className="text-slate-400"/></div>
-                             )}
-                          </div>
-                          <div>
-                            <p className="font-black text-slate-900 text-base">{book.title}</p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">ID: {book._id.slice(-6)}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-10 py-6">
-                        <span className="text-[10px] font-black text-sky-700 bg-sky-100 px-3 py-1 rounded-full uppercase">
-                          {book.category}
-                        </span>
-                      </td>
-                      <td className="px-10 py-6 font-black text-slate-800">
-                        ${book.price?.toFixed(2)}
-                      </td>
-                      <td className="px-10 py-6 text-right">
-                        <div className="flex items-center gap-4">
-                          <button 
-                            onClick={() => router.push(`/book-store/${book._id}`)}
-                            className="p-3 bg-slate-50 text-slate-400 rounded-xl hover:text-sky-600 hover:bg-sky-50 transition-all"
-                          >
-                            <ExternalLink size={18} />
-                          </button>
-                          <button 
-                             onClick={() => router.push(`/create?edit=${book._id}`)}
-                             className="p-3 bg-slate-50 text-slate-400 rounded-xl hover:text-slate-900 hover:bg-slate-100 transition-all"
-                          >
-                            <ChevronRight size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="py-24 text-center">
-              <div className="bg-slate-50 w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto mb-6 border border-slate-100">
-                <BookOpen className="text-slate-300" size={32} />
-              </div>
-              <h3 className="font-black text-slate-900 text-xl tracking-tight">Your library is empty</h3>
-              <p className="text-slate-400 max-w-xs mx-auto mb-8 font-medium">You haven&apos;t added any digital manuscripts to your inventory yet.</p>
-              <Link href="/create" className="text-sky-600 font-black text-xs uppercase tracking-[0.2em] hover:text-sky-700">
-                + Initialise Project
-              </Link>
-            </div>
-          )}
         </div>
       </div>
     </div>
