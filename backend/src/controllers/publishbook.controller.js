@@ -1,6 +1,6 @@
 import PublishBook from '../models/publishbook.model.js';
 import Order from '../models/publishbook_order.model.js';
-import Review from '../models/Review.js'; // ✅ Now used in rateBook below
+import Review from '../models/Review.js';
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -46,30 +46,34 @@ export const getAdminBooks = async (req, res) => {
     }
     const books = await PublishBook.find().sort({ createdAt: -1 });
     res.json(books);
-  } catch (err) { res.status(500).json({ message: "Error" }); }
+  } catch (err) { res.status(500).json({ message: "Error fetching books" }); }
 };
 
 /* --------------------------- BOOK MANAGEMENT --------------------------- */
 
+// ✅ UPDATED: Removed Manuscript requirement
 export const createBook = async (req, res) => {
   try {
-    const { title, description, category, author, estimatedPages, price } = req.body;
+    const { title, description, author, estimatedPages, price } = req.body;
     const coverFile = req.files?.['cover']?.[0];
-    const manuscriptFile = req.files?.['manuscript']?.[0];
 
     let parsedChapters = [];
     if (req.body.chapters) {
-      try { parsedChapters = JSON.parse(req.body.chapters); } catch (e) { console.error("Chapter parse error:", e); }
+      try { 
+        parsedChapters = JSON.parse(req.body.chapters); 
+      } catch (e) { 
+        console.error("Chapter parse error:", e); 
+      }
     }
 
     const newBook = new PublishBook({
       title,
       author: author || "Admin",
-      category: category || "Fiction",
+      category: "Uncategorized", // Default until finalized
       summary: description, 
       price: price || 0,
       coverImage: coverFile ? coverFile.location : "", 
-      manuscriptKey: manuscriptFile ? manuscriptFile.key : "",
+      manuscriptKey: "", // No PDF upload in this flow
       authorId: req.user?.id || req.user?._id,
       status: 'draft',
       estimatedPages: estimatedPages || 1,
@@ -84,8 +88,8 @@ export const createBook = async (req, res) => {
     const savedBook = await newBook.save();
     res.status(201).json(savedBook);
   } catch (err) {
-    console.error("S3 Create Book Error:", err);
-    res.status(500).json({ success: false, message: "Failed to create book" });
+    console.error("Create Book Error:", err);
+    res.status(500).json({ success: false, message: "Failed to create book draft" });
   }
 };
 
@@ -114,9 +118,11 @@ export const updateChapters = async (req, res) => {
 export const finalizePublish = async (req, res) => {
   try {
     const { id } = req.params;
+    const { category, price } = req.body; // Category selection happens here
+    
     const updatedBook = await PublishBook.findByIdAndUpdate(
       id,
-      { ...req.body, status: 'published' },
+      { category, price, status: 'published' },
       { new: true }
     );
     if (!updatedBook) return res.status(404).json({ message: "Book not found" });
@@ -147,7 +153,6 @@ export const getStoreBooks = async (req, res) => {
   }
 };
 
-// ✅ rateBook RESTORED: This uses the 'Review' import
 export const rateBook = async (req, res) => {
   try {
     const { bookId, rating } = req.body;
@@ -173,12 +178,11 @@ export const rateBook = async (req, res) => {
 
     res.json({ success: true, rating: updatedBook.rating });
   } catch (err) {
-    console.error("Rating Error:", err);
     res.status(500).json({ message: "Rating failed" });
   }
 };
 
-/* --------------------------- SECURE READING & DOWNLOAD --------------------------- */
+/* --------------------------- SECURE READING --------------------------- */
 
 export const getReaderView = async (req, res) => {
   try {
@@ -201,39 +205,5 @@ export const getReaderView = async (req, res) => {
     res.json(book);
   } catch (err) { 
     res.status(500).json({ message: "Error loading reader view" }); 
-  }
-};
-
-export const downloadBook = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user?.id || req.user?._id;
-
-    const hasPurchased = await Order.findOne({ 
-      userId, 
-      bookId: id, 
-      paymentStatus: 'completed' 
-    });
-
-    if (!hasPurchased) {
-      return res.status(403).json({ message: "Access denied. Purchase required." });
-    }
-
-    const book = await PublishBook.findById(id);
-    if (!book || !book.manuscriptKey) {
-      return res.status(404).json({ message: "Manuscript file not found." });
-    }
-
-    const command = new GetObjectCommand({
-      Bucket: process.env.AWS_BUCKET_NAME,
-      Key: book.manuscriptKey,
-    });
-
-    const url = await getSignedUrl(s3, command, { expiresIn: 900 });
-
-    res.json({ downloadUrl: url });
-  } catch (err) {
-    console.error("Presigned URL error:", err);
-    res.status(500).json({ message: "Could not generate download link." });
   }
 };
