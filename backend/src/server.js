@@ -1,4 +1,4 @@
-import 'dotenv/config'; // ✅ MUST BE LINE 1 - Loads vars before any other imports
+import 'dotenv/config'; 
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
@@ -14,10 +14,6 @@ import cartRoutes from "./routes/cartRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import publishBookRoutes from "./routes/publishbook.routes.js"; 
 
-import { protect } from "./middleware/authMiddleware.js";
-
-// dotenv.config(); // ❌ Remove this, it's too late here
-
 const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -28,10 +24,7 @@ const __dirname = path.dirname(__filename);
 ======================= */
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "https://britext.vercel.app", 
-    ],
+    origin: ["http://localhost:3000", "https://britext.vercel.app"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -43,7 +36,7 @@ app.use(cookieParser());
 app.use(express.json());
 
 /* =======================
-    Static Folder (Keep as fallback)
+    Static Folder
 ======================= */
 const uploadPath = fs.existsSync(path.join(__dirname, "../uploads"))
   ? path.join(__dirname, "../uploads")
@@ -63,7 +56,6 @@ mongoose
     Routes
 ======================= */
 app.use("/api/auth", authRoutes);
-// ✅ Standardizing route name to match your frontend calls
 app.use("/api/publish-books", publishBookRoutes); 
 app.use("/api/cart", cartRoutes);
 app.use("/api/wishlist", wishlistRoutes);
