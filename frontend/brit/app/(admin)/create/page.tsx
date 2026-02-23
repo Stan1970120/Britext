@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { API } from "../../constant/api";
+import { REST_API } from "../../constant"; // Use REST_API consistently
 import Link from "next/link";
-import { Plus, Trash2, BookOpen, Type, Hash, Image as ImageIcon } from "lucide-react";
+import { Plus, Trash2, Hash, Image as ImageIcon, Loader2, Save, BookOpen } from "lucide-react";
+import { useAuth } from "@/app/context/AuthContext";
 
 interface Chapter {
   title: string;
@@ -14,6 +15,7 @@ interface Chapter {
 
 export default function CreateBookPage() {
   const router = useRouter();
+  const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   
@@ -21,6 +23,7 @@ export default function CreateBookPage() {
     { title: "Chapter 1", heading: "", content: "" }
   ]);
 
+  // Logic to calculate length based on industry standard 250 words per page
   const calculateTotalPages = () => {
     const totalWords = chapters.reduce((acc, ch) => acc + ch.content.split(/\s+/).filter(Boolean).length, 0);
     return Math.max(1, Math.ceil(totalWords / 250));
@@ -28,7 +31,9 @@ export default function CreateBookPage() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) setPreview(URL.createObjectURL(file));
+    if (file) {
+      setPreview(URL.createObjectURL(file));
+    }
   };
 
   const addChapter = () => {
@@ -52,15 +57,14 @@ export default function CreateBookPage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const token = localStorage.getItem("token");
-
-    // Remove manuscript if it exists in form, we only want the cover
-    formData.delete("manuscript"); 
+    
+    // ✅ Data alignment for the backend
     formData.append("estimatedPages", calculateTotalPages().toString());
     formData.append("chapters", JSON.stringify(chapters));
+    formData.append("category", "Fiction"); // Default category for draft
 
     try {
-      const res = await fetch(API.CREATE_BOOK, {
+      const res = await fetch(`${REST_API}/publish-books/admin/books`, {
         method: "POST",
         body: formData,
         headers: {
@@ -69,12 +73,13 @@ export default function CreateBookPage() {
       });
 
       if (res.ok) {
-        router.push("/dashboard"); // Or wherever your drafts live
+        router.push("/dashboard"); 
       } else {
         const errData = await res.json();
         alert(`Error: ${errData.message || "Failed to save book"}`);
       }
     } catch (error) {
+      console.error(error);
       alert("Network error occurred.");
     } finally {
       setLoading(false);
@@ -82,110 +87,152 @@ export default function CreateBookPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 pb-24">
-      {/* Header */}
-      <div className="mb-8 flex justify-between items-end">
+    <div className="max-w-4xl mx-auto p-6 pb-24 min-h-screen bg-[#fcfcfc]">
+      {/* Header Area */}
+      <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <Link href="/dashboard" className="text-sm text-[#035b77] hover:underline">
-            ← Back to Dashboard
+          <Link href="/" className="text-sm font-bold text-[#035b77] hover:underline flex items-center gap-1">
+            <ChevronLeft size={14} /> Back to Dashboard
           </Link>
-          <h1 className="text-3xl font-bold mt-2 text-[#035b77]">Draft Your Book</h1>
-          <p className="text-gray-500">Focus on the writing. You can set the category when you&apos;re ready to publish.</p>
+          <h1 className="text-4xl font-black mt-2 text-gray-900 tracking-tight">Writer&apos;s Studio</h1>
+          <p className="text-gray-500 font-medium">Draft your masterpiece. Your work is stored as searchable text.</p>
         </div>
         
-        <div className="bg-sky-50 border border-sky-100 p-3 rounded-lg text-right hidden sm:block">
-          <p className="text-xs text-sky-600 font-bold uppercase tracking-wider">Word Count Progress</p>
-          <p className="text-xl font-black text-[#035b77] flex items-center justify-end gap-1">
-            <Hash size={18} /> {calculateTotalPages()} Pages
-          </p>
+        <div className="bg-white border border-gray-100 shadow-sm p-4 rounded-2xl text-right flex items-center gap-4">
+          <div>
+            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Length Estimate</p>
+            <p className="text-xl font-black text-[#035b77] flex items-center justify-end gap-1">
+              <Hash size={18} className="text-sky-300" /> {calculateTotalPages()} Pages
+            </p>
+          </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Book Metadata */}
-        <div className="bg-white p-6 border rounded-xl shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-10">
+        {/* Book Metadata Section */}
+        <section className="bg-white p-8 border border-gray-100 rounded-[2rem] shadow-sm grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="md:col-span-2 space-y-6">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">Book Title</label>
-              <input name="title" required className="w-full p-3 border rounded-lg outline-none focus:border-[#035b77]" placeholder="The Silent Forest..." />
+              <label className="block text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Book Title</label>
+              <input 
+                name="title" 
+                required 
+                className="w-full p-4 bg-gray-50 border-none rounded-xl outline-none focus:ring-2 ring-sky-100 text-xl font-bold text-gray-800 placeholder:text-gray-300" 
+                placeholder="The Silent Forest..." 
+              />
             </div>
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1">Synopsis</label>
-              <textarea name="description" required rows={4} className="w-full p-3 border rounded-lg outline-none focus:border-[#035b77]" placeholder="Summarize your story..." />
+              <label className="block text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Synopsis</label>
+              <textarea 
+                name="description" 
+                required 
+                rows={4} 
+                className="w-full p-4 bg-gray-50 border-none rounded-xl outline-none focus:ring-2 ring-sky-100 text-gray-700 leading-relaxed placeholder:text-gray-300" 
+                placeholder="What is this story about?" 
+              />
             </div>
           </div>
 
-          <div className="flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-4 bg-gray-50">
-             <label className="cursor-pointer text-center">
+          {/* Public Cover Upload Only */}
+          <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-[1.5rem] p-6 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+             <label className="cursor-pointer text-center group">
                 {preview ? (
-                   <img src={preview} alt="Cover" className="w-32 h-48 object-cover rounded shadow-md mb-2" />
+                   <div className="relative">
+                      <img src={preview} alt="Cover" className="w-36 h-52 object-cover rounded-xl shadow-2xl mb-3 transition-transform group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 rounded-xl flex items-center justify-center transition-opacity">
+                         <ImageIcon className="text-white" size={24} />
+                      </div>
+                   </div>
                 ) : (
-                   <div className="w-32 h-48 bg-gray-200 rounded flex flex-col items-center justify-center text-gray-400 mb-2">
-                      <ImageIcon size={32} />
-                      <span className="text-xs mt-2">Upload Cover</span>
+                   <div className="w-36 h-52 bg-white rounded-xl flex flex-col items-center justify-center text-gray-300 mb-3 border border-gray-100 shadow-inner">
+                      <ImageIcon size={40} strokeWidth={1.5} />
+                      <span className="text-[10px] font-black uppercase tracking-tighter mt-3">Add Cover</span>
                    </div>
                 )}
                 <input type="file" name="cover" accept="image/*" required onChange={handleImageChange} className="hidden" />
-                <span className="text-[10px] text-gray-500 font-medium">Click to change cover image</span>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Public Cover Image</p>
              </label>
           </div>
-        </div>
+        </section>
 
-        {/* Writing Area */}
-        <div className="space-y-6">
-          <div className="flex justify-between items-center sticky top-0 bg-gray-50/80 backdrop-blur py-4 z-20 px-2">
-            <h2 className="text-xl font-bold text-[#035b77]">Chapters</h2>
-            <button type="button" onClick={addChapter} className="flex items-center gap-2 bg-[#035b77] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-[#024a61]">
-              <Plus size={16} /> New Chapter
+        {/* Chapter Editing Area */}
+        <div className="space-y-8">
+          <div className="flex justify-between items-center sticky top-4 z-30 px-4 py-3 bg-[#035b77]/90 backdrop-blur-md rounded-2xl shadow-lg shadow-sky-900/20">
+            <div className="flex items-center gap-2 text-white">
+               <BookOpen size={20} />
+               <h2 className="font-black text-sm uppercase tracking-[0.2em]">Manuscript Chapters</h2>
+            </div>
+            <button 
+              type="button" 
+              onClick={addChapter} 
+              className="flex items-center gap-2 bg-white text-[#035b77] px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-sky-50 transition-colors shadow-sm"
+            >
+              <Plus size={16} strokeWidth={3} /> Add Chapter
             </button>
           </div>
 
           {chapters.map((chapter, index) => (
-            <div key={index} className="bg-white p-6 border rounded-xl relative shadow-sm hover:shadow-md transition-shadow">
+            <div key={index} className="group bg-white p-8 border border-gray-100 rounded-[2rem] relative shadow-sm hover:shadow-xl transition-all duration-300">
               <button 
                 type="button" 
                 onClick={() => removeChapter(index)} 
-                className={`absolute top-4 right-4 text-gray-300 hover:text-red-500 ${chapters.length === 1 ? 'hidden' : ''}`}
+                className={`absolute -top-3 -right-3 bg-white shadow-md p-2 rounded-full text-gray-300 hover:text-red-500 hover:scale-110 transition-all border border-gray-50 ${chapters.length === 1 ? 'hidden' : ''}`}
               >
                 <Trash2 size={18} />
               </button>
               
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <input
-                    value={chapter.title}
-                    onChange={(e) => updateChapter(index, "title", e.target.value)}
-                    className="text-xl font-bold text-[#035b77] outline-none border-b-2 border-transparent focus:border-sky-200 w-full sm:w-1/4"
-                    placeholder="Chapter 1"
-                  />
-                  <input
-                    value={chapter.heading}
-                    onChange={(e) => updateChapter(index, "heading", e.target.value)}
-                    className="text-lg font-medium outline-none border-b-2 border-transparent focus:border-sky-200 flex-1"
-                    placeholder="Add a subtitle/heading..."
-                  />
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row gap-6 border-b border-gray-50 pb-6">
+                  <div className="sm:w-1/3">
+                    <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1 block">Chapter Label</label>
+                    <input
+                      value={chapter.title}
+                      onChange={(e) => updateChapter(index, "title", e.target.value)}
+                      className="text-2xl font-black text-[#035b77] outline-none w-full bg-transparent placeholder:text-gray-200"
+                      placeholder={`Chapter ${index + 1}`}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1 block">Display Subtitle</label>
+                    <input
+                      value={chapter.heading}
+                      onChange={(e) => updateChapter(index, "heading", e.target.value)}
+                      className="text-xl font-bold text-gray-800 outline-none w-full bg-transparent placeholder:text-gray-200"
+                      placeholder="The Beginning of the End..."
+                    />
+                  </div>
                 </div>
 
                 <textarea
                   value={chapter.content}
                   onChange={(e) => updateChapter(index, "content", e.target.value)}
-                  rows={12}
-                  className="w-full p-4 border-none bg-slate-50 rounded-lg outline-none text-gray-700 leading-relaxed font-serif text-lg"
-                  placeholder="Once upon a time..."
+                  rows={15}
+                  className="w-full p-0 border-none bg-transparent outline-none text-gray-700 leading-[1.8] font-serif text-xl placeholder:text-gray-200 resize-none"
+                  placeholder="Start writing your story here..."
                 />
               </div>
             </div>
           ))}
         </div>
 
+        {/* Action Button */}
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-[#035b77] text-white py-4 rounded-xl font-bold hover:bg-[#024a61] shadow-xl disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full bg-[#035b77] text-white py-6 rounded-3xl font-black text-lg uppercase tracking-[0.2em] hover:bg-[#024a61] shadow-2xl shadow-sky-900/30 disabled:opacity-50 transition-all flex items-center justify-center gap-3 active:scale-[0.98]"
         >
-          {loading ? "Saving Draft..." : "Save All Progress"}
+          {loading ? (
+            <Loader2 className="animate-spin" size={24} />
+          ) : (
+            <><Save size={24} /> Save Book Draft</>
+          )}
         </button>
       </form>
     </div>
   );
+}
+
+// Helper icon for back button
+function ChevronLeft({ size }: { size: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>;
 }
