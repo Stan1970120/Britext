@@ -22,38 +22,29 @@ export const upload = multer({
       cb(null, { fieldName: file.fieldname });
     },
     key: (req, file, cb) => {
-      // Organize into folders: covers/ for images, manuscripts/ for PDFs
-      const folder = file.fieldname === "cover" ? "covers/" : "manuscripts/";
+      // We only need the covers/ folder now since manuscripts are text in DB
+      const folder = "covers/";
       const fileName = `${Date.now()}-${file.originalname.replace(/\s+/g, "_")}`;
       cb(null, folder + fileName);
     },
-    // Amazon KDP Logic: Covers are public, Manuscripts are private
-    acl: (req, file, cb) => {
-      if (file.fieldname === "cover") {
-        cb(null, "public-read"); // Everyone can view the cover
-      } else {
-        cb(null, "private"); // Manuscript is locked (needs Presigned URL to download)
-      }
-    },
+    acl: "public-read", // Covers must be public to be seen in the store
   }),
 });
 
-// --- 3. EXISTING AUTH MIDDLEWARE ---
+// --- 3. RESTORED AUTH MIDDLEWARE ---
 export const verifyAdmin = (req, res, next) => {
-  const token = 
-    req.cookies?.admin_token || 
-    req.cookies?.token || 
-    req.headers.authorization?.split(" ")[1];
+  const token = req.headers.authorization?.split(" ")[1] || req.cookies?.token;
 
   if (!token) {
     return res.status(401).json({ 
       success: false, 
-      message: "Unauthorized: No admin token provided." 
+      message: "Unauthorized: No token provided." 
     });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Returning to your original role check logic
     if (decoded.role !== 'admin') {
       return res.status(403).json({ 
         success: false, 
@@ -71,7 +62,7 @@ export const verifyAdmin = (req, res, next) => {
 };
 
 export const verifyUser = (req, res, next) => {
-  const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
+  const token = req.headers.authorization?.split(" ")[1] || req.cookies?.token;
   if (!token) return next();
 
   try {
