@@ -19,19 +19,21 @@ const publishBookSchema = new mongoose.Schema({
     default: "Fiction"
   },
   price: { type: Number, default: 0 },
-  coverImage: { type: String },
+  coverImage: { type: String }, // Stores the Public S3 URL
+  
+  // ✨ NEW: Stores the path to the private PDF in S3
+  manuscriptKey: { type: String }, 
+
   status: { type: String, enum: ['draft', 'published'], default: 'draft' },
   
   rating: { type: Number, default: 0 },
   numReviews: { type: Number, default: 0 },
 
-  // ✨ UPDATED: Added estimatedPages
   estimatedPages: { type: Number, default: 1 },
 
-  // ✨ UPDATED: Chapter logic with heading
   chapters: [{
-    title: { type: String },   // e.g., "Chapter 1"
-    heading: { type: String }, // e.g., "The Midnight Discovery"
+    title: { type: String }, 
+    heading: { type: String }, 
     content: { type: String }, 
     order: { type: Number }
   }],

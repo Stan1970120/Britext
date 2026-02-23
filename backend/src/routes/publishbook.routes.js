@@ -1,5 +1,4 @@
 import express from 'express';
-import multer from 'multer';
 const router = express.Router();
 
 import { 
@@ -10,15 +9,12 @@ import {
     finalizePublish, 
     getReaderView,
     getStoreBooks,
-    rateBook 
+    rateBook,
+    downloadBook // ✨ NEW: Import the download controller
 } from '../controllers/publishbook.controller.js';
 
-import { verifyAdmin } from '../middleware/publishbook.middleware.js';
-
-// ✅ FIXED: Using 'protect' to match the export name in authMiddleware.js
+import { verifyAdmin, upload } from '../middleware/publishbook.middleware.js';
 import { protect } from '../middleware/authMiddleware.js'; 
-
-const upload = multer({ dest: 'uploads/' }); 
 
 /* ==========================================
     ADMIN ENDPOINTS
@@ -26,26 +22,34 @@ const upload = multer({ dest: 'uploads/' });
 
 router.get('/admin/stats', verifyAdmin, getStats);
 router.get('/admin/books', verifyAdmin, getAdminBooks);
-
-// Route for single book preview/edit
 router.get('/admin/books/:id', verifyAdmin, getAdminBooks);
 
-router.post('/admin/books', verifyAdmin, upload.single('cover'), createBook);
+router.post(
+    '/admin/books', 
+    verifyAdmin, 
+    upload.fields([
+        { name: 'cover', maxCount: 1 },
+        { name: 'manuscript', maxCount: 1 }
+    ]), 
+    createBook
+);
 
-// Chapters logic
-router.get('/admin/books/:id/chapters', verifyAdmin, getAdminBooks); 
 router.patch('/admin/books/:id/chapters', verifyAdmin, updateChapters);
-
 router.patch('/admin/books/:id/publish', verifyAdmin, finalizePublish);
 
 /* ==========================================
-    PUBLIC & USER ENDPOINTS
+    STORE & USER ENDPOINTS
    ========================================== */
 
 router.get('/store/books', getStoreBooks);
 router.get('/store/books/:id', getReaderView); 
-
-// ✅ FIXED: Changed 'verifyToken' to 'protect'
 router.post('/rate', protect, rateBook);
+
+/**
+ * ✅ NEW: SECURE DOWNLOAD ROUTE
+ * This generates a 15-minute temporary link for the PDF/EPUB.
+ * We use 'protect' so only logged-in users can access it.
+ */
+router.get('/store/books/:id/download', protect, downloadBook);
 
 export default router;
