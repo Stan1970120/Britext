@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Heart, Star, Loader2, BookOpen } from "lucide-react";
+import { Heart, Star, Loader2, BookOpen, ShoppingCart, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { REST_API } from "../../constant";
 import { useAuth } from "@/app/context/AuthContext";
@@ -14,7 +14,6 @@ interface Book {
   category: string;
   price: number;
   rating: number;
-  numReviews?: number; // Added to help track ratings
   coverImage: string;
   isInCart: boolean;
   isWishlisted: boolean;
@@ -31,26 +30,24 @@ const BookStore = () => {
   const [selectedCategory, setSelectedCategory] = useState("All Books");
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
-  const IMAGE_BASE = "https://britext.onrender.com";
 
+  // FETCH BOOKS BASED ON CATEGORY
   const fetchBooks = useCallback(async () => {
-    // Only show full-page loader on first load or category change
     try {
+      setIsLoading(true);
       const categoryParam = selectedCategory !== "All Books" 
         ? `?category=${encodeURIComponent(selectedCategory)}` 
         : "";
       
-      const res = await fetch(`${REST_API}/publishbook/store/books${categoryParam}`, {
+      // ✅ ALIGNED: Using '/publish-books' to match your backend route
+      const res = await fetch(`${REST_API}/publish-books/store/books${categoryParam}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       
       if (!res.ok) throw new Error("Failed to fetch");
 
       const data = await res.json();
-      if (data && Array.isArray(data)) {
-        setBooks(data);
-      }
+      setBooks(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to fetch books:", error);
     } finally {
@@ -62,11 +59,9 @@ const BookStore = () => {
     if (!authLoading) fetchBooks();
   }, [fetchBooks, authLoading]);
 
-  // Utility to update local state immediately (instant feedback)
+  // UI STATE HELPERS
   const updateLocalState = (bookId: string, updates: Partial<Book>) => {
-    setBooks(currentBooks => 
-      currentBooks.map(book => book._id === bookId ? { ...book, ...updates } : book)
-    );
+    setBooks(current => current.map(b => b._id === bookId ? { ...b, ...updates } : b));
   };
 
   /* --------------------------- ACTIONS --------------------------- */
@@ -76,7 +71,6 @@ const BookStore = () => {
     e.stopPropagation();
     if (!token) return router.push("/login");
 
-    // 1. Optimistic Update
     updateLocalState(bookId, { isInCart: true });
 
     try {
@@ -88,19 +82,10 @@ const BookStore = () => {
         },
         body: JSON.stringify({ bookId }),
       });
-      
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Server error");
-      }
-      
-      // 2. Success - Refresh to sync with DB state
-      fetchBooks();
+      if (!res.ok) throw new Error();
     } catch (error) {
-      // 3. Rollback on error
       updateLocalState(bookId, { isInCart: false });
-      console.error("Add to cart failed:", error);
-      alert("Failed to add to cart. Please try again.");
+      alert("Error updating cart");
     }
   };
 
@@ -110,9 +95,7 @@ const BookStore = () => {
     if (!token) return router.push("/login");
 
     const book = books.find(b => b._id === bookId);
-    const oldStatus = book?.isWishlisted || false;
-
-    // Optimistic Update
+    const oldStatus = !!book?.isWishlisted;
     updateLocalState(bookId, { isWishlisted: !oldStatus });
 
     try {
@@ -124,148 +107,126 @@ const BookStore = () => {
         },
         body: JSON.stringify({ bookId }),
       });
-      
-      if (!res.ok) throw new Error("Wishlist failed");
-      
-      // Keep state or re-fetch to ensure sync
-      fetchBooks();
+      if (!res.ok) throw new Error();
     } catch (error) {
       updateLocalState(bookId, { isWishlisted: oldStatus });
-      console.error("Wishlist toggle failed:", error);
     }
-  };
-
-  const handleRateBook = async (e: React.MouseEvent, bookId: string, starRating: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Save old rating for rollback
-    const book = books.find(b => b._id === bookId);
-    const oldRating = book?.rating || 0;
-
-    // Optimistic Update
-    updateLocalState(bookId, { rating: starRating });
-
-    try {
-      const res = await fetch(`${REST_API}/publishbook/rate`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ bookId, rating: starRating }),
-      });
-      
-      if (!res.ok) throw new Error("Rating error");
-      
-      // Refresh to get the actual calculated average from DB
-      fetchBooks(); 
-    } catch (error) {
-      updateLocalState(bookId, { rating: oldRating });
-      console.error("Rating failed");
-    }
-  };
-
-  const getImageUrl = (path: string) => {
-    if (!path) return "https://via.placeholder.com/150?text=No+Cover"; 
-    if (path.startsWith("http")) return path;
-    const cleanPath = path.replace(/\\/g, "/").replace(/^\//, "");
-    return `${IMAGE_BASE}/${cleanPath}`;
   };
 
   return (
-    <div className="p-4 md:p-8 lg:p-12 bg-white min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-semibold text-gray-900">Book Store</h1>
-        {(isLoading || authLoading) && <Loader2 className="animate-spin text-sky-500" size={24} />}
-      </div>
-
-      {/* Categories */}
-      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2 mb-8">
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={`px-1 py-2 rounded-lg text-[11px] md:text-xs font-medium transition-all ${
-              selectedCategory === cat ? "bg-sky-500 text-white shadow-sm" : "bg-sky-50 text-gray-700 hover:bg-sky-100"
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-pulse">
-          {[1, 2, 3, 4].map((n) => <div key={n} className="h-80 bg-gray-100 rounded-xl" />)}
+    <div className="p-4 md:p-10 bg-[#f8fafc] min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+          <div>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight">The Library</h1>
+            <p className="text-slate-500 mt-1 font-medium">Explore and collect your favorite reads.</p>
+          </div>
+          {(isLoading || authLoading) && <Loader2 className="animate-spin text-sky-600" size={28} />}
         </div>
-      ) : books.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {books.map((book) => (
-            <div 
-              key={book._id} 
-              className="group rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition bg-white overflow-hidden relative flex flex-col"
+
+        {/* --- Categories Chips --- */}
+        <div className="flex flex-wrap gap-2 mb-12">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all duration-300 ${
+                selectedCategory === cat 
+                ? "bg-sky-600 text-white shadow-lg shadow-sky-100 scale-105" 
+                : "bg-white text-slate-600 hover:bg-sky-50 border border-slate-100"
+              }`}
             >
-              <div 
-                className="absolute inset-0 z-0 cursor-pointer" 
-                onClick={() => router.push(`/book-store/${book._id}`)} 
-              />
-
-              <button
-                onClick={(e) => handleWishlist(e, book._id)}
-                className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm p-1.5 rounded-full shadow-sm hover:bg-white transition z-10"
-              >
-                <Heart size={18} className={`transition ${book.isWishlisted ? "fill-red-500 text-red-500" : "text-gray-400"}`} />
-              </button>
-
-              <div className="flex justify-center items-center py-6 bg-gray-50/50 relative">
-                <div className="relative w-32 h-48 rounded-md shadow-md overflow-hidden border border-gray-100 bg-white">
-                  <Image src={getImageUrl(book.coverImage)} alt={book.title} fill className="object-cover" unoptimized />
-                </div>
-              </div>
-
-              <div className="p-4 flex flex-col flex-1 relative z-10 pointer-events-none">
-                <p className="text-[10px] uppercase font-bold text-gray-400 mb-1">{book.category} • <span className="text-sky-600">{book.author}</span></p>
-                <h2 className="text-sm font-bold text-gray-900 mb-2 line-clamp-2 min-h-[40px] pointer-events-auto cursor-pointer" onClick={() => router.push(`/book-store/${book._id}`)}>
-                  {book.title}
-                </h2>
-
-                <div className="flex items-center gap-1 mb-3 pointer-events-auto">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star 
-                      key={star} 
-                      size={14} 
-                      onClick={(e) => handleRateBook(e, book._id, star)}
-                      className={`cursor-pointer transition ${star <= Math.round(book.rating || 0) ? "fill-yellow-400 text-yellow-400" : "text-gray-200 hover:text-yellow-200"}`} 
-                    />
-                  ))}
-                  <span className="text-xs text-gray-400 ml-1">({book.rating?.toFixed(1) || "0.0"})</span>
-                </div>
-
-                <div className="mt-auto pt-3 border-t border-gray-50 pointer-events-auto">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-gray-900 font-black text-base">${book.price?.toFixed(2)}</span>
-                  </div>
-                  <button
-                    onClick={(e) => handleAddToCart(e, book._id)}
-                    disabled={book.isInCart}
-                    className={`w-full flex items-center justify-center gap-2 rounded-lg text-sm font-bold py-2.5 transition z-20 ${
-                      book.isInCart ? "bg-emerald-500 text-white cursor-default" : "bg-sky-500 hover:bg-sky-600 text-white shadow-sm"
-                    }`}
-                  >
-                    {book.isInCart ? "Added to cart ✅" : "Add to cart 🛒"}
-                  </button>
-                </div>
-              </div>
-            </div>
+              {cat}
+            </button>
           ))}
         </div>
-      ) : (
-        <div className="text-center py-24 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-          <BookOpen className="mx-auto text-gray-300 mb-4" size={48} />
-          <h3 className="text-lg font-medium text-gray-900">No books found</h3>
-        </div>
-      )}
+
+        {/* --- Books Grid --- */}
+        {isLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="h-96 bg-white rounded-3xl border border-slate-100 animate-pulse" />
+            ))}
+          </div>
+        ) : books.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+            {books.map((book) => (
+              <div 
+                key={book._id} 
+                className="group relative bg-white rounded-3xl border border-slate-100 hover:border-sky-200 shadow-sm hover:shadow-xl hover:shadow-sky-500/5 transition-all duration-500 flex flex-col"
+              >
+                {/* Book Cover Container */}
+                <div 
+                  className="relative aspect-[3/4] m-3 rounded-2xl overflow-hidden bg-slate-50 cursor-pointer"
+                  onClick={() => router.push(`/book-store/${book._id}`)}
+                >
+                  <Image 
+                    src={book.coverImage || "/placeholder.png"} 
+                    alt={book.title} 
+                    fill 
+                    className="object-cover group-hover:scale-110 transition-transform duration-700"
+                    unoptimized
+                  />
+                  
+                  {/* Floating Actions */}
+                  <button
+                    onClick={(e) => handleWishlist(e, book._id)}
+                    className="absolute top-3 right-3 bg-white/80 backdrop-blur-md p-2 rounded-xl shadow-sm hover:bg-white transition-all z-20"
+                  >
+                    <Heart size={18} className={`${book.isWishlisted ? "fill-rose-500 text-rose-500" : "text-slate-400"}`} />
+                  </button>
+                </div>
+
+                {/* Content */}
+                <div className="p-5 pt-2 flex flex-col flex-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-sky-600 mb-1">
+                    {book.category}
+                  </span>
+                  
+                  <h3 
+                    className="text-base font-bold text-slate-900 line-clamp-1 mb-1 cursor-pointer hover:text-sky-600 transition-colors"
+                    onClick={() => router.push(`/book-store/${book._id}`)}
+                  >
+                    {book.title}
+                  </h3>
+                  
+                  <p className="text-xs text-slate-400 font-medium mb-3">By {book.author}</p>
+
+                  <div className="flex items-center gap-1 mb-4">
+                    <Star size={14} className="fill-amber-400 text-amber-400" />
+                    <span className="text-xs font-bold text-slate-700">{book.rating?.toFixed(1) || "0.0"}</span>
+                  </div>
+
+                  {/* Price & Cart */}
+                  <div className="mt-auto flex items-center justify-between gap-3 pt-4 border-t border-slate-50">
+                    <span className="text-lg font-black text-slate-900">${book.price?.toFixed(2)}</span>
+                    <button
+                      onClick={(e) => handleAddToCart(e, book._id)}
+                      disabled={book.isInCart}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all duration-300 ${
+                        book.isInCart 
+                        ? "bg-emerald-500 text-white shadow-emerald-100" 
+                        : "bg-slate-900 text-white hover:bg-sky-600 shadow-lg shadow-slate-200 hover:shadow-sky-100"
+                      }`}
+                    >
+                      {book.isInCart ? <Check size={16} /> : <ShoppingCart size={16} />}
+                      {book.isInCart ? "Added" : "Add"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-32 bg-white rounded-[40px] border border-slate-100 shadow-sm">
+            <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <BookOpen className="text-slate-300" size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900">No books in this shelf</h3>
+            <p className="text-slate-400 text-sm mt-2">Try selecting another category or check back later.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
