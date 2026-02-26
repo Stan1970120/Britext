@@ -7,34 +7,22 @@ const publishBookSchema = new mongoose.Schema({
   summary: { type: String },
   category: { 
     type: String, 
-    enum: [
-      "Educational", 
-      "Fiction", 
-      "Non-Fiction", 
-      "Professional & Technical", 
-      "Faith Based", 
-      "Lifestyle", 
-      "Journal & Notes"
-    ],
+    enum: ["Educational", "Fiction", "Non-Fiction", "Professional & Technical", "Faith Based", "Lifestyle", "Journal & Notes"],
     default: "Fiction"
   },
   price: { type: Number, default: 0 },
-  coverImage: { type: String }, // Stores the Public S3 URL
-  
-  // ✨ NEW: Stores the path to the private PDF in S3
+  coverImage: { type: String }, 
   manuscriptKey: { type: String }, 
-
   status: { type: String, enum: ['draft', 'published'], default: 'draft' },
-  
   rating: { type: Number, default: 0 },
   numReviews: { type: Number, default: 0 },
-
   estimatedPages: { type: Number, default: 1 },
 
   chapters: [{
     title: { type: String }, 
     heading: { type: String }, 
     content: { type: String }, 
+    illustrationUrl: { type: String }, // ✨ NEW: Stores S3 link for chapter images
     order: { type: Number }
   }],
   

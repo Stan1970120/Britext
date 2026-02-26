@@ -1,8 +1,7 @@
 import PublishBook from '../models/publishbook.model.js';
 import Order from '../models/publishbook_order.model.js';
 import Review from '../models/Review.js';
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { S3Client } from "@aws-sdk/client-s3";
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
@@ -51,38 +50,47 @@ export const getAdminBooks = async (req, res) => {
 
 /* --------------------------- BOOK MANAGEMENT --------------------------- */
 
-// ✅ UPDATED: Removed Manuscript requirement
 export const createBook = async (req, res) => {
   try {
-    const { title, description, author, estimatedPages, price } = req.body;
-    const coverFile = req.files?.['cover']?.[0];
+    const { title, description, author, estimatedPages, price, chaptersData, creationMode } = req.body;
+    
+    // 1. Identify Main Files (Cover & Optional Manuscript documents)
+    const files = req.files || [];
+    const coverFile = files.find(f => f.fieldname === 'cover');
+    const docFile = files.find(f => f.fieldname === 'docFile');
+    const epubFile = files.find(f => f.fieldname === 'epubFile');
 
-    let parsedChapters = [];
-    if (req.body.chapters) {
-      try { 
-        parsedChapters = JSON.parse(req.body.chapters); 
-      } catch (e) { 
-        console.error("Chapter parse error:", e); 
-      }
+    // 2. Process Chapters if in "write" mode
+    let finalChapters = [];
+    if (creationMode === "write" && chaptersData) {
+      const parsedChapters = JSON.parse(chaptersData);
+      
+      finalChapters = parsedChapters.map((ch, index) => {
+        // Find the specific illustration for this chapter index
+        const illustration = files.find(f => f.fieldname === `chapterIllustration_${index}`);
+        return {
+          title: ch.title || `Chapter ${index + 1}`,
+          heading: ch.heading || "",
+          content: ch.content || "",
+          illustrationUrl: illustration ? illustration.location : "", 
+          order: index + 1
+        };
+      });
     }
 
     const newBook = new PublishBook({
       title,
       author: author || "Admin",
-      category: "Uncategorized", // Default until finalized
+      category: "Fiction", 
       summary: description, 
       price: price || 0,
       coverImage: coverFile ? coverFile.location : "", 
-      manuscriptKey: "", // No PDF upload in this flow
+      // Store document link if uploaded, else empty
+      manuscriptKey: docFile?.location || epubFile?.location || "", 
       authorId: req.user?.id || req.user?._id,
       status: 'draft',
       estimatedPages: estimatedPages || 1,
-      chapters: parsedChapters.map((ch, index) => ({
-        title: ch.title || `Chapter ${index + 1}`,
-        heading: ch.heading || "",
-        content: ch.content || "",
-        order: index + 1
-      })) 
+      chapters: finalChapters
     });
 
     const savedBook = await newBook.save();
@@ -101,6 +109,7 @@ export const updateChapters = async (req, res) => {
       title: ch.title,
       heading: ch.heading,
       content: ch.content,
+      illustrationUrl: ch.illustrationUrl || "",
       order: index + 1
     }));
     const updatedBook = await PublishBook.findByIdAndUpdate(
@@ -118,7 +127,7 @@ export const updateChapters = async (req, res) => {
 export const finalizePublish = async (req, res) => {
   try {
     const { id } = req.params;
-    const { category, price } = req.body; // Category selection happens here
+    const { category, price } = req.body; 
     
     const updatedBook = await PublishBook.findByIdAndUpdate(
       id,
@@ -132,21 +141,17 @@ export const finalizePublish = async (req, res) => {
   }
 };
 
-/* --------------------------- STORE FRONT --------------------------- */
+/* --------------------------- STORE FRONT & READING --------------------------- */
 
 export const getStoreBooks = async (req, res) => {
   try {
     const { category } = req.query;
     let query = { status: 'published' };
-
-    if (category && category !== "All Books") {
-      query.category = category;
-    }
+    if (category && category !== "All Books") query.category = category;
 
     const books = await PublishBook.find(query)
       .select('-chapters.content')
       .sort({ createdAt: -1 });
-
     res.json(books);
   } catch (err) { 
     res.status(500).json({ message: "Error fetching store books" }); 
@@ -159,51 +164,30 @@ export const rateBook = async (req, res) => {
     const userId = req.user?.id || req.user?._id;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-    await Review.findOneAndUpdate(
-      { bookId, userId }, 
-      { rating }, 
-      { upsert: true, new: true }
-    );
+    await Review.findOneAndUpdate({ bookId, userId }, { rating }, { upsert: true });
 
     const reviews = await Review.find({ bookId });
-    const avgRating = reviews.length > 0 
-      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
-      : 0;
+    const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
 
     const updatedBook = await PublishBook.findByIdAndUpdate(
       bookId,
       { rating: avgRating, numReviews: reviews.length },
       { new: true }
     );
-
     res.json({ success: true, rating: updatedBook.rating });
-  } catch (err) {
-    res.status(500).json({ message: "Rating failed" });
-  }
+  } catch (err) { res.status(500).json({ message: "Rating failed" }); }
 };
-
-/* --------------------------- SECURE READING --------------------------- */
 
 export const getReaderView = async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
     const { id } = req.params;
+    const hasPurchased = await Order.findOne({ userId, bookId: id, paymentStatus: 'completed' });
 
-    const hasPurchased = await Order.findOne({ 
-      userId, 
-      bookId: id, 
-      paymentStatus: 'completed' 
-    });
-
-    if (!hasPurchased) {
-      return res.status(403).json({ message: "You must purchase this book to read it." });
-    }
+    if (!hasPurchased) return res.status(403).json({ message: "Purchase required." });
 
     const book = await PublishBook.findById(id);
     if (!book) return res.status(404).json({ message: "Book not found" });
-
     res.json(book);
-  } catch (err) { 
-    res.status(500).json({ message: "Error loading reader view" }); 
-  }
+  } catch (err) { res.status(500).json({ message: "Error loading reader view" }); }
 };
