@@ -4,13 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { REST_API } from "../../constant"; 
 import Link from "next/link";
-import { Plus, Trash2, Hash, Image as ImageIcon, Loader2, Save, BookOpen } from "lucide-react";
+import { Plus, Trash2, Image as ImageIcon, Loader2, Save, BookOpen, FileText, Upload, X } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 
 interface Chapter {
   title: string;
   heading: string;
   content: string;
+  illustration: File | null;
+  illustrationPreview: string | null;
 }
 
 export default function CreateBookPage() {
@@ -19,8 +21,10 @@ export default function CreateBookPage() {
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   
+  const [creationMode, setCreationMode] = useState<"write" | "upload">("upload");
+  
   const [chapters, setChapters] = useState<Chapter[]>([
-    { title: "Chapter 1", heading: "", content: "" }
+    { title: "Chapter 1", heading: "", content: "", illustration: null, illustrationPreview: null }
   ]);
 
   const calculateTotalPages = () => {
@@ -30,23 +34,39 @@ export default function CreateBookPage() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setPreview(URL.createObjectURL(file));
-    }
+    if (file) setPreview(URL.createObjectURL(file));
   };
 
-  const addChapter = () => {
-    setChapters([...chapters, { title: `Chapter ${chapters.length + 1}`, heading: "", content: "" }]);
+  const handleChapterIllustration = (index: number, file: File | undefined) => {
+    if (!file) return;
+    const newChapters = [...chapters];
+    newChapters[index].illustration = file;
+    newChapters[index].illustrationPreview = URL.createObjectURL(file);
+    setChapters(newChapters);
   };
+
+  const removeChapterIllustration = (index: number) => {
+    const newChapters = [...chapters];
+    newChapters[index].illustration = null;
+    newChapters[index].illustrationPreview = null;
+    setChapters(newChapters);
+  };
+
+  const addChapter = () => setChapters([...chapters, { 
+    title: `Chapter ${chapters.length + 1}`, 
+    heading: "", 
+    content: "", 
+    illustration: null, 
+    illustrationPreview: null 
+  }]);
 
   const removeChapter = (index: number) => {
-    if (chapters.length > 1) {
-      setChapters(chapters.filter((_, i) => i !== index));
-    }
+    if (chapters.length > 1) setChapters(chapters.filter((_, i) => i !== index));
   };
 
   const updateChapter = (index: number, field: keyof Chapter, value: string) => {
     const newChapters = [...chapters];
+    // @ts-expect-error - indexing Chapter by dynamic string field
     newChapters[index][field] = value;
     setChapters(newChapters);
   };
@@ -56,9 +76,27 @@ export default function CreateBookPage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    formData.append("estimatedPages", calculateTotalPages().toString());
-    formData.append("chapters", JSON.stringify(chapters));
-    formData.append("category", "Uncategorized"); // Default background value
+    
+    if (creationMode === "write") {
+      formData.append("estimatedPages", calculateTotalPages().toString());
+      
+      const textData = chapters.map(ch => ({
+        title: ch.title,
+        heading: ch.heading,
+        content: ch.content
+      }));
+      formData.append("chaptersData", JSON.stringify(textData));
+
+      // Append chapter-specific illustrations for backend processing
+      chapters.forEach((ch, index) => {
+        if (ch.illustration) {
+          formData.append(`chapterIllustration_${index}`, ch.illustration);
+        }
+      });
+    }
+    
+    formData.append("category", "Uncategorized");
+    formData.append("creationMode", creationMode);
 
     try {
       const res = await fetch(`${REST_API}/publish-books/admin/books`, {
@@ -85,23 +123,22 @@ export default function CreateBookPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-6 pb-24 min-h-screen bg-[#fcfcfc]">
-      {/* Header Area */}
       <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <Link href="/dashboard" className="text-sm font-bold text-[#035b77] hover:underline flex items-center gap-1">
             <ChevronLeft size={14} /> Back to Dashboard
           </Link>
           <h1 className="text-4xl font-black mt-2 text-gray-900 tracking-tight">Writer&apos;s Studio</h1>
-          <p className="text-gray-500 font-medium">Draft your masterpiece as searchable text.</p>
+          <p className="text-gray-500 font-medium">Draft your masterpiece or upload professional formats.</p>
         </div>
         
-        <div className="bg-white border border-gray-100 shadow-sm p-4 rounded-2xl text-right flex items-center gap-4">
-          <div>
-            <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Length Estimate</p>
-            <p className="text-xl font-black text-[#035b77] flex items-center justify-end gap-1">
-              <Hash size={18} className="text-sky-300" /> {calculateTotalPages()} Pages
-            </p>
-          </div>
+        <div className="flex bg-gray-100 p-1 rounded-xl">
+          <button type="button" onClick={() => setCreationMode("upload")} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${creationMode === 'upload' ? 'bg-white text-[#035b77] shadow-sm' : 'text-gray-400'}`}>
+            FILE UPLOAD
+          </button>
+          <button type="button" onClick={() => setCreationMode("write")} className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${creationMode === 'write' ? 'bg-white text-[#035b77] shadow-sm' : 'text-gray-400'}`}>
+            MANUAL WRITE
+          </button>
         </div>
       </div>
 
@@ -111,116 +148,108 @@ export default function CreateBookPage() {
           <div className="md:col-span-2 space-y-6">
             <div>
               <label className="block text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Book Title</label>
-              <input 
-                name="title" 
-                required 
-                className="w-full p-4 bg-gray-50 border-none rounded-xl outline-none focus:ring-2 ring-sky-100 text-xl font-bold text-gray-800 placeholder:text-gray-300" 
-                placeholder="The Silent Forest..." 
-              />
+              <input name="title" required className="w-full p-4 bg-gray-50 border-none rounded-xl outline-none focus:ring-2 ring-sky-100 text-xl font-bold text-gray-800" placeholder="The Silent Forest..." />
             </div>
             <div>
               <label className="block text-xs font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Synopsis</label>
-              <textarea 
-                name="description" 
-                required 
-                rows={4} 
-                className="w-full p-4 bg-gray-50 border-none rounded-xl outline-none focus:ring-2 ring-sky-100 text-gray-700 leading-relaxed placeholder:text-gray-300" 
-                placeholder="What is this story about?" 
-              />
+              <textarea name="description" required rows={4} className="w-full p-4 bg-gray-50 border-none rounded-xl outline-none focus:ring-2 ring-sky-100 text-gray-700 leading-relaxed" placeholder="What is this story about?" />
             </div>
           </div>
 
-          <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-[1.5rem] p-6 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+          <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-[1.5rem] p-6 bg-gray-50/50">
              <label className="cursor-pointer text-center group">
                 {preview ? (
-                   <div className="relative">
-                      <img src={preview} alt="Cover" className="w-36 h-52 object-cover rounded-xl shadow-2xl mb-3 transition-transform group-hover:scale-105" />
-                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 rounded-xl flex items-center justify-center transition-opacity">
-                         <ImageIcon className="text-white" size={24} />
-                      </div>
-                   </div>
+                   <img src={preview} alt="Cover" className="w-36 h-52 object-cover rounded-xl shadow-2xl mb-3" />
                 ) : (
                    <div className="w-36 h-52 bg-white rounded-xl flex flex-col items-center justify-center text-gray-300 mb-3 border border-gray-100 shadow-inner">
-                      <ImageIcon size={40} strokeWidth={1.5} />
+                      <ImageIcon size={40} />
                       <span className="text-[10px] font-black uppercase tracking-tighter mt-3">Add Cover</span>
                    </div>
                 )}
                 <input type="file" name="cover" accept="image/*" required onChange={handleImageChange} className="hidden" />
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Public Cover Image</p>
              </label>
           </div>
         </section>
 
-        {/* Chapter Editing Area */}
-        <div className="space-y-8">
-          <div className="flex justify-between items-center sticky top-4 z-30 px-4 py-3 bg-[#035b77]/90 backdrop-blur-md rounded-2xl shadow-lg shadow-sky-900/20">
-            <div className="flex items-center gap-2 text-white">
-               <BookOpen size={20} />
-               <h2 className="font-black text-sm uppercase tracking-[0.2em]">Manuscript</h2>
+        {creationMode === "upload" ? (
+          <section className="bg-white p-8 border border-gray-100 rounded-[2rem] shadow-sm space-y-8">
+            <div className="flex items-center gap-3 border-b border-gray-50 pb-4">
+              <Upload className="text-[#035b77]" />
+              <h2 className="font-black text-sm uppercase tracking-[0.2em] text-gray-800">Upload Documents</h2>
             </div>
-            <button 
-              type="button" 
-              onClick={addChapter} 
-              className="flex items-center gap-2 bg-white text-[#035b77] px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-sky-50 transition-colors shadow-sm"
-            >
-              <Plus size={16} strokeWidth={3} /> Add Chapter
-            </button>
-          </div>
-
-          {chapters.map((chapter, index) => (
-            <div key={index} className="group bg-white p-8 border border-gray-100 rounded-[2rem] relative shadow-sm hover:shadow-xl transition-all duration-300">
-              <button 
-                type="button" 
-                onClick={() => removeChapter(index)} 
-                className={`absolute -top-3 -right-3 bg-white shadow-md p-2 rounded-full text-gray-300 hover:text-red-500 hover:scale-110 transition-all border border-gray-50 ${chapters.length === 1 ? 'hidden' : ''}`}
-              >
-                <Trash2 size={18} />
-              </button>
-              
-              <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row gap-6 border-b border-gray-50 pb-6">
-                  <div className="sm:w-1/3">
-                    <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1 block">Chapter Title</label>
-                    <input
-                      value={chapter.title}
-                      onChange={(e) => updateChapter(index, "title", e.target.value)}
-                      className="text-2xl font-black text-[#035b77] outline-none w-full bg-transparent placeholder:text-gray-200"
-                      placeholder={`Chapter ${index + 1}`}
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1 block">Subtitle (Optional)</label>
-                    <input
-                      value={chapter.heading}
-                      onChange={(e) => updateChapter(index, "heading", e.target.value)}
-                      className="text-xl font-bold text-gray-800 outline-none w-full bg-transparent placeholder:text-gray-200"
-                      placeholder="Enter subtitle..."
-                    />
-                  </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-6 bg-sky-50/50 border border-sky-100 rounded-2xl">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-white rounded-lg shadow-sm"><FileText className="text-blue-600" size={20} /></div>
+                  <p className="text-xs font-black text-gray-500 uppercase tracking-widest">MS Word Format</p>
                 </div>
+                <input type="file" name="docFile" accept=".doc,.docx" className="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#035b77] file:text-white" />
+              </div>
 
-                <textarea
-                  value={chapter.content}
-                  onChange={(e) => updateChapter(index, "content", e.target.value)}
-                  rows={15}
-                  className="w-full p-0 border-none bg-transparent outline-none text-gray-700 leading-[1.8] font-serif text-xl placeholder:text-gray-200 resize-none"
-                  placeholder="Start writing..."
-                />
+              <div className="p-6 bg-purple-50/50 border border-purple-100 rounded-2xl">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-white rounded-lg shadow-sm"><BookOpen className="text-purple-600" size={20} /></div>
+                  <p className="text-xs font-black text-gray-500 uppercase tracking-widest">EPub Format</p>
+                </div>
+                <input type="file" name="epubFile" accept=".epub" className="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#035b77] file:text-white" />
               </div>
             </div>
-          ))}
-        </div>
+          </section>
+        ) : (
+          <div className="space-y-8">
+            <div className="flex justify-between items-center sticky top-4 z-30 px-4 py-3 bg-[#035b77]/90 backdrop-blur-md rounded-2xl shadow-lg">
+              <div className="flex items-center gap-2 text-white">
+                 <BookOpen size={20} />
+                 <h2 className="font-black text-sm uppercase tracking-[0.2em]">Manuscript</h2>
+              </div>
+              <button type="button" onClick={addChapter} className="flex items-center gap-2 bg-white text-[#035b77] px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-sky-50 transition-colors">
+                <Plus size={16} /> Add Chapter
+              </button>
+            </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-[#035b77] text-white py-6 rounded-3xl font-black text-lg uppercase tracking-[0.2em] hover:bg-[#024a61] shadow-2xl shadow-sky-900/30 disabled:opacity-50 transition-all flex items-center justify-center gap-3 active:scale-[0.98]"
-        >
-          {loading ? (
-            <Loader2 className="animate-spin" size={24} />
-          ) : (
-            <><Save size={24} /> Save Book Draft</>
-          )}
+            {chapters.map((chapter, index) => (
+              <div key={index} className="bg-white p-8 border border-gray-100 rounded-[2rem] relative shadow-sm">
+                <button type="button" onClick={() => removeChapter(index)} className={`absolute -top-3 -right-3 bg-white shadow-md p-2 rounded-full text-gray-300 hover:text-red-500 ${chapters.length === 1 ? 'hidden' : ''}`}>
+                  <Trash2 size={18} />
+                </button>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input value={chapter.title} onChange={(e) => updateChapter(index, "title", e.target.value)} className="text-2xl font-black text-[#035b77] outline-none w-full bg-transparent" placeholder="Chapter Title" />
+                    <input value={chapter.heading} onChange={(e) => updateChapter(index, "heading", e.target.value)} className="text-xl font-bold text-gray-400 outline-none w-full bg-transparent" placeholder="Subtitle (Optional)" />
+                  </div>
+                  
+                  <textarea value={chapter.content} onChange={(e) => updateChapter(index, "content", e.target.value)} rows={10} className="w-full border-none bg-transparent outline-none text-gray-700 font-serif text-xl resize-none" placeholder="Start writing..." />
+                  
+                  <div className="pt-6 border-t border-gray-50">
+                    {chapter.illustrationPreview ? (
+                      <div className="relative w-40 h-40 group">
+                        <img src={chapter.illustrationPreview} className="w-full h-full object-cover rounded-2xl shadow-md" alt="illustration" />
+                        <button onClick={() => removeChapterIllustration(index)} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex items-center gap-3 cursor-pointer w-fit group">
+                        <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-sky-50 group-hover:text-sky-600 transition-all border border-transparent group-hover:border-sky-100">
+                          <ImageIcon size={20} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Add Illustration</p>
+                          <p className="text-xs font-bold text-gray-600">Chapter specific image</p>
+                        </div>
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleChapterIllustration(index, e.target.files?.[0])} />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button type="submit" disabled={loading} className="w-full bg-[#035b77] text-white py-6 rounded-3xl font-black text-lg uppercase tracking-[0.2em] shadow-2xl disabled:opacity-50 transition-all flex items-center justify-center gap-3">
+          {loading ? <Loader2 className="animate-spin" size={24} /> : <><Save size={24} /> Create Manuscript</>}
         </button>
       </form>
     </div>

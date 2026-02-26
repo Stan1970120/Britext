@@ -1,6 +1,3 @@
-backend/src/routes/publishbook.routes.js
-
-
 import express from 'express';
 const router = express.Router();
 
@@ -15,7 +12,6 @@ import {
     rateBook
 } from '../controllers/publishbook.controller.js';
 
-// ✅ consolidated imports from the middleware folder
 import { upload, verifyAdmin } from '../middleware/publishbook.middleware.js';
 import { protect } from '../middleware/authMiddleware.js'; 
 
@@ -27,13 +23,15 @@ router.get('/admin/stats', verifyAdmin, getStats);
 router.get('/admin/books', verifyAdmin, getAdminBooks);
 router.get('/admin/books/:id', verifyAdmin, getAdminBooks);
 
-// Accepts 'cover' image. Chapters are sent as text in req.body.
+/**
+ * ✅ UPDATED: upload.any()
+ * This allows the route to accept 'cover', 'docFile', 'epubFile', 
+ * and dynamic chapter illustrations like 'chapterIllustration_0'.
+ */
 router.post(
     '/admin/books', 
     verifyAdmin, 
-    upload.fields([
-        { name: 'cover', maxCount: 1 }
-    ]), 
+    upload.any(), 
     createBook
 );
 
@@ -45,7 +43,7 @@ router.patch('/admin/books/:id/publish', verifyAdmin, finalizePublish);
    ========================================== */
 
 router.get('/store/books', getStoreBooks);
-router.get('/store/books/:id', getReaderView); 
+router.get('/store/books/:id', protect, getReaderView); // Added protect here for user identification
 router.post('/rate', protect, rateBook);
 
 export default router;
