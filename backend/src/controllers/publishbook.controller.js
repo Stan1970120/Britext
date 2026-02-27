@@ -51,53 +51,67 @@ export const getAdminBooks = async (req, res) => {
 /* --------------------------- BOOK MANAGEMENT --------------------------- */
 
 export const createBook = async (req, res) => {
+  // 1. ADDED LOGGING FOR DEBUGGING ON RENDER
+  console.log("CreateBook Request Received. Body:", req.body);
+  console.log("Files Received:", req.files);
+  
   try {
     const { title, description, author, estimatedPages, price, chaptersData, creationMode } = req.body;
     
-    // 1. Identify Main Files (Cover & Optional Manuscript documents)
+    // 2. Identify Main Files (Cover & Optional Manuscript documents)
     const files = req.files || [];
     const coverFile = files.find(f => f.fieldname === 'cover');
     const docFile = files.find(f => f.fieldname === 'docFile');
     const epubFile = files.find(f => f.fieldname === 'epubFile');
 
-    // 2. Process Chapters if in "write" mode
+    // 3. Process Chapters if in "write" mode
     let finalChapters = [];
     if (creationMode === "write" && chaptersData) {
-      const parsedChapters = JSON.parse(chaptersData);
-      
-      finalChapters = parsedChapters.map((ch, index) => {
-        // Find the specific illustration for this chapter index
-        const illustration = files.find(f => f.fieldname === `chapterIllustration_${index}`);
-        return {
-          title: ch.title || `Chapter ${index + 1}`,
-          heading: ch.heading || "",
-          content: ch.content || "",
-          illustrationUrl: illustration ? illustration.location : "", 
-          order: index + 1
-        };
-      });
+      try {
+        const parsedChapters = JSON.parse(chaptersData);
+        
+        finalChapters = parsedChapters.map((ch, index) => {
+          // Find the specific illustration for this chapter index
+          const illustration = files.find(f => f.fieldname === `chapterIllustration_${index}`);
+          return {
+            title: ch.title || `Chapter ${index + 1}`,
+            heading: ch.heading || "",
+            content: ch.content || "",
+            illustrationUrl: illustration ? illustration.location : "", 
+            order: index + 1
+          };
+        });
+      } catch (e) {
+        console.error("Chapter JSON parse error:", e);
+        // Fallback to empty if JSON is invalid
+      }
     }
 
     const newBook = new PublishBook({
       title,
       author: author || "Admin",
-      category: "Fiction", 
+      category: req.body.category || "Fiction", 
       summary: description, 
-      price: price || 0,
+      price: Number(price) || 0,
       coverImage: coverFile ? coverFile.location : "", 
       // Store document link if uploaded, else empty
       manuscriptKey: docFile?.location || epubFile?.location || "", 
       authorId: req.user?.id || req.user?._id,
       status: 'draft',
-      estimatedPages: estimatedPages || 1,
+      estimatedPages: Number(estimatedPages) || 1,
       chapters: finalChapters
     });
 
     const savedBook = await newBook.save();
     res.status(201).json(savedBook);
   } catch (err) {
-    console.error("Create Book Error:", err);
-    res.status(500).json({ success: false, message: "Failed to create book draft" });
+    // 4. IMPROVED ERROR LOGGING
+    console.error("CRITICAL CREATE BOOK ERROR:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal Server Error", 
+      error: err.message // Sends exact error back to help debug
+    });
   }
 };
 
