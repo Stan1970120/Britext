@@ -1,6 +1,3 @@
-backend/src/middleware/publishbook.middleware.js
-
-
 import jwt from 'jsonwebtoken';
 import { S3Client } from "@aws-sdk/client-s3";
 import multer from "multer";
@@ -21,11 +18,15 @@ export const upload = multer({
     contentType: multerS3.AUTO_CONTENT_TYPE,
     key: (req, file, cb) => {
       // Logic to separate covers from illustrations in S3 folders
-      const folder = file.fieldname === 'cover' ? "covers/" : "illustrations/";
+      let folder = "misc/";
+      if (file.fieldname === 'cover') folder = "covers/";
+      else if (file.fieldname.startsWith('chapterIllustration')) folder = "illustrations/";
+      else if (file.fieldname === 'docFile' || file.fieldname === 'epubFile') folder = "manuscripts/";
+      
       const fileName = `${Date.now()}-${file.originalname.replace(/\s+/g, "_")}`;
       cb(null, folder + fileName);
     },
-    acl: "public-read", 
+    // ✨ REMOVED acl: "public-read" to fix 500 error due to Bucket Owner Enforced setting
   }),
 });
 
