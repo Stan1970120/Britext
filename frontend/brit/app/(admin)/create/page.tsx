@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { REST_API } from "../../constant"; 
 import Link from "next/link";
-import { Plus, Trash2, Image as ImageIcon, Loader2, Save, BookOpen, FileText, Upload, X } from "lucide-react";
+import { Plus, Trash2, Image as ImageIcon, Loader2, Save, BookOpen, FileText, Upload, X, ChevronLeft } from "lucide-react"; // ✨ Added ChevronLeft here
 import { useAuth } from "@/app/context/AuthContext";
 
 interface Chapter {
@@ -77,6 +77,7 @@ export default function CreateBookPage() {
 
     const formData = new FormData(e.currentTarget);
     
+    // ✨ UPDATED: Logic to handle illustration files correctly
     if (creationMode === "write") {
       formData.append("estimatedPages", calculateTotalPages().toString());
       
@@ -87,7 +88,8 @@ export default function CreateBookPage() {
       }));
       formData.append("chaptersData", JSON.stringify(textData));
 
-      // Append chapter-specific illustrations for backend processing
+      // Append chapter-specific illustrations using the specific naming 
+      // convention expected by backend/src/controllers/publishbook.controller.js
       chapters.forEach((ch, index) => {
         if (ch.illustration) {
           formData.append(`chapterIllustration_${index}`, ch.illustration);
@@ -103,6 +105,7 @@ export default function CreateBookPage() {
         method: "POST",
         body: formData,
         headers: {
+          // Note: Do not set Content-Type header when sending FormData
           ...(token ? { "Authorization": `Bearer ${token}` } : {}),
         },
       });
@@ -254,8 +257,4 @@ export default function CreateBookPage() {
       </form>
     </div>
   );
-}
-
-function ChevronLeft({ size }: { size: number }) {
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>;
 }
