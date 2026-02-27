@@ -7,8 +7,9 @@ const publishBookSchema = new mongoose.Schema({
   summary: { type: String },
   category: { 
     type: String, 
-    enum: ["Educational", "Fiction", "Non-Fiction", "Professional & Technical", "Faith Based", "Lifestyle", "Journal & Notes"],
-    default: "Fiction"
+    // ✨ UPDATED: Added "Uncategorized" to match frontend default
+    enum: ["Educational", "Fiction", "Non-Fiction", "Professional & Technical", "Faith Based", "Lifestyle", "Journal & Notes", "Uncategorized"],
+    default: "Uncategorized"
   },
   price: { type: Number, default: 0 },
   coverImage: { type: String }, 
@@ -22,7 +23,7 @@ const publishBookSchema = new mongoose.Schema({
     title: { type: String }, 
     heading: { type: String }, 
     content: { type: String }, 
-    illustrationUrl: { type: String }, // ✨ NEW: Stores S3 link for chapter images
+    illustrationUrl: { type: String }, 
     order: { type: Number }
   }],
   
