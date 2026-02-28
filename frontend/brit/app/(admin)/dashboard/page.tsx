@@ -9,7 +9,7 @@ import { DashboardStats, Transaction } from "@/app/types/analytics";
 import { Book } from "@/app/types/books";
 
 // Constant Imports
-import { REST_API } from "../../constant"; // Use the direct REST_API string
+import { REST_API } from "../../constant"; 
 
 // Context Import
 import { useAuth } from "@/app/context/AuthContext";
@@ -25,14 +25,14 @@ export default function AdminDashboard() {
   const { logout, token, loading: authLoading } = useAuth(); 
   
   // State for filtering books by status (Draft vs Published)
-  const [status, setStatus] = useState<"draft" | "published">("published"); 
-  const [books, setBooks] = useState<Book[]>([]);
+  const [activeTab, setActiveTab] = useState<"draft" | "published">("published"); 
+  const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * Helper to handle non-JSON responses (Prevents the "Unexpected token <" error)
+   * Helper to handle non-JSON responses
    */
   const safeJsonResponse = async <T,>(response: Response): Promise<T | null> => {
     const contentType = response.headers.get("content-type");
@@ -54,10 +54,9 @@ export default function AdminDashboard() {
         "Authorization": `Bearer ${token}`
       };
 
-      // Direct fetching using the hyphenated path 'publish-books'
-      // This solves the 404 issue seen in your logs
+      // ✅ FIX: Removed ?status=${status} to fetch ALL books
       const [booksRes, statsRes] = await Promise.all([
-        fetch(`${REST_API}/publish-books/admin/books?status=${status}`, { 
+        fetch(`${REST_API}/publish-books/admin/books`, { 
           method: "GET", 
           headers 
         }),
@@ -67,7 +66,6 @@ export default function AdminDashboard() {
         })
       ]);
 
-      // Check for Internal Server Error (500)
       if (booksRes.status === 500 || statsRes.status === 500) {
         throw new Error("The server encountered an error (500). Please check backend logs.");
       }
@@ -81,10 +79,11 @@ export default function AdminDashboard() {
       const statsData = await safeJsonResponse<DashboardStats>(statsRes);
 
       if (booksData === null || statsData === null) {
-        throw new Error("Invalid response format (HTML returned instead of JSON). Check API routes.");
+        throw new Error("Invalid response format. Check API routes.");
       }
 
-      setBooks(Array.isArray(booksData) ? booksData : []);
+      // ✅ FIX: Store all books in state
+      setAllBooks(Array.isArray(booksData) ? booksData : []);
       setStats(statsData);
 
     } catch (err: unknown) {
@@ -94,7 +93,7 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [status, token]);
+  }, [token]);
 
   useEffect(() => {
     if (!authLoading) {
@@ -110,6 +109,9 @@ export default function AdminDashboard() {
     await logout();
     router.replace("/signin");
   };
+
+  // ✅ FIX: Local Filtering Logic
+  const filteredBooks = allBooks.filter(book => book.status === activeTab);
 
   if (authLoading) {
     return (
@@ -145,7 +147,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Stats Overview: Live on Store, Inventory (Drafts), Revenue */}
+      {/* Stats Overview */}
       <div className="max-w-7xl mx-auto">
         <StatsOverview 
           draftCount={stats?.totalDrafts || 0} 
@@ -160,7 +162,8 @@ export default function AdminDashboard() {
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm min-h-[500px]">
             <div className="flex items-center justify-between mb-8">
-              <BookTabs active={status} onChange={setStatus} />
+              {/* ✅ FIX: Pass setActiveTab to the Tabs component */}
+              <BookTabs active={activeTab} onChange={setActiveTab} />
             </div>
 
             {error ? (
@@ -179,11 +182,13 @@ export default function AdminDashboard() {
                 <div className="animate-spin h-8 w-8 border-4 border-sky-600 border-t-transparent rounded-full"></div>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Loading Records...</p>
               </div>
-            ) : books.length === 0 ? (
-              <EmptyState text={`No ${status} books found in the database.`} />
+            ) : filteredBooks.length === 0 ? (
+              // ✅ FIX: Use filteredBooks
+              <EmptyState text={`No ${activeTab} books found in the database.`} />
             ) : (
               <div className="grid gap-4">
-                {books.map((book) => (
+                {/* ✅ FIX: Map over filteredBooks */}
+                {filteredBooks.map((book) => (
                   <BookCard key={book._id} book={book} />
                 ))}
               </div>

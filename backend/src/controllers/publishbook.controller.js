@@ -51,27 +51,23 @@ export const getAdminBooks = async (req, res) => {
 /* --------------------------- BOOK MANAGEMENT --------------------------- */
 
 export const createBook = async (req, res) => {
-  // 1. ADDED LOGGING FOR DEBUGGING ON RENDER
   console.log("CreateBook Request Received. Body:", req.body);
   console.log("Files Received:", req.files);
   
   try {
     const { title, description, author, estimatedPages, price, chaptersData, creationMode } = req.body;
     
-    // 2. Identify Main Files (Cover & Optional Manuscript documents)
     const files = req.files || [];
     const coverFile = files.find(f => f.fieldname === 'cover');
     const docFile = files.find(f => f.fieldname === 'docFile');
     const epubFile = files.find(f => f.fieldname === 'epubFile');
 
-    // 3. Process Chapters if in "write" mode
     let finalChapters = [];
     if (creationMode === "write" && chaptersData) {
       try {
         const parsedChapters = JSON.parse(chaptersData);
         
         finalChapters = parsedChapters.map((ch, index) => {
-          // Find the specific illustration for this chapter index
           const illustration = files.find(f => f.fieldname === `chapterIllustration_${index}`);
           return {
             title: ch.title || `Chapter ${index + 1}`,
@@ -83,18 +79,16 @@ export const createBook = async (req, res) => {
         });
       } catch (e) {
         console.error("Chapter JSON parse error:", e);
-        // Fallback to empty if JSON is invalid
       }
     }
 
     const newBook = new PublishBook({
       title,
       author: author || "Admin",
-      category: req.body.category || "Fiction", 
+      category: req.body.category || "Uncategorized", 
       summary: description, 
       price: Number(price) || 0,
       coverImage: coverFile ? coverFile.location : "", 
-      // Store document link if uploaded, else empty
       manuscriptKey: docFile?.location || epubFile?.location || "", 
       authorId: req.user?.id || req.user?._id,
       status: 'draft',
@@ -105,12 +99,11 @@ export const createBook = async (req, res) => {
     const savedBook = await newBook.save();
     res.status(201).json(savedBook);
   } catch (err) {
-    // 4. IMPROVED ERROR LOGGING
     console.error("CRITICAL CREATE BOOK ERROR:", err);
     res.status(500).json({ 
       success: false, 
       message: "Internal Server Error", 
-      error: err.message // Sends exact error back to help debug
+      error: err.message 
     });
   }
 };
@@ -138,20 +131,34 @@ export const updateChapters = async (req, res) => {
   }
 };
 
+/**
+ * ✅ UPDATED: Finalize & Publish
+ * Handles the transition from draft to published and merges storefront data.
+ */
 export const finalizePublish = async (req, res) => {
   try {
     const { id } = req.params;
-    const { category, price } = req.body; 
+    const { category, price, summary, author } = req.body; 
     
-    const updatedBook = await PublishBook.findByIdAndUpdate(
-      id,
-      { category, price, status: 'published' },
-      { new: true }
-    );
-    if (!updatedBook) return res.status(404).json({ message: "Book not found" });
+    // 1. Fetch the existing draft
+    const book = await PublishBook.findById(id);
+    if (!book) return res.status(404).json({ message: "Book not found" });
+
+    // 2. Update fields: prioritize new input, fallback to existing draft data
+    book.category = category || book.category;
+    book.price = price !== undefined ? Number(price) : book.price;
+    book.summary = summary || book.summary; // Uses the written synopsis if new summary is blank
+    book.author = author || book.author;
+    book.status = 'published';
+
+    // 3. Save the changes
+    const updatedBook = await book.save();
+    
+    console.log(`Book "${updatedBook.title}" is now LIVE.`);
     res.json(updatedBook);
   } catch (err) {
-    res.status(500).json({ message: "Failed to publish book" });
+    console.error("FINALIZE PUBLISH ERROR:", err);
+    res.status(500).json({ message: "Failed to publish book", error: err.message });
   }
 };
 
