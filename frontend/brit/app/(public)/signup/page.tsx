@@ -4,7 +4,7 @@ import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useUser } from "@/app/hooks/useUser";
-import { Eye, EyeOff } from "lucide-react"; // ✨ Added icons
+import { Eye, EyeOff, Facebook } from "lucide-react"; 
 
 type Sex = "male" | "female" | "custom" | "";
 
@@ -21,7 +21,7 @@ export default function SignupPage() {
   const [password1, setPassword1] = useState("");
   const [password2, setPassword2] = useState("");
 
-  const [showPassword, setShowPassword] = useState(false); // ✨ Toggle state
+  const [showPassword, setShowPassword] = useState(false); 
   const [loading, setLoading] = useState(false);
   const [passwordNotMatch, setPasswordNotMatch] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -70,12 +70,16 @@ export default function SignupPage() {
     }
   };
 
+  /**
+   * ✅ OAuth Handlers
+   * These redirect the user to your Backend Passport.js/OAuth routes
+   */
   const handleGoogleSignup = () => {
     window.location.href = `${API_URL}/auth/google`;
   };
 
-  const handleAppleSignup = () => {
-    window.location.href = `${API_URL}/auth/apple`;
+  const handleFacebookSignup = () => {
+    window.location.href = `${API_URL}/auth/facebook`;
   };
 
   return (
@@ -126,7 +130,6 @@ export default function SignupPage() {
               className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
             />
 
-            {/* Password Fields with Toggle */}
             <div className="space-y-3">
               <div className="relative">
                 <input
@@ -199,6 +202,7 @@ export default function SignupPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row justify-center gap-3 mt-3">
+            {/* Google Button */}
             <button
               onClick={handleGoogleSignup}
               className="flex flex-1 items-center justify-center gap-2 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
@@ -212,17 +216,18 @@ export default function SignupPage() {
               <span className="text-sm font-medium text-gray-700">Google</span>
             </button>
 
+            {/* Facebook Button (Replaced Apple) */}
             <button
-              onClick={handleAppleSignup}
+              onClick={handleFacebookSignup}
               className="flex flex-1 items-center justify-center gap-2 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
             >
               <Image
-                src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg"
-                alt="Apple"
-                width={16}
-                height={16}
+                src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg"
+                alt="Facebook"
+                width={18}
+                height={18}
               />
-              <span className="text-sm font-medium text-gray-700">Apple</span>
+              <span className="text-sm font-medium text-gray-700">Facebook</span>
             </button>
           </div>
         </div>
