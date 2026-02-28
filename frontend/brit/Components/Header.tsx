@@ -17,23 +17,33 @@ const Header = () => {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
     try {
+      setIsLoggingOut(true);
       setMobileMenuOpen(false);
       
-      // 1. Clear the Auth state (Context + LocalStorage)
+      // 1. Clear state
       await logout(); 
       
-      // 2. Use replace to overwrite history. 
-      // This prevents the browser from trying to re-render the 
-      // protected /admin route after the user is null.
-      window.location.replace("/"); 
+      // 2. Clear all local storage/session storage to be safe
+      if (typeof window !== "undefined") {
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // 3. Force a complete hard reload to the landing page
+        // This breaks the "Protected Route" loop that causes 404s
+        window.location.href = "/"; 
+      }
     } catch (error) {
       console.error("Logout failed:", error);
-      window.location.replace("/");
+      window.location.href = "/";
     }
   };
+
+  // If logging out, show a clean state to prevent 404/flicker
+  const activeUser = isLoggingOut ? null : user;
 
   return (
     <header className="w-full bg-white shadow-sm py-4 px-6 md:px-10 flex items-center justify-between relative z-50">
@@ -53,9 +63,9 @@ const Header = () => {
 
       {/* RIGHT SECTION: AUTH & NAVIGATION */}
       <div className="hidden md:flex items-center gap-6 text-gray-700 text-sm">
-        {user?.role === "admin" && (
+        {activeUser?.role === "admin" && (
           <button 
-            onClick={() => router.push("/admin")} 
+            onClick={() => router.push("/dashboard")} 
             className="flex items-center gap-1 text-[#035b77] font-semibold hover:opacity-80 transition"
           >
             <LayoutDashboard size={18} />
@@ -63,7 +73,7 @@ const Header = () => {
           </button>
         )}
 
-        {user && (
+        {activeUser && (
           <button 
             onClick={() => router.push("/my-books")} 
             className="flex items-center gap-1 hover:text-[#035b77] transition font-medium"
@@ -73,15 +83,14 @@ const Header = () => {
           </button>
         )}
 
-        {user ? (
+        {activeUser ? (
           <div className="flex items-center gap-4 border-l pl-6">
             <button 
               onClick={() => router.push("/profile")} 
               className="flex items-center gap-2 font-medium text-gray-900 hover:text-[#035b77] transition"
             >
-              {/* Added safe navigation ?. to prevent crash during state clear */}
               <div className="w-8 h-8 bg-[#035b77] text-white rounded-full flex items-center justify-center text-xs font-bold">
-                {user?.firstName?.[0] || ""}{user?.lastName?.[0] || ""}
+                {activeUser?.firstName?.[0] || ""}{activeUser?.lastName?.[0] || ""}
               </div>
               <span>Profile</span>
             </button>
@@ -89,8 +98,9 @@ const Header = () => {
               onClick={handleLogout} 
               className="text-gray-400 hover:text-red-500 transition"
               title="Logout"
+              disabled={isLoggingOut}
             >
-              <LogOut size={18} />
+              <LogOut size={18} className={isLoggingOut ? "animate-pulse" : ""} />
             </button>
           </div>
         ) : (
@@ -122,16 +132,16 @@ const Header = () => {
       {/* MOBILE MENU */}
       {mobileMenuOpen && (
         <div className="absolute top-full left-0 right-0 bg-white shadow-xl flex flex-col p-6 space-y-6 md:hidden border-t animate-in fade-in slide-in-from-top-2">
-          {user && (
+          {activeUser && (
             <div className="border-b pb-4">
               <p className="text-sm text-gray-500">Logged in as</p>
-              <p className="font-bold text-[#035b77]">{user?.firstName} {user?.lastName}</p>
+              <p className="font-bold text-[#035b77]">{activeUser?.firstName} {activeUser?.lastName}</p>
             </div>
           )}
           
-          {user?.role === "admin" && (
+          {activeUser?.role === "admin" && (
             <button 
-              onClick={() => { router.push("/admin"); setMobileMenuOpen(false); }} 
+              onClick={() => { router.push("/dashboard"); setMobileMenuOpen(false); }} 
               className="flex items-center gap-3 text-[#035b77] font-bold"
             >
               <LayoutDashboard size={20} /> Admin Dashboard
@@ -139,13 +149,13 @@ const Header = () => {
           )}
 
           <button 
-            onClick={() => { router.push(user ? "/my-books" : "/auth"); setMobileMenuOpen(false); }} 
+            onClick={() => { router.push(activeUser ? "/my-books" : "/auth"); setMobileMenuOpen(false); }} 
             className="flex items-center gap-3 font-medium"
           >
             <BookOpen size={20} /> My Books
           </button>
 
-          {user ? (
+          {activeUser ? (
             <>
               <button 
                 onClick={() => { router.push("/profile"); setMobileMenuOpen(false); }} 
