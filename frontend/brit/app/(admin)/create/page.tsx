@@ -71,13 +71,12 @@ export default function CreateBookPage() {
     setChapters(newChapters);
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
     
-    // ✨ UPDATED: Logic to handle illustration files correctly
     if (creationMode === "write") {
       formData.append("estimatedPages", calculateTotalPages().toString());
       
@@ -88,8 +87,6 @@ export default function CreateBookPage() {
       }));
       formData.append("chaptersData", JSON.stringify(textData));
 
-      // Append chapter-specific illustrations using the specific naming 
-      // convention expected by backend/src/controllers/publishbook.controller.js
       chapters.forEach((ch, index) => {
         if (ch.illustration) {
           formData.append(`chapterIllustration_${index}`, ch.illustration);
@@ -97,6 +94,7 @@ export default function CreateBookPage() {
       });
     }
     
+    // Ensure these match the Model Enum
     formData.append("category", "Uncategorized");
     formData.append("creationMode", creationMode);
 
@@ -105,20 +103,23 @@ export default function CreateBookPage() {
         method: "POST",
         body: formData,
         headers: {
-          // Note: Do not set Content-Type header when sending FormData
+          // ✨ CRITICAL: Removed Content-Type. 
+          // Browser will automatically set multipart/form-data with correct boundary.
           ...(token ? { "Authorization": `Bearer ${token}` } : {}),
         },
       });
 
+      const resData = await res.json();
+
       if (res.ok) {
         router.push("/dashboard"); 
       } else {
-        const errData = await res.json();
-        alert(`Error: ${errData.message || "Failed to save book"}`);
+        // Now showing the exact error from our new backend logging
+        alert(`Server Error: ${resData.error || resData.message || "Unknown error"}`);
       }
     } catch (error) {
       console.error(error);
-      alert("Network error occurred.");
+      alert("Network error: Could not connect to server.");
     } finally {
       setLoading(false);
     }
