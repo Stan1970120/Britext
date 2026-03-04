@@ -24,7 +24,8 @@ interface AuthContextType {
     password: string;
     sex?: string;
   }) => Promise<void>;
-  logout: () => Promise<void>; // Updated to Promise for backend sync
+  logout: () => Promise<void>;
+  loginWithToken: (token: string) => Promise<void>; // ✨ Added this
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,7 +67,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const res = await fetch(`${REST_API}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // 🔐 Critical for Cross-Domain Cookies (Vercel to Render)
         credentials: "include", 
         body: JSON.stringify({ email, password }),
       });
@@ -92,7 +92,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const res = await fetch(`${REST_API}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // 🔐 Critical for Cross-Domain Cookies
         credentials: "include", 
         body: JSON.stringify(payload),
       });
@@ -106,9 +105,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  /**
+   * ✨ Handles authentication via Google/Facebook redirect
+   */
+  const loginWithToken = async (jwtToken: string) => {
+    setLoading(true);
+    try {
+      // Fetch user profile using the token to set user state
+      const res = await fetch(`${REST_API}/auth/profile`, {
+        method: "GET",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${jwtToken}`
+        },
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error("Failed to fetch user profile");
+
+      saveAuth(data.user, jwtToken);
+    } catch (err) {
+      console.error("Token login error:", err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
-      // 🔐 Notify backend to clear the secure cookie
       await fetch(`${REST_API}/auth/logout`, { 
         method: "POST", 
         credentials: "include" 
@@ -116,7 +141,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (err) {
       console.error("Logout error:", err);
     } finally {
-      // Always clear local state regardless of server response
       setUser(null);
       setToken(null);
       localStorage.removeItem("user");
@@ -125,7 +149,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, signup, logout, loginWithToken }}>
       {children}
     </AuthContext.Provider>
   );
