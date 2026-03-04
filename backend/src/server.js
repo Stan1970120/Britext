@@ -6,6 +6,11 @@ import cookieParser from "cookie-parser";
 import path from "path"; 
 import fs from "fs"; 
 import { fileURLToPath } from "url";
+import passport from "passport"; // ✨ Added passport import
+
+// ✨ Import the new strategies to initialize them
+import "./config/passport-google.js";
+import "./config/passport-facebook.js";
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
@@ -20,40 +25,43 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /* =======================
-    Middleware
+    Middleware
 ======================= */
 app.use(
-  cors({
-    origin: ["http://localhost:3000", "https://britext.vercel.app"],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  cors({
+    origin: ["http://localhost:3000", "https://britext.vercel.app"],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
 );
 
 app.options("*", cors()); 
 app.use(cookieParser()); 
 app.use(express.json());
 
+// ✨ Initialize Passport Middleware
+app.use(passport.initialize());
+
 /* =======================
-    Static Folder
+    Static Folder
 ======================= */
 const uploadPath = fs.existsSync(path.join(__dirname, "../uploads"))
-  ? path.join(__dirname, "../uploads")
-  : path.join(__dirname, "uploads");
+  ? path.join(__dirname, "../uploads")
+  : path.join(__dirname, "uploads");
 
 app.use("/uploads", express.static(uploadPath));
 
 /* =======================
-    Database
+    Database
 ======================= */
 mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error("❌ MongoDB error:", err));
+  .connect(process.env.MONGO_URI)
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch((err) => console.error("❌ MongoDB error:", err));
 
 /* =======================
-    Routes
+    Routes
 ======================= */
 app.use("/api/auth", authRoutes);
 app.use("/api/publish-books", publishBookRoutes); 
@@ -62,15 +70,15 @@ app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/admin", adminRoutes);
 
 app.get("/", (req, res) => {
-  res.send("Britext API running 🚀");
+  res.send("Britext API running 🚀");
 });
 
 app.use((err, req, res, next) => {
-  console.error("💥 Global Error:", err.stack);
-  res.status(500).json({ message: "Internal Server Error", error: err.message });
+  console.error("💥 Global Error:", err.stack);
+  res.status(500).json({ message: "Internal Server Error", error: err.message });
 });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () =>
-  console.log(`🚀 Server running on port ${PORT}`)
+  console.log(`Server running on port ${PORT}`)
 );
