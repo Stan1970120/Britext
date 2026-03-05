@@ -8,228 +8,218 @@ import { REST_API } from "../../constant";
 import { useAuth } from "@/app/context/AuthContext";
 
 interface Book {
-  _id: string;
-  title: string;
-  author: string;
-  category: string;
-  price: number;
-  rating: number;
-  coverImage: string;
-  isInCart: boolean;
-  isWishlisted: boolean;
+  _id: string;
+  title: string;
+  author: string;
+  category: string;
+  price: number;
+  rating: number;
+  coverImage: string;
+  isInCart: boolean;
+  isWishlisted: boolean;
 }
 
 const categories = [
-  "All Books", "Educational", "Fiction", "Non-Fiction", 
-  "Professional & Technical", "Faith Based", "Lifestyle", "Journal & Notes",
+  "All Books", "Educational", "Fiction", "Non-Fiction", 
+  "Professional & Technical", "Faith Based", "Lifestyle", "Journal & Notes",
 ];
 
 const BookStore = () => {
-  const router = useRouter();
-  const { token, loading: authLoading } = useAuth();
-  const [selectedCategory, setSelectedCategory] = useState("All Books");
-  const [books, setBooks] = useState<Book[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const { token, loading: authLoading } = useAuth();
+  const [selectedCategory, setSelectedCategory] = useState("All Books");
+  const [books, setBooks] = useState<Book[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const fetchBooks = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const categoryParam = selectedCategory !== "All Books" 
-        ? `?category=${encodeURIComponent(selectedCategory)}` 
-        : "";
-      
-      const res = await fetch(`${REST_API}/publish-books/store/books${categoryParam}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      
-      if (!res.ok) throw new Error("Failed to fetch");
-      const data = await res.json();
-      setBooks(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Failed to fetch books:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedCategory, token]);
+  const fetchBooks = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const categoryParam = selectedCategory !== "All Books" 
+        ? `?category=${encodeURIComponent(selectedCategory)}` 
+        : "";
+      
+      const res = await fetch(`${REST_API}/publish-books/store/books${categoryParam}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      
+      if (!res.ok) throw new Error("Failed to fetch");
 
-  useEffect(() => {
-    if (!authLoading) fetchBooks();
-  }, [fetchBooks, authLoading]);
+      const data = await res.json();
+      setBooks(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Failed to fetch books:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedCategory, token]);
 
-  const updateLocalState = (bookId: string, updates: Partial<Book>) => {
-    setBooks(current => current.map(b => b._id === bookId ? { ...b, ...updates } : b));
-  };
+  useEffect(() => {
+    if (!authLoading) fetchBooks();
+  }, [fetchBooks, authLoading]);
 
-  const handleAddToCart = async (e: React.MouseEvent, bookId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!token) return router.push("/login");
+  const updateLocalState = (bookId: string, updates: Partial<Book>) => {
+    setBooks(current => current.map(b => b._id === bookId ? { ...b, ...updates } : b));
+  };
 
-    updateLocalState(bookId, { isInCart: true });
+  const handleAddToCart = async (e: React.MouseEvent, bookId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!token) return router.push("/login");
 
-    try {
-      const res = await fetch(`${REST_API}/cart`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json", 
-          Authorization: `Bearer ${token}` 
-        },
-        body: JSON.stringify({ bookId }),
-      });
-      if (!res.ok) throw new Error();
-    } catch (error) {
-      updateLocalState(bookId, { isInCart: false });
-      alert("Error updating cart");
-    }
-  };
+    updateLocalState(bookId, { isInCart: true });
 
-  const handleWishlist = async (e: React.MouseEvent, bookId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!token) return router.push("/login");
+    try {
+      const res = await fetch(`${REST_API}/cart`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json", 
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ bookId }),
+      });
+      if (!res.ok) throw new Error();
+    } catch (error) {
+      updateLocalState(bookId, { isInCart: false });
+      alert("Error updating cart");
+    }
+  };
 
-    const book = books.find(b => b._id === bookId);
-    const oldStatus = !!book?.isWishlisted;
-    updateLocalState(bookId, { isWishlisted: !oldStatus });
+  const handleWishlist = async (e: React.MouseEvent, bookId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!token) return router.push("/login");
 
-    try {
-      const res = await fetch(`${REST_API}/wishlist`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json", 
-          Authorization: `Bearer ${token}` 
-        },
-        body: JSON.stringify({ bookId }),
-      });
-      if (!res.ok) throw new Error();
-    } catch (error) {
-      updateLocalState(bookId, { isWishlisted: oldStatus });
-    }
-  };
+    const book = books.find(b => b._id === bookId);
+    const oldStatus = !!book?.isWishlisted;
+    updateLocalState(bookId, { isWishlisted: !oldStatus });
 
-  // Logic for rating click (as requested, keeping logic but styling for UI)
-  const handleRatingClick = (e: React.MouseEvent, bookId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Your existing API rating logic would go here
-    console.log("Rating clicked for:", bookId);
-  };
+    try {
+      const res = await fetch(`${REST_API}/wishlist`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json", 
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ bookId }),
+      });
+      if (!res.ok) throw new Error();
+    } catch (error) {
+      updateLocalState(bookId, { isWishlisted: oldStatus });
+    }
+  };
 
-  return (
-    <div className="p-6 md:p-12 bg-[#fcfcfc] min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-10">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">Book Store</h1>
-          
-          {/* --- Categories Pill Row --- */}
-          <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-5 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                  selectedCategory === cat 
-                  ? "bg-[#46b1c9] text-white" 
-                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </header>
+  return (
+    <div className="p-4 md:p-10 bg-[#f8fafc] min-h-screen">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+          <div>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight">The Library</h1>
+            <p className="text-slate-500 mt-1 font-medium">Explore and collect your favorite reads.</p>
+          </div>
+          {(isLoading || authLoading) && <Loader2 className="animate-spin text-sky-600" size={28} />}
+        </div>
 
-        {isLoading ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {[1, 2, 3, 4].map((n) => (
-              <div key={n} className="aspect-[3/5] bg-gray-100 rounded-xl animate-pulse" />
-            ))}
-          </div>
-        ) : books.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-10">
-            {books.map((book) => (
-              <div key={book._id} className="relative group flex flex-col bg-white rounded-2xl p-3 shadow-sm hover:shadow-md transition-shadow">
-                
-                {/* Wishlist Button */}
-                <button
-                  onClick={(e) => handleWishlist(e, book._id)}
-                  className="absolute top-5 right-5 z-10 p-1"
-                >
-                  <Heart 
-                    size={20} 
-                    className={`${book.isWishlisted ? "fill-red-500 text-red-500" : "text-gray-400"} hover:scale-110 transition-transform`} 
-                  />
-                </button>
+        {/* --- Categories Grid (4 Mobile, 8 Desktop) --- */}
+        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 mb-12">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-2 py-2.5 rounded-xl text-[10px] sm:text-xs font-bold transition-all duration-300 flex items-center justify-center text-center leading-tight ${
+                selectedCategory === cat 
+                ? "bg-sky-600 text-white shadow-lg shadow-sky-100 scale-105" 
+                : "bg-white text-slate-600 hover:bg-sky-50 border border-slate-100"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
 
-                {/* Book Cover */}
-                <div 
-                  className="relative aspect-[3.5/5] w-full rounded-xl overflow-hidden bg-gray-50 mb-4 cursor-pointer"
-                  onClick={() => router.push(`/book-store/${book._id}`)}
-                >
-                  <Image 
-                    src={book.coverImage || "/placeholder.png"} 
-                    alt={book.title} 
-                    fill 
-                    className="object-cover"
-                    unoptimized
-                  />
-                </div>
+        {/* --- Books Grid (1 Mobile, 3 Tablet, 4 Desktop) --- */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
+            {[1, 2, 3, 4].map((n) => (
+              <div key={n} className="h-96 bg-white rounded-3xl border border-slate-100 animate-pulse" />
+            ))}
+          </div>
+        ) : books.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
+            {books.map((book) => (
+              <div 
+                key={book._id} 
+                className="group relative bg-white rounded-3xl border border-slate-100 hover:border-sky-200 shadow-sm hover:shadow-xl transition-all duration-500 flex flex-col"
+              >
+                <div 
+                  className="relative aspect-[3/4] m-3 rounded-2xl overflow-hidden bg-slate-50 cursor-pointer"
+                  onClick={() => router.push(`/book-store/${book._id}`)}
+                >
+                  <Image 
+                    src={book.coverImage || "/placeholder.png"} 
+                    alt={book.title} 
+                    fill 
+                    className="object-cover group-hover:scale-110 transition-transform duration-700"
+                    unoptimized
+                  />
+                  
+                  <button
+                    onClick={(e) => handleWishlist(e, book._id)}
+                    className="absolute top-3 right-3 bg-white/80 backdrop-blur-md p-2 rounded-xl shadow-sm hover:bg-white transition-all z-20"
+                  >
+                    <Heart size={18} className={`${book.isWishlisted ? "fill-rose-500 text-rose-500" : "text-slate-400"}`} />
+                  </button>
+                </div>
 
-                {/* Info Section */}
-                <div className="flex flex-col flex-1 px-1">
-                  <div className="flex justify-between items-start mb-1">
-                    <p className="text-[11px] text-gray-400 font-medium line-clamp-1">
-                      {book.category} - <span className="text-[#46b1c9] hover:underline cursor-pointer">{book.author}</span>
-                    </p>
-                    
-                    {/* Rating Section - Clickable */}
-                    <div 
-                      className="flex items-center gap-0.5 cursor-pointer"
-                      onClick={(e) => handleRatingClick(e, book._id)}
-                    >
-                      <Star size={10} className="fill-yellow-400 text-yellow-400" />
-                      <Star size={10} className="fill-yellow-400 text-yellow-400" />
-                      <Star size={10} className="fill-gray-200 text-gray-200" />
-                      <span className="text-[10px] ml-1 font-bold text-gray-400">{book.rating?.toFixed(1)}</span>
-                    </div>
-                  </div>
+                <div className="p-5 pt-2 flex flex-col flex-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-sky-600 mb-1">
+                    {book.category}
+                  </span>
+                  
+                  <h3 
+                    className="text-base font-bold text-slate-900 line-clamp-1 mb-1 cursor-pointer hover:text-sky-600 transition-colors"
+                    onClick={() => router.push(`/book-store/${book._id}`)}
+                  >
+                    {book.title}
+                  </h3>
+                  
+                  <p className="text-xs text-slate-400 font-medium mb-3">By {book.author}</p>
 
-                  <h3 className="text-sm font-bold text-gray-800 mb-4 line-clamp-1">
-                    {book.title}
-                  </h3>
+                  <div className="flex items-center gap-1 mb-4">
+                    <Star size={14} className="fill-amber-400 text-amber-400" />
+                    <span className="text-xs font-bold text-slate-700">{book.rating?.toFixed(1) || "0.0"}</span>
+                  </div>
 
-                  {/* Actions Row */}
-                  <div className="mt-auto flex items-center justify-between gap-2">
-                    <button
-                      onClick={(e) => handleAddToCart(e, book._id)}
-                      disabled={book.isInCart}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold transition-all ${
-                        book.isInCart 
-                        ? "bg-green-100 text-green-600" 
-                        : "bg-[#46b1c9] text-white hover:bg-[#3990a4]"
-                      }`}
-                    >
-                      <span>{book.isInCart ? "Added to cart" : "Add to cart"}</span>
-                      <ShoppingCart size={14} />
-                    </button>
-                    
-                    <span className="text-lg font-bold text-gray-800">
-                      ${book.price}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-20 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-             <BookOpen className="mx-auto text-gray-300 mb-4" size={48} />
-             <h3 className="text-gray-500 font-medium">This shelf is currently empty.</h3>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+                  <div className="mt-auto flex items-center justify-between gap-3 pt-4 border-t border-slate-50">
+                    <span className="text-lg font-black text-slate-900">${book.price?.toFixed(2)}</span>
+                    <button
+                      onClick={(e) => handleAddToCart(e, book._id)}
+                      disabled={book.isInCart}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all duration-300 ${
+                        book.isInCart 
+                        ? "bg-emerald-500 text-white shadow-emerald-100" 
+                        : "bg-slate-900 text-white hover:bg-sky-600 shadow-lg shadow-slate-200"
+                      }`}
+                    >
+                      {book.isInCart ? <Check size={16} /> : <ShoppingCart size={16} />}
+                      {book.isInCart ? "Added" : "Add"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-32 bg-white rounded-[40px] border border-slate-100 shadow-sm">
+            <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <BookOpen className="text-slate-300" size={32} />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900">No books in this shelf</h3>
+            <p className="text-slate-400 text-sm mt-2">Try selecting another category or check back later.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default BookStore;
