@@ -4,15 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { REST_API } from "../../constant"; 
 import Link from "next/link";
-import { Plus, Trash2, Image as ImageIcon, Loader2, Save, BookOpen, FileText, Upload, X, ChevronLeft } from "lucide-react"; // ✨ Added ChevronLeft here
+import { Plus, Trash2, Image as ImageIcon, Loader2, Save, BookOpen, FileText, Upload, ChevronLeft } from "lucide-react";
 import { useAuth } from "@/app/context/AuthContext";
 
 interface Chapter {
   title: string;
   heading: string;
   content: string;
-  illustration: File | null;
-  illustrationPreview: string | null;
 }
 
 export default function CreateBookPage() {
@@ -24,7 +22,7 @@ export default function CreateBookPage() {
   const [creationMode, setCreationMode] = useState<"write" | "upload">("upload");
   
   const [chapters, setChapters] = useState<Chapter[]>([
-    { title: "Chapter 1", heading: "", content: "", illustration: null, illustrationPreview: null }
+    { title: "Chapter 1", heading: "", content: "" }
   ]);
 
   const calculateTotalPages = () => {
@@ -37,27 +35,10 @@ export default function CreateBookPage() {
     if (file) setPreview(URL.createObjectURL(file));
   };
 
-  const handleChapterIllustration = (index: number, file: File | undefined) => {
-    if (!file) return;
-    const newChapters = [...chapters];
-    newChapters[index].illustration = file;
-    newChapters[index].illustrationPreview = URL.createObjectURL(file);
-    setChapters(newChapters);
-  };
-
-  const removeChapterIllustration = (index: number) => {
-    const newChapters = [...chapters];
-    newChapters[index].illustration = null;
-    newChapters[index].illustrationPreview = null;
-    setChapters(newChapters);
-  };
-
   const addChapter = () => setChapters([...chapters, { 
     title: `Chapter ${chapters.length + 1}`, 
     heading: "", 
-    content: "", 
-    illustration: null, 
-    illustrationPreview: null 
+    content: "" 
   }]);
 
   const removeChapter = (index: number) => {
@@ -66,12 +47,11 @@ export default function CreateBookPage() {
 
   const updateChapter = (index: number, field: keyof Chapter, value: string) => {
     const newChapters = [...chapters];
-    // @ts-expect-error - indexing Chapter by dynamic string field
     newChapters[index][field] = value;
     setChapters(newChapters);
   };
 
- const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
 
@@ -86,15 +66,8 @@ export default function CreateBookPage() {
         content: ch.content
       }));
       formData.append("chaptersData", JSON.stringify(textData));
-
-      chapters.forEach((ch, index) => {
-        if (ch.illustration) {
-          formData.append(`chapterIllustration_${index}`, ch.illustration);
-        }
-      });
     }
     
-    // Ensure these match the Model Enum
     formData.append("category", "Uncategorized");
     formData.append("creationMode", creationMode);
 
@@ -103,8 +76,6 @@ export default function CreateBookPage() {
         method: "POST",
         body: formData,
         headers: {
-          // ✨ CRITICAL: Removed Content-Type. 
-          // Browser will automatically set multipart/form-data with correct boundary.
           ...(token ? { "Authorization": `Bearer ${token}` } : {}),
         },
       });
@@ -114,7 +85,6 @@ export default function CreateBookPage() {
       if (res.ok) {
         router.push("/dashboard"); 
       } else {
-        // Now showing the exact error from our new backend logging
         alert(`Server Error: ${resData.error || resData.message || "Unknown error"}`);
       }
     } catch (error) {
@@ -147,7 +117,6 @@ export default function CreateBookPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-10">
-        {/* Book Metadata Section */}
         <section className="bg-white p-8 border border-gray-100 rounded-[2rem] shadow-sm grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-2 space-y-6">
             <div>
@@ -223,29 +192,7 @@ export default function CreateBookPage() {
                     <input value={chapter.heading} onChange={(e) => updateChapter(index, "heading", e.target.value)} className="text-xl font-bold text-gray-400 outline-none w-full bg-transparent" placeholder="Subtitle (Optional)" />
                   </div>
                   
-                  <textarea value={chapter.content} onChange={(e) => updateChapter(index, "content", e.target.value)} rows={10} className="w-full border-none bg-transparent outline-none text-gray-700 font-serif text-xl resize-none" placeholder="Start writing..." />
-                  
-                  <div className="pt-6 border-t border-gray-50">
-                    {chapter.illustrationPreview ? (
-                      <div className="relative w-40 h-40 group">
-                        <img src={chapter.illustrationPreview} className="w-full h-full object-cover rounded-2xl shadow-md" alt="illustration" />
-                        <button onClick={() => removeChapterIllustration(index)} className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-lg">
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ) : (
-                      <label className="flex items-center gap-3 cursor-pointer w-fit group">
-                        <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 group-hover:bg-sky-50 group-hover:text-sky-600 transition-all border border-transparent group-hover:border-sky-100">
-                          <ImageIcon size={20} />
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Add Illustration</p>
-                          <p className="text-xs font-bold text-gray-600">Chapter specific image</p>
-                        </div>
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleChapterIllustration(index, e.target.files?.[0])} />
-                      </label>
-                    )}
-                  </div>
+                  <textarea value={chapter.content} onChange={(e) => updateChapter(index, "content", e.target.value)} rows={12} className="w-full border-none bg-transparent outline-none text-gray-700 font-serif text-xl resize-none" placeholder="Start writing..." />
                 </div>
               </div>
             ))}

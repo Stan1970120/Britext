@@ -84,6 +84,31 @@ const BookStore = () => {
     }
   };
 
+  // ✅ FIX: Updated to match your backend route: /api/publish-books/rate
+  const handleRatingClick = async (e: React.MouseEvent, bookId: string, value: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!token) return router.push("/login");
+
+    try {
+      const res = await fetch(`${REST_API}/publish-books/rate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ bookId, rating: value }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        updateLocalState(bookId, { rating: data.rating });
+      }
+    } catch (error) {
+      console.error("Failed to rate book", error);
+    }
+  };
+
+  // ✅ FIX: Ensure this hits your wishlist endpoint (usually /api/wishlist or similar)
   const handleWishlist = async (e: React.MouseEvent, bookId: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -94,6 +119,8 @@ const BookStore = () => {
     updateLocalState(bookId, { isWishlisted: !oldStatus });
 
     try {
+      // NOTE: Ensure your backend has a /wishlist route. 
+      // If it's under publish-books, change to `${REST_API}/publish-books/wishlist`
       const res = await fetch(`${REST_API}/wishlist`, {
         method: "POST",
         headers: { 
@@ -119,7 +146,6 @@ const BookStore = () => {
           {(isLoading || authLoading) && <Loader2 className="animate-spin text-sky-600" size={28} />}
         </div>
 
-        {/* --- Categories Grid (4 Columns Mobile, 8 Columns Desktop) --- */}
         <div className="grid grid-cols-4 lg:grid-cols-8 gap-2 mb-12">
           {categories.map((cat) => (
             <button
@@ -136,7 +162,6 @@ const BookStore = () => {
           ))}
         </div>
 
-        {/* --- Books Grid --- */}
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
             {[1, 2, 3, 4].map((n) => (
@@ -184,9 +209,21 @@ const BookStore = () => {
                   
                   <p className="text-xs text-slate-400 font-medium mb-3">By {book.author}</p>
 
+                  {/* ✅ FIX: Stars now interactive and hit the /rate endpoint */}
                   <div className="flex items-center gap-1 mb-4">
-                    <Star size={14} className="fill-amber-400 text-amber-400" />
-                    <span className="text-xs font-bold text-slate-700">{book.rating?.toFixed(1) || "0.0"}</span>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                       <Star 
+                        key={star}
+                        size={14} 
+                        onClick={(e) => handleRatingClick(e, book._id, star)}
+                        className={`cursor-pointer transition-transform hover:scale-125 ${
+                          star <= Math.round(book.rating || 0) 
+                          ? "fill-amber-400 text-amber-400" 
+                          : "text-slate-300"
+                        }`} 
+                      />
+                    ))}
+                    <span className="text-xs font-bold text-slate-700 ml-1">{book.rating?.toFixed(1) || "0.0"}</span>
                   </div>
 
                   <div className="mt-auto flex items-center justify-between gap-3 pt-4 border-t border-slate-50">
