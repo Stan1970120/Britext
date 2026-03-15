@@ -9,7 +9,6 @@ import {
     finalizePublish, 
     getReaderView,
     getStoreBooks,
-    getStoreBookDetails, // ✨ Added the new public detail controller
     rateBook
 } from '../controllers/publishbook.controller.js';
 
@@ -32,24 +31,21 @@ router.post(
 );
 
 router.patch('/admin/books/:id/chapters', verifyAdmin, updateChapters);
-
-// MATCHED TO FRONTEND: /api/publish-books/admin/books/:id/publish
 router.patch('/admin/books/:id/publish', verifyAdmin, finalizePublish);
 
 /* ==========================================
     STORE & USER ENDPOINTS (PUBLIC)
    ========================================== */
 
-// Accessible to everyone (No 'protect' middleware)
+// These should be accessible to anyone
 router.get('/store/books', getStoreBooks);
-router.get('/store/books/:id', getStoreBookDetails); // ✅ Uses the new public controller
+router.get('/store/books/:id', getReaderView); // ✅ REMOVED 'protect' so the page loads for everyone
 
 /* ==========================================
     PROTECTED USER ENDPOINTS
    ========================================== */
 
-// Users MUST be logged in to rate or read the full content
+// Users MUST be logged in to rate a book
 router.post('/rate', protect, rateBook);
-router.get('/reader/:id', protect, getReaderView); // ✅ Secure route for the actual reading experience
 
 export default router;
