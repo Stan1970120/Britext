@@ -1,6 +1,6 @@
-const passport = require("passport");
-const FacebookStrategy = require("passport-facebook").Strategy;
-const User = require("../models/User");
+import passport from "passport";
+import { Strategy as FacebookStrategy } from "passport-facebook";
+import User from "../models/User.js"; // Note: Added .js extension
 
 passport.use(
   new FacebookStrategy(
