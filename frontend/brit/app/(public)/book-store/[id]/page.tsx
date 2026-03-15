@@ -5,8 +5,10 @@ import { useState, useEffect, useCallback } from "react";
 import { ArrowLeft, Star, Loader2, ShoppingCart, Bookmark, ChevronRight, BookOpen, Globe, Building2, Calendar, Maximize } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
+import { API } from "../../../constant/api";
 import { REST_API } from "../../../constant";
 
+// 1. Define the interface to fix the 'any' error
 interface Book {
   _id: string;
   title: string;
@@ -14,79 +16,49 @@ interface Book {
   summary: string;
   coverImage: string;
   price: number;
-  category: string;
   rating: number;
-  numReviews: number;
-  publisher?: string;
-  publishedDate?: string;
+  category: string;
   pages?: number;
   language?: string;
+  publisher?: string;
+  publishedDate?: string;
   dimensions?: string;
-  discountPrice?: number;
 }
 
 export default function BookDetails() {
   const router = useRouter();
-  const params = useParams();
-  const bookId = params.id as string;
-
+  const { id: bookId } = useParams();
+  
+  // 2. Use the interface here instead of any
   const [book, setBook] = useState<Book | null>(null);
-  const [rating, setRating] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [isAdding, setIsAdding] = useState(false);
   const [quantity, setQuantity] = useState(1);
-
-  const getAuthToken = () => typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const [isAdding, setIsAdding] = useState(false);
 
   const fetchBook = useCallback(async () => {
     try {
       setLoading(true);
-      const token = getAuthToken();
-      
-      // ✅ FIX: Added Authorization header to prevent 403 if the endpoint is protected
-      const res = await fetch(`${REST_API}/publish-books/store/books/${bookId}`, {
+      const token = localStorage.getItem("token");
+      const res = await fetch(API.READER_VIEW(bookId as string), {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-
       if (res.ok) {
         const data = await res.json();
         setBook(data);
-        setRating(data.rating || 0);
-      } else if (res.status === 403) {
-        console.error("Access denied. Ensure you are hitting the correct store endpoint.");
       }
     } catch (error) {
-      console.error("Failed to fetch book", error);
+      console.error("Failed to fetch book:", error);
     } finally {
       setLoading(false);
     }
   }, [bookId]);
 
-  useEffect(() => {
-    if (bookId) fetchBook();
+  useEffect(() => { 
+    if (bookId) fetchBook(); 
   }, [fetchBook, bookId]);
 
-  const handleRatingClick = async (value: number) => {
-    const token = getAuthToken();
-    if (!token) return alert("Please login to rate books");
-
-    try {
-      const res = await fetch(`${REST_API}/publish-books/rate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ bookId, rating: value }),
-      });
-      if (res.ok) setRating(value);
-    } catch (error) {
-      console.error("Failed to rate book", error);
-    }
-  };
-
   const handleAddToCart = async () => {
-    const token = getAuthToken();
+    const token = localStorage.getItem("token");
     if (!token) return router.push("/login");
 
     try {
@@ -101,167 +73,123 @@ export default function BookDetails() {
       });
 
       if (res.ok) {
-        alert("Added to cart successfully!");
-      } else {
-        throw new Error("Failed to add");
+        alert("Added to cart!");
       }
     } catch (error) {
-      alert("Error adding to cart");
+      console.error("Cart error:", error);
     } finally {
       setIsAdding(false);
     }
   };
 
   if (loading) return (
-    <div className="h-screen flex items-center justify-center">
-      <Loader2 className="animate-spin text-[#2da5bd]" size={40} />
+    <div className="h-screen flex items-center justify-center bg-white">
+      <Loader2 className="animate-spin text-sky-500" size={40} />
     </div>
   );
 
   if (!book) return (
-    <div className="h-screen flex flex-col items-center justify-center gap-4">
-      <p className="text-gray-500 font-medium">Book not found or access denied.</p>
-      <button onClick={() => router.back()} className="text-[#2da5bd] flex items-center gap-2">
+    <div className="h-screen flex flex-col items-center justify-center gap-4 bg-white">
+      <p className="text-slate-500 font-medium">Book not found.</p>
+      <button onClick={() => router.back()} className="text-sky-600 flex items-center gap-2 font-bold">
         <ArrowLeft size={18} /> Go Back
       </button>
     </div>
   );
 
   return (
-    <section className="px-4 md:px-16 py-8 max-w-7xl mx-auto font-sans">
+    <section className="px-6 md:px-16 py-8 max-w-7xl mx-auto bg-white">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-xs text-gray-400 mb-8 overflow-x-auto whitespace-nowrap">
-        <Link href="/book-store" className="hover:text-gray-600">Book</Link>
-        <ChevronRight size={14} />
-        <span className="hover:text-gray-600 cursor-pointer">{book.category}</span>
-        <ChevronRight size={14} />
-        <span className="text-gray-800 font-medium truncate">{book.title}</span>
+      <nav className="flex items-center gap-2 text-[10px] uppercase font-bold text-slate-400 mb-10">
+        <Link href="/book-store" className="hover:text-sky-600 transition-colors">Store</Link> 
+        <ChevronRight size={12} /> 
+        <span className="text-slate-900">{book.title}</span>
       </nav>
 
-      <div className="grid lg:grid-cols-12 gap-12">
-        {/* Left Column */}
+      <div className="grid lg:grid-cols-12 gap-16">
+        {/* Floating Cover */}
         <div className="lg:col-span-4 space-y-6">
-          <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden shadow-2xl border border-gray-100">
+          <div className="relative aspect-[3/4] w-full rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100">
             <Image 
               src={book.coverImage || "/placeholder.png"} 
               alt={book.title} 
               fill 
-              className="object-cover"
-              priority 
-              unoptimized
+              className="object-cover" 
+              unoptimized 
             />
           </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <button className="py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all">
-              Read summary
-            </button>
-            <button className="py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all">
-              Borrow book
-            </button>
-          </div>
-          
-          <button className="w-full flex items-center justify-center gap-2 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all">
-            <Bookmark size={18} /> Save for later
+          <button className="w-full py-4 bg-slate-50 rounded-xl text-xs font-bold text-slate-600 flex items-center justify-center gap-2 hover:bg-slate-100 transition-all">
+            <Bookmark size={16} /> Save for later
           </button>
-
-          {/* Author Small Profile */}
-          <div className="flex items-center gap-3 pt-4">
-            <div className="w-12 h-12 rounded-lg bg-slate-200 overflow-hidden relative">
-               <Image src="/author-placeholder.png" alt={book.author} fill className="object-cover" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-gray-800">{book.author}</p>
-              <p className="text-[10px] text-gray-400 uppercase font-black">Author</p>
-            </div>
-          </div>
         </div>
 
-        {/* Right Column */}
+        {/* Content */}
         <div className="lg:col-span-8 space-y-6">
-          <div className="flex justify-between items-start">
-            <div className="space-y-1">
-              <p className="text-[#2da5bd] text-sm font-bold">Author: by {book.author}</p>
-              <h1 className="text-3xl md:text-5xl font-black text-gray-800 leading-tight">{book.title}</h1>
-              <p className="text-gray-400 text-sm font-medium">Edition: {book.publisher}, Oct 1, 2021</p>
+          <p className="text-sky-600 text-xs font-black uppercase tracking-widest">By {book.author}</p>
+          <h1 className="text-4xl md:text-6xl font-black text-slate-900 leading-tight">{book.title}</h1>
+          
+          <div className="flex items-center gap-4">
+            <div className="flex text-amber-400">
+              {[...Array(5)].map((_, i) => (
+                <Star 
+                  key={i} 
+                  size={20} 
+                  fill={i < Math.round(book.rating || 0) ? "currentColor" : "none"} 
+                  className={i < Math.round(book.rating || 0) ? "text-amber-400" : "text-slate-200"}
+                />
+              ))}
             </div>
-            <div className="flex items-center gap-1 bg-white p-2 rounded-lg shadow-sm border border-gray-50">
-                <Star size={18} fill="#facc15" className="text-yellow-400" />
-                <span className="text-gray-800 text-sm font-black">{rating.toFixed(1)}</span>
-                <span className="text-gray-400 text-[10px] ml-1">(Ratings)</span>
-            </div>
+            <span className="font-black text-slate-900">{book.rating?.toFixed(1) || "0.0"}</span>
           </div>
 
-          <div className="flex items-center gap-4 py-2">
-            <span className="text-gray-300 line-through text-xl font-medium">${book.price + 250}</span>
-            <span className="text-4xl font-black text-gray-800">${book.price}</span>
-            <div className="bg-orange-500 text-white text-[10px] px-3 py-1 rounded-md flex items-center gap-1 font-black shadow-sm shadow-orange-100 uppercase tracking-tighter">
-              Discount <ShoppingCart size={10} />
-            </div>
+          <div className="py-4">
+            <span className="text-4xl font-black text-slate-900">${book.price}</span>
           </div>
 
-          <div className="space-y-4 max-w-2xl">
-            <div className="space-y-1">
-               {["Start with Ambitious Anchors", "Never Accept the First Offer", "Use the Flinch Technique"].map((tip, i) => (
-                 <p key={i} className="text-gray-800 font-bold text-sm">“{tip}”</p>
-               ))}
-            </div>
-            <p className="text-gray-500 text-sm leading-relaxed">
-              {book.summary}
-            </p>
-            <button className="text-[#2da5bd] text-sm font-bold flex items-center gap-1 hover:underline">
-              Read more <ChevronRight size={16} />
-            </button>
-          </div>
+          <p className="text-slate-500 leading-relaxed text-sm max-w-2xl">{book.summary}</p>
 
-          {/* Add to Cart Section */}
-          <div className="flex flex-wrap items-center gap-4 pt-6">
+          <div className="flex flex-wrap items-center gap-6 pt-8">
             <button 
               onClick={handleAddToCart}
               disabled={isAdding}
-              className="flex-[2] min-w-[240px] bg-[#2da5bd] text-white py-4 rounded-xl font-black flex items-center justify-center gap-3 hover:bg-[#258a9e] transition-all shadow-xl shadow-cyan-100 disabled:opacity-50"
+              className="flex-1 min-w-[200px] bg-slate-900 text-white py-4 rounded-xl font-black flex items-center justify-center gap-3 hover:bg-sky-600 transition-all shadow-xl shadow-slate-100 disabled:opacity-70"
             >
-              {isAdding ? <Loader2 className="animate-spin" size={20} /> : <ShoppingCart size={20} />}
+              {isAdding ? <Loader2 className="animate-spin" size={20} /> : <ShoppingCart size={20} />} 
               Add to cart
             </button>
             
-            <div className="flex-1 flex items-center justify-between border border-gray-200 rounded-xl px-6 py-4 min-w-[160px]">
-              <span className="text-gray-400 text-sm font-medium">Quality :</span>
+            <div className="border border-slate-200 rounded-xl px-6 py-4 flex items-center gap-4">
+              <span className="text-slate-400 font-bold text-xs whitespace-nowrap">Qty:</span>
               <input 
                 type="number" 
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value)))}
-                className="w-10 text-right font-black text-gray-700 outline-none bg-transparent"
+                min="1"
+                value={quantity} 
+                onChange={e => setQuantity(Math.max(1, Number(e.target.value)))} 
+                className="w-8 font-black outline-none bg-transparent text-center" 
               />
             </div>
           </div>
 
-          {/* Metadata Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 pt-12 border-t border-gray-100">
-            <MetaItem label="Print Length" value={`${book.pages || 352} Pages`} icon={<BookOpen size={22} />} />
-            <MetaItem label="Language" value={book.language || "English"} icon={<Globe size={22} />} />
-            <MetaItem label="Publisher" value={book.publisher || "Career Press"} icon={<Building2 size={22} />} />
-            <MetaItem label="Date of publish" value={book.publishedDate || "Sept-28-2020"} icon={<Calendar size={22} />} />
-            <MetaItem label="Dimensions" value={book.dimensions || "5.75 x 8.5 in"} icon={<Maximize size={22} />} />
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pt-10 border-t border-slate-100">
+            <MetaDetail icon={<BookOpen size={20}/>} label="Pages" value={book.pages || 320} />
+            <MetaDetail icon={<Globe size={20}/>} label="Language" value={book.language || "English"} />
+            <MetaDetail icon={<Building2 size={20}/>} label="Publisher" value={book.publisher || "Global Press"} />
+            <MetaDetail icon={<Calendar size={20}/>} label="Published" value={book.publishedDate || "2023"} />
+            <MetaDetail icon={<Maximize size={20}/>} label="Dimensions" value={book.dimensions || "6 x 9 in"} />
           </div>
-          
-          <button className="text-[#2da5bd] text-sm font-black flex items-center gap-1 pt-6 hover:gap-2 transition-all">
-            See Details <ChevronRight size={18} />
-          </button>
         </div>
       </div>
     </section>
   );
 }
 
-function MetaItem({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
+// Reusable component for metadata to keep code clean
+function MetaDetail({ icon, label, value }: { icon: React.ReactNode, label: string, value: string | number }) {
   return (
-    <div className="flex flex-col items-center text-center space-y-2 group">
-      <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">{label}</p>
-      <div className="text-gray-300 group-hover:text-[#2da5bd] transition-colors">
-        {icon}
-      </div>
-      <p className="text-[11px] font-bold text-gray-700 leading-tight">{value}</p>
+    <div className="flex flex-col items-center text-center space-y-2">
+      <div className="text-slate-300">{icon}</div>
+      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+      <p className="text-[11px] font-bold text-slate-900">{value}</p>
     </div>
   );
 }

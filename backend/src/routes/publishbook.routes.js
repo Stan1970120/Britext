@@ -1,51 +1,21 @@
-import express from 'express';
-const router = express.Router();
+import { REST_API } from "./index"; 
 
-import { 
-    getStats, 
-    getAdminBooks, 
-    createBook, 
-    updateChapters, 
-    finalizePublish, 
-    getReaderView,
-    getStoreBooks,
-    rateBook
-} from '../controllers/publishbook.controller.js';
+// Assuming your backend mounts the router at: app.use('/api/publish-books', router)
+const PREFIX = `${REST_API}/publish-books`;
 
-import { upload, verifyAdmin } from '../middleware/publishbook.middleware.js';
-import { protect } from '../middleware/authMiddleware.js'; 
-
-/* ==========================================
-    ADMIN ENDPOINTS
-   ========================================== */
-
-router.get('/admin/stats', verifyAdmin, getStats);
-router.get('/admin/books', verifyAdmin, getAdminBooks);
-router.get('/admin/books/:id', verifyAdmin, getAdminBooks);
-
-router.post(
-    '/admin/books', 
-    verifyAdmin, 
-    upload.any(), 
-    createBook
-);
-
-router.patch('/admin/books/:id/chapters', verifyAdmin, updateChapters);
-router.patch('/admin/books/:id/publish', verifyAdmin, finalizePublish);
-
-/* ==========================================
-    STORE & USER ENDPOINTS (PUBLIC)
-   ========================================== */
-
-// These should be accessible to anyone
-router.get('/store/books', getStoreBooks);
-router.get('/store/books/:id', getReaderView); // ✅ REMOVED 'protect' so the page loads for everyone
-
-/* ==========================================
-    PROTECTED USER ENDPOINTS
-   ========================================== */
-
-// Users MUST be logged in to rate a book
-router.post('/rate', protect, rateBook);
-
-export default router;
+export const API = {
+  /* ADMIN */
+  GET_ADMIN_STATS: `${PREFIX}/admin/stats`,
+  ADMIN_BOOKS: (status) => `${PREFIX}/admin/books?status=${status}`,
+  CREATE_BOOK: `${PREFIX}/admin/books`,
+  GET_BOOK: (id) => `${PREFIX}/admin/books/${id}`,
+  PUBLISH_BOOK: (id) => `${PREFIX}/admin/books/${id}/publish`,
+  UPDATE_CHAPTERS: (id) => `${PREFIX}/admin/books/${id}/chapters`,
+  
+  /* STORE & PUBLIC */
+  STORE_BOOKS: `${PREFIX}/store/books`,
+  READER_VIEW: (id) => `${PREFIX}/store/books/${id}`,
+  
+  /* PROTECTED USER ACTIONS */
+  RATE_BOOK: `${PREFIX}/rate`, // Matches router.post('/rate', protect, rateBook);
+};
