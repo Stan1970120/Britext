@@ -1,42 +1,51 @@
-// ✅ Added .js extension to the import to satisfy ESM requirements on Render
-import { REST_API } from "./index.js"; 
+import express from 'express';
+const router = express.Router();
 
-// The prefix should match the mount point in your backend server.js/index.js
-// e.g., app.use('/api/publish-books', publishbookRoutes);
-const PREFIX = `${REST_API}/publish-books`;
+// ✅ Ensure these paths are 100% correct relative to this file
+import { 
+    getStats, 
+    getAdminBooks, 
+    createBook, 
+    updateChapters, 
+    finalizePublish, 
+    getReaderView, 
+    getStoreBooks, 
+    rateBook 
+} from '../controllers/publishbook.controller.js';
 
-export const API = {
-  /* ==========================================
-      📊 DASHBOARD & ADMIN
-     ========================================== */
-  GET_ADMIN_STATS: `${PREFIX}/admin/stats`,
-  
-  // Fetch Books by Status (Draft/Published)
-  ADMIN_BOOKS: (status) => `${PREFIX}/admin/books?status=${status}`,
-  
-  CREATE_BOOK: `${PREFIX}/admin/books`,
-  
-  GET_BOOK: (id) => `${PREFIX}/admin/books/${id}`,
+import { upload, verifyAdmin } from '../middleware/publishbook.middleware.js';
+import { protect } from '../middleware/authMiddleware.js'; 
 
-  /* ==========================================
-      🚀 PUBLISHING & CHAPTERS
-     ========================================== */
-  PUBLISH_BOOK: (id) => `${PREFIX}/admin/books/${id}/publish`,
-  
-  UPDATE_CHAPTERS: (id) => `${PREFIX}/admin/books/${id}/chapters`,
+/* ==========================================
+    ADMIN ENDPOINTS
+   ========================================== */
 
-  /* ==========================================
-      📖 STORE & PUBLIC READER
-     ========================================== */
-  // Get all published books for the store
-  STORE_BOOKS: `${PREFIX}/store/books`,
-  
-  // Get specific book details for the reader/store view
-  READER_VIEW: (id) => `${PREFIX}/store/books/${id}`,
+router.get('/admin/stats', verifyAdmin, getStats);
+router.get('/admin/books', verifyAdmin, getAdminBooks);
+router.get('/admin/books/:id', verifyAdmin, getAdminBooks);
 
-  /* ==========================================
-      ⭐ USER INTERACTIONS (PROTECTED)
-     ========================================== */
-  // Matches: router.post('/rate', protect, rateBook);
-  RATE_BOOK: `${PREFIX}/rate`, 
-};
+router.post(
+    '/admin/books', 
+    verifyAdmin, 
+    upload.any(), 
+    createBook
+);
+
+router.patch('/admin/books/:id/chapters', verifyAdmin, updateChapters);
+router.patch('/admin/books/:id/publish', verifyAdmin, finalizePublish);
+
+/* ==========================================
+    STORE & USER ENDPOINTS (PUBLIC)
+   ========================================== */
+
+router.get('/store/books', getStoreBooks);
+router.get('/store/books/:id', getReaderView); 
+
+/* ==========================================
+    PROTECTED USER ENDPOINTS
+   ========================================== */
+
+// Users MUST be logged in to rate a book
+router.post('/rate', protect, rateBook);
+
+export default router;
