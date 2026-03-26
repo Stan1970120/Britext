@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Heart, Star, Loader2, BookOpen, ShoppingCart, Check } from "lucide-react";
+import { Star, Loader2, ShoppingCart } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { API } from "../../constant/api"; // ✅ Use the API constant
+import { API } from "../../constant/api"; 
 import { REST_API } from "../../constant";
 import { useAuth } from "@/app/context/AuthContext";
 
@@ -43,6 +43,7 @@ const BookStore = () => {
       setBooks(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Fetch error:", error);
+      setBooks([]);
     } finally {
       setIsLoading(false);
     }
@@ -56,7 +57,7 @@ const BookStore = () => {
 
   const handleRatingClick = async (e: React.MouseEvent, bookId: string, value: number) => {
     e.preventDefault();
-    e.stopPropagation(); // ⚡ STOP REDIRECT: Prevents the card's onClick from firing
+    e.stopPropagation(); 
     
     if (!token) return router.push("/login");
 
@@ -64,7 +65,7 @@ const BookStore = () => {
     updateLocalState(bookId, { rating: value });
 
     try {
-      const res = await fetch(API.CREATE_BOOK, {
+      const res = await fetch(API.RATE_BOOK, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ bookId, rating: value }),
@@ -81,7 +82,9 @@ const BookStore = () => {
   const handleAddToCart = async (e: React.MouseEvent, bookId: string) => {
     e.preventDefault();
     e.stopPropagation();
+
     if (!token) return router.push("/login");
+    
     updateLocalState(bookId, { isInCart: true });
     try {
       await fetch(`${REST_API}/cart`, {
@@ -129,7 +132,6 @@ const BookStore = () => {
               <h3 className="font-bold text-slate-900 truncate">{book.title}</h3>
               <p className="text-[10px] text-sky-600 font-bold mb-2">{book.author}</p>
               
-              {/* Rating Component */}
               <div className="flex items-center gap-0.5 mb-4" onClick={(e) => e.stopPropagation()}>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Star 
@@ -139,12 +141,13 @@ const BookStore = () => {
                     className={`cursor-pointer ${star <= Math.round(book.rating) ? "fill-amber-400 text-amber-400" : "text-slate-200"}`}
                   />
                 ))}
+                <span className="text-[10px] ml-1 text-slate-400">{(book.rating || 0).toFixed(1)}</span>
               </div>
 
               <div className="flex justify-between items-center mt-auto pt-2 border-t border-slate-50">
                 <button 
                   onClick={(e) => handleAddToCart(e, book._id)}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold ${book.isInCart ? "bg-emerald-50 text-emerald-600" : "bg-sky-500 text-white"}`}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${book.isInCart ? "bg-emerald-50 text-emerald-600" : "bg-sky-500 text-white"}`}
                 >
                   {book.isInCart ? "Added" : "Add to cart"}
                 </button>
@@ -153,6 +156,12 @@ const BookStore = () => {
             </div>
           ))}
         </div>
+
+        {!isLoading && books.length === 0 && (
+          <div className="text-center py-20">
+            <p className="text-slate-400">No books found in this category.</p>
+          </div>
+        )}
       </div>
     </div>
   );
