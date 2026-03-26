@@ -106,7 +106,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   /**
-   * ✨ Handles authentication via Google/Facebook redirect
+   * Handles authentication via Google/Facebook redirect
    */
   const loginWithToken = async (jwtToken: string) => {
     setLoading(true);

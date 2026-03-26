@@ -1,64 +1,44 @@
-import { REST_API } from "./index"; 
+import { REST_API } from "./index.js"; 
+
+// ✅ MATCHED TO SERVER.JS: Ensure this matches your backend mount point
+const PREFIX = `${REST_API}/publish-books`;
 
 export const API = {
-  /* ======================================================
-      📊 DASHBOARD & ANALYTICS
-      Mounted on: /api/publishbook/admin/stats
-  ====================================================== */
-  GET_ADMIN_STATS: `${REST_API}/publishbook/admin/stats`,
-
-  /* ======================================================
-      📚 BOOK MANAGEMENT (Admin)
-      Mounted on: /api/publishbook/admin/books
-  ====================================================== */
+  /*DASHBOARD & ADMIN
+      */
+  GET_ADMIN_STATS: `${PREFIX}/admin/stats`,
+  
   // Fetch Books by Status (Draft/Published)
-  ADMIN_BOOKS: (status) => 
-    `${REST_API}/publishbook/admin/books?status=${status}`,
+  ADMIN_BOOKS: (status) => `${PREFIX}/admin/books?status=${status}`,
+  
+  CREATE_BOOK: `${PREFIX}/admin/books`,
+  
+  GET_BOOK: (id) => `${PREFIX}/admin/books/${id}`,
 
-  // Create a New Manuscript
-  CREATE_BOOK: `${REST_API}/publishbook/admin/books`,
+  /* PUBLISHING & CHAPTERS
+      */
+  PUBLISH_BOOK: (id) => `${PREFIX}/admin/books/${id}/publish`,
+  
+  UPDATE_CHAPTERS: (id) => `${PREFIX}/admin/books/${id}/chapters`,
 
-  // ✨ FIXED: Added /publishbook prefix to match controller logic
-  GET_BOOK: (id) => 
-    `${REST_API}/publishbook/admin/books/${id}`,
+  ADD_CHAPTER: (id) => `${PREFIX}/admin/books/${id}/chapters`,
 
-  /* ======================================================
-      🚀 PUBLISHING & CHAPTERS
-      These match your publishbook.routes.js logic
-  ====================================================== */
-  // Finalize Publication (Moves book to Storefront)
-  PUBLISH_BOOK: (id) => 
-    `${REST_API}/publishbook/admin/books/${id}/publish`,
+  GET_CHAPTERS: (id) => `${PREFIX}/admin/books/${id}/chapters`,
 
-  // Update/Add Chapters (Used for PATCH requests)
-  UPDATE_CHAPTERS: (id) => 
-    `${REST_API}/publishbook/admin/books/${id}/chapters`,
+  // 
+  PREVIEW_BOOK: (id) => `${PREFIX}/admin/books/${id}/preview`,
 
-  // Specifically for saving new chapters in ChaptersPage
-  ADD_CHAPTER: (id) => 
-    `${REST_API}/publishbook/admin/books/${id}/chapters`,
-
-  // Fixes build error "Property 'GET_CHAPTERS' does not exist"
-  GET_CHAPTERS: (id) => 
-    `${REST_API}/publishbook/admin/books/${id}/chapters`,
-
-  /* ======================================================
-      📖 PUBLIC STORE & READER VIEW
-  ====================================================== */
-  STORE_BOOKS: `${REST_API}/publishbook/store/books`,
-
-  READER_VIEW: (id) => 
-    `${REST_API}/publishbook/store/books/${id}`,
-
-  /* ======================================================
-      🛠️ LEGACY / SPECIFIC ROUTE ACCESS
-      Ensuring these also use the consolidated /publishbook prefix
-  ====================================================== */
-  // For PREVIEW logic
-  PREVIEW_BOOK: (id) => 
-    `${REST_API}/publishbook/admin/books/${id}/preview`,
-
-  // Specifically for PUT requests to a single existing chapter
+  // 
   UPDATE_CHAPTER: (bookId, chapterId) => 
-    `${REST_API}/publishbook/admin/books/${bookId}/chapters/${chapterId}`,
+    `${PREFIX}/admin/books/${bookId}/chapters/${chapterId}`,
+
+  /*  PUBLIC STORE & READER VIEW
+      */
+  STORE_BOOKS: `${PREFIX}/store/books`,
+  
+  READER_VIEW: (id) => `${PREFIX}/store/books/${id}`,
+
+  /*  USER INTERACTIONS
+      */
+  RATE_BOOK: `${PREFIX}/rate`, 
 };

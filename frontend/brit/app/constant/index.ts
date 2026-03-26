@@ -1,15 +1,14 @@
 export const REST_API = (() => {
-    let api = process.env.NEXT_PUBLIC_REST_API || "https://enjoyreads.com";
+    // 1. Get the base URL
+    let url = process.env.NEXT_PUBLIC_REST_API || "https://api.enjoyreads.com";
 
-    // ✨ Auto-fix: Ensure it doesn't end with a slash, then add /api
-    api = api.replace(/\/$/, "");
+    // 2. Clean up trailing slashes
+    url = url.replace(/\/$/, "");
 
-    if (!api.endsWith("/api")) {
-        api = `${api}/api`;
+    // 3. Ensure it ends with /api (but don't double it)
+    if (!url.endsWith("/api")) {
+        url = `${url}/api`;
     }
 
-    return api;
+    return url;
 })();
-
-//"https://enjoyreads.com",     // Your main domain
-//  "https://www.enjoyreads.com"
