@@ -43,7 +43,7 @@ const BookStore = () => {
       const data = await res.json();
       setBooks(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Fetch error:", error);
+      console.error(`Fetch error at ${REST_API}:`, error);
       setBooks([]);
     } finally {
       setIsLoading(false);
@@ -62,6 +62,7 @@ const BookStore = () => {
 
     updateLocalState(bookId, { isWishlisted: !currentStatus });
     try {
+      // Use API constant to ensure correct path (prevents 404)
       await fetch(API.TOGGLE_WISHLIST, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -69,6 +70,7 @@ const BookStore = () => {
       });
     } catch (error) {
       updateLocalState(bookId, { isWishlisted: currentStatus });
+      console.error(`Wishlist toggle failed on base ${REST_API}:`, error);
     }
   };
 
@@ -88,37 +90,26 @@ const BookStore = () => {
         updateLocalState(bookId, { rating: data.rating });
       }
     } catch (error) {
-      console.error("Rating failed", error);
+      console.error(`Rating failed at ${REST_API}:`, error);
     }
   };
 
   const handleAddToCart = async (e: React.MouseEvent, bookId: string) => {
     e.stopPropagation();
+    if (!token) return router.push("/login");
     
-    // Always update local UI state immediately for responsiveness
     updateLocalState(bookId, { isInCart: true });
-
     try {
+      // Use API constant to ensure correct path (prevents 404)
       const res = await fetch(API.ADD_TO_CART, {
         method: "POST",
-        headers: token 
-          ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` } 
-          : { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ bookId }),
       });
-
-      // Guest logic: Store in localStorage if user is not signed in
-      if (!token) {
-        const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
-        if (!guestCart.includes(bookId)) {
-          localStorage.setItem("guestCart", JSON.stringify([...guestCart, bookId]));
-        }
-      }
-
-      if (!res.ok && token) throw new Error();
+      if (!res.ok) throw new Error();
     } catch (error) {
-      // Revert UI state only if logged in and request failed
-      if (token) updateLocalState(bookId, { isInCart: false });
+      updateLocalState(bookId, { isInCart: false });
+      console.error(`Cart update failed for endpoint ${REST_API}:`, error);
     }
   };
 
@@ -153,7 +144,7 @@ const BookStore = () => {
               className="bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden relative cursor-pointer border border-gray-200 transition-all duration-200 flex flex-col"
             >
               <div className="relative flex justify-center items-center py-6 bg-gradient-to-b from-gray-50 to-gray-100">
-                <div className="relative w-25 h-36 md:w-30 md:h-46">
+                <div className="relative w-32 h-44 md:w-40 md:h-56">
                   <Image 
                     src={book.coverImage || "/placeholder.png"} 
                     alt={book.title} 
@@ -185,9 +176,9 @@ const BookStore = () => {
                 </h3>
 
                 <div className="flex items-center gap-1 mt-2">
-                  {[1, 2, 3, 4, 5].map((starValue) => (
-                    <button key={starValue} onClick={(e) => handleRatingClick(e, book._id, starValue)}>
-                      <span className={`text-sm ${starValue <= Math.round(book.rating) ? "text-yellow-500" : "text-gray-300"}`}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button key={star} onClick={(e) => handleRatingClick(e, book._id, star)}>
+                      <span className={`text-sm ${star <= Math.round(book.rating) ? "text-yellow-500" : "text-gray-300"}`}>
                         ★
                       </span>
                     </button>
