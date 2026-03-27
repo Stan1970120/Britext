@@ -4,7 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/app/context/AuthContext";
-import { Eye, EyeOff } from "lucide-react"; // ✨ Added icons
+import { Eye, EyeOff } from "lucide-react"; 
+import { API } from "../../constant/api"; 
 
 type OAuthProvider = "google" | "apple";
 
@@ -12,27 +13,60 @@ const API_URL = process.env.NEXT_PUBLIC_REST_API;
 
 export default function SignInPage() {
   const router = useRouter();
-  const { login, user, loading } = useAuth();
+  const { login, user, token, loading } = useAuth(); // Added token for API calls
 
   const [formData, setFormData] = useState({ email: "", password: "" });
-  const [showPassword, setShowPassword] = useState(false); // ✨ Added toggle state
+  const [showPassword, setShowPassword] = useState(false); 
   const [error, setError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Redirect after login
-  useEffect(() => {
-    if (!showSuccess || !user) return;
+  // Function to sync guest data to the database
+  const syncLocalStorageData = async () => {
+    if (!token) return;
 
-    const timer = setTimeout(() => {
-      if (user.role === "admin") {
-        router.replace("/dashboard");
-      } else {
-        router.replace("/checkout");
+    try {
+      const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
+      
+      if (guestCart.length > 0) {
+        // Sync each item to the database
+        await Promise.all(
+          guestCart.map((bookId: string) =>
+            fetch(API.ADD_TO_CART, {
+              method: "POST",
+              headers: { 
+                "Content-Type": "application/json", 
+                Authorization: `Bearer ${token}` 
+              },
+              body: JSON.stringify({ bookId }),
+            })
+          )
+        );
+        // Clear guest cart after successful sync
+        localStorage.removeItem("guestCart");
       }
-    }, 2000);
+    } catch (err) {
+      console.error("Failed to sync guest data:", err);
+    }
+  };
 
-    return () => clearTimeout(timer);
-  }, [showSuccess, user, router]);
+  // Handle Redirect and Syncing
+  useEffect(() => {
+    // If we have a user and token (either from email login or OAuth return)
+    if (user && token) {
+      syncLocalStorageData();
+
+      // Only show the 2-second delay if the success modal is active (Email Login)
+      // Otherwise, redirect immediately (OAuth Login)
+      if (showSuccess) {
+        const timer = setTimeout(() => {
+          router.replace(user.role === "admin" ? "/dashboard" : "/checkout");
+        }, 2000);
+        return () => clearTimeout(timer);
+      } else {
+        router.replace(user.role === "admin" ? "/dashboard" : "/checkout");
+      }
+    }
+  }, [user, token, showSuccess, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -50,19 +84,20 @@ export default function SignInPage() {
   };
 
   const handleOAuthLogin = (provider: OAuthProvider) => {
+    // Save current URL if you want to redirect back after OAuth
     window.location.href = `${API_URL}/auth/${provider}`;
   };
 
   return (
     <>
-      {/* ✅ Success Modal */}
+      {/* Success Modal */}
       {showSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white p-6 rounded-xl text-center shadow-lg border border-gray-100">
             <h3 className="text-xl font-semibold text-green-600">
               Login Successful 🎉
             </h3>
-            <p className="text-sm text-gray-600 mt-2">Redirecting...</p>
+            <p className="text-sm text-gray-600 mt-2">Syncing your library...</p>
           </div>
         </div>
       )}
@@ -70,7 +105,7 @@ export default function SignInPage() {
       <div className="flex justify-center items-center min-h-screen bg-gray-50 px-4">
         <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-md border border-gray-100">
           <h2 className="text-2xl font-bold text-center mb-6 text-sky-700">
-            Welcome Back 👋
+            Welcome Back
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -91,7 +126,7 @@ export default function SignInPage() {
               <label className="block text-sm font-medium mb-1 text-gray-700">Password</label>
               <div className="relative">
                 <input
-                  type={showPassword ? "text" : "password"} // ✨ Dynamic type
+                  type={showPassword ? "text" : "password"} 
                   name="password"
                   placeholder="Enter your password"
                   value={formData.password}
