@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth } from "@/app/context/AuthContext";
@@ -18,46 +18,83 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false); 
   const [error, setError] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
+  
+  // Prevent multiple syncs in a single mount
+  const hasSynced = useRef(false);
 
-  // Sync Guest Data to Database
+  // Comprehensive Sync Logic
   const syncGuestData = async (userToken: string) => {
+    if (hasSynced.current) return;
+
     const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
-    
-    if (guestCart.length > 0) {
-      try {
-        await Promise.all(
-          guestCart.map((bookId: string) =>
-            fetch(API.ADD_TO_CART, {
-              method: "POST",
-              headers: { 
-                "Content-Type": "application/json", 
-                Authorization: `Bearer ${userToken}` 
-              },
-              body: JSON.stringify({ bookId }),
-            })
-          )
-        );
-        localStorage.removeItem("guestCart");
-        console.log("Guest cart synced successfully via:", REST_API);
-      } catch (err) {
-        console.error("Sync failed:", err);
+    const guestWish = JSON.parse(localStorage.getItem("guestWishlist") || "[]");
+    const guestRatings = JSON.parse(localStorage.getItem("guestRatings") || "{}");
+
+    try {
+      const syncTasks = [];
+
+      // 1. Sync Cart
+      if (guestCart.length > 0) {
+        syncTasks.push(...guestCart.map((bookId: string) =>
+          fetch(API.ADD_TO_CART, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${userToken}` },
+            body: JSON.stringify({ bookId }),
+          })
+        ));
       }
+
+      // 2. Sync Wishlist
+      if (guestWish.length > 0) {
+        syncTasks.push(...guestWish.map((bookId: string) =>
+          fetch(API.TOGGLE_WISHLIST, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${userToken}` },
+            body: JSON.stringify({ bookId }),
+          })
+        ));
+      }
+
+      // 3. Sync Ratings
+      const ratingEntries = Object.entries(guestRatings);
+      if (ratingEntries.length > 0) {
+        syncTasks.push(...ratingEntries.map(([bookId, rating]) =>
+          fetch(API.RATE_BOOK, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${userToken}` },
+            body: JSON.stringify({ bookId, rating }),
+          })
+        ));
+      }
+
+      if (syncTasks.length > 0) {
+        await Promise.allSettled(syncTasks);
+        // Clear local storage only after attempt
+        localStorage.removeItem("guestCart");
+        localStorage.removeItem("guestWishlist");
+        localStorage.removeItem("guestRatings");
+        console.log("Guest data successfully synced to account.");
+      }
+
+      hasSynced.current = true;
+    } catch (err) {
+      console.error("Critical sync failure:", err);
     }
   };
 
-  // Handle Redirects and OAuth Sync
   useEffect(() => {
     if (user && token) {
       syncGuestData(token);
 
-      // If email login (showSuccess is true), wait 2s. If OAuth, redirect immediately.
+      const destination = user.role === "admin" ? "/dashboard" : "/checkout";
+
       if (showSuccess) {
         const timer = setTimeout(() => {
-          router.replace(user.role === "admin" ? "/dashboard" : "/checkout");
+          router.replace(destination);
         }, 2000);
         return () => clearTimeout(timer);
       } else {
-        router.replace(user.role === "admin" ? "/dashboard" : "/checkout");
+        router.replace(destination);
       }
     }
   }, [user, token, showSuccess, router]);
@@ -78,8 +115,7 @@ export default function SignInPage() {
   };
 
   const handleOAuthLogin = (provider: OAuthProvider) => {
-    // Uses the environmental variable for the redirect
-    window.location.href = `${process.env.NEXT_PUBLIC_REST_API}/auth/${provider}`;
+    window.location.href = `${REST_API}/auth/${provider}`;
   };
 
   return (
@@ -88,7 +124,7 @@ export default function SignInPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white p-6 rounded-xl text-center shadow-lg border border-gray-100">
             <h3 className="text-xl font-semibold text-green-600">Login Successful 🎉</h3>
-            <p className="text-sm text-gray-600 mt-2">Syncing your items...</p>
+            <p className="text-sm text-gray-600 mt-2">Personalizing your library...</p>
           </div>
         </div>
       )}
