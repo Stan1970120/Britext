@@ -44,4 +44,5 @@ export const API = {
   ADD_TO_CART: `${PREFIX}/cart`,      
   TOGGLE_WISHLIST: `${PREFIX}/wishlist`,
   SUBSCRIBE_NEWSLETTER: `${REST_API}/subscribe`,
+  COMMENTS: `${REST_API}/comments`,
 };
