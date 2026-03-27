@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Star, Loader2, ShoppingCart, Heart } from "lucide-react";
+import { Loader2, ShoppingCart, Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { API } from "../../constant/api"; 
