@@ -45,14 +45,17 @@ const BookStore = () => {
       
       let finalBooks = Array.isArray(data) ? data : [];
 
-      // If Guest, overlay their local interactions
+      // Merge Guest Data from LocalStorage if not logged in
       if (!token) {
         const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
         const guestWish = JSON.parse(localStorage.getItem("guestWishlist") || "[]");
+        const guestRatings = JSON.parse(localStorage.getItem("guestRatings") || "{}");
+
         finalBooks = finalBooks.map((b: Book) => ({
           ...b,
           isInCart: guestCart.includes(b._id),
-          isWishlisted: guestWish.includes(b._id)
+          isWishlisted: guestWish.includes(b._id),
+          rating: guestRatings[b._id] || b.rating
         }));
       }
 
@@ -74,15 +77,18 @@ const BookStore = () => {
   const toggleWishlist = async (e: React.MouseEvent, bookId: string, currentStatus: boolean) => {
     e.stopPropagation();
     
+    // Always update UI immediately
+    updateLocalState(bookId, { isWishlisted: !currentStatus });
+
     if (!token) {
       const guestWish = JSON.parse(localStorage.getItem("guestWishlist") || "[]");
-      const updated = currentStatus ? guestWish.filter((id: string) => id !== bookId) : [...guestWish, bookId];
+      const updated = currentStatus 
+        ? guestWish.filter((id: string) => id !== bookId) 
+        : [...guestWish, bookId];
       localStorage.setItem("guestWishlist", JSON.stringify(updated));
-      updateLocalState(bookId, { isWishlisted: !currentStatus });
       return;
     }
 
-    updateLocalState(bookId, { isWishlisted: !currentStatus });
     try {
       await fetch(API.TOGGLE_WISHLIST, {
         method: "POST",
@@ -90,6 +96,7 @@ const BookStore = () => {
         body: JSON.stringify({ bookId }),
       });
     } catch (error) {
+      // Revert UI on failure if logged in
       updateLocalState(bookId, { isWishlisted: currentStatus });
       console.error(`Wishlist toggle failed:`, error);
     }
@@ -98,15 +105,16 @@ const BookStore = () => {
   const handleRatingClick = async (e: React.MouseEvent, bookId: string, value: number) => {
     e.stopPropagation(); 
     
+    // Always update UI immediately
+    updateLocalState(bookId, { rating: value });
+
     if (!token) {
       const guestRatings = JSON.parse(localStorage.getItem("guestRatings") || "{}");
       guestRatings[bookId] = value;
       localStorage.setItem("guestRatings", JSON.stringify(guestRatings));
-      updateLocalState(bookId, { rating: value });
       return;
     }
 
-    updateLocalState(bookId, { rating: value });
     try {
       const res = await fetch(API.RATE_BOOK, {
         method: "POST",
@@ -125,18 +133,19 @@ const BookStore = () => {
   const handleAddToCart = async (e: React.MouseEvent, bookId: string) => {
     e.stopPropagation();
     
+    // Always update UI immediately
+    updateLocalState(bookId, { isInCart: true });
+
     if (!token) {
       const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
       if (!guestCart.includes(bookId)) {
         guestCart.push(bookId);
         localStorage.setItem("guestCart", JSON.stringify(guestCart));
       }
-      updateLocalState(bookId, { isInCart: true });
       setShowGuestModal(true);
       return;
     }
 
-    updateLocalState(bookId, { isInCart: true });
     try {
       const res = await fetch(API.ADD_TO_CART, {
         method: "POST",
@@ -229,7 +238,7 @@ const BookStore = () => {
               className="bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden relative cursor-pointer border border-gray-200 transition-all duration-200 flex flex-col"
             >
               <div className="relative flex justify-center items-center py-6 bg-gradient-to-b from-gray-50 to-gray-100">
-                <div className="relative w-32 h-44 md:w-40 md:h-56">
+                <div className="relative w-25 h-36 md:w-30 md:h-46">
                   <Image 
                     src={book.coverImage || "/placeholder.png"} 
                     alt={book.title} 
