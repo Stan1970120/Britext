@@ -15,7 +15,7 @@ interface Book {
   category: string;
   newPrice: number;
   rating: number;
-  img: string; // Ensure your backend sends the full URL or relative path
+  img: string; 
 }
 
 const TrendingPost = () => {
@@ -64,79 +64,75 @@ const TrendingPost = () => {
   };
 
   const handleBookClick = (id: string) => router.push(`/book-store/${id}`);
-  const handleViewAll = () => router.push("/book-store");
 
   return (
     <section className="w-[90%] mx-auto mt-15 py-2">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-bold text-gray-900">Trending Post</h2>
-        <button onClick={handleViewAll} className="text-sky-600 hover:underline text-sm font-semibold">
+        <button onClick={() => router.push("/book-store")} className="text-sky-600 hover:underline text-sm font-semibold">
           View all →
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {loading ? (
-          Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-xl h-[450px] border border-gray-100 p-4 space-y-4 shadow-sm">
-              <div className="w-full h-56 bg-gray-200 animate-pulse rounded-lg" />
-              <div className="h-4 bg-gray-200 animate-pulse w-3/4 rounded" />
-              <div className="h-4 bg-gray-200 animate-pulse w-1/2 rounded" />
-              <div className="h-10 bg-gray-200 animate-pulse w-full rounded-md mt-auto" />
-            </div>
-          ))
-        ) : (
-          books.map((book) => {
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20">
+          <Loader2 className="animate-spin text-sky-500 mb-4" size={40} />
+          <p className="text-gray-500 animate-pulse">Curating the best books for you...</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {books.map((book) => {
             const isFavorited = favorites.includes(book._id);
             const isInCart = cartItems.includes(book._id);
 
             return (
               <motion.div
                 key={book._id}
-                className="bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden relative cursor-pointer border border-gray-200 transition-all duration-200 flex flex-col h-[480px]"
-                whileHover={{ scale: 1.02 }}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 transition-all flex flex-col h-full overflow-hidden"
+                whileHover={{ y: -5 }}
               >
-                {/* Image Section */}
-                <div onClick={() => handleBookClick(book._id)} className="relative flex justify-center items-center py-6 bg-gradient-to-b from-gray-50 to-gray-100 h-64">
-                  <div className="relative w-32 h-44 md:w-40 md:h-56">
-                    <Image 
-                      src={book.img || "/placeholder-book.png"} 
-                      alt={book.title} 
-                      fill 
-                      className="object-cover rounded-md shadow-lg border border-gray-200"
-                      sizes="(max-width: 768px) 100vw, 25vw"
-                    />
-                  </div>
+                {/* Image Section - Fixed Height */}
+                <div 
+                  onClick={() => handleBookClick(book._id)} 
+                  className="relative h-64 w-full bg-gray-100 cursor-pointer overflow-hidden group"
+                >
+                  <Image 
+                    src={book.img || "https://placehold.co/400x600?text=No+Cover"} 
+                    alt={book.title} 
+                    fill 
+                    className="object-cover transition-transform duration-300 group-hover:scale-110"
+                    unoptimized // Helps if your external images are failing Next.js optimization
+                  />
                   <button
-                    className="absolute top-3 right-3 bg-white/90 rounded-full p-1.5 shadow-sm hover:bg-white transition z-10"
+                    className="absolute top-3 right-3 bg-white/90 rounded-full p-2 shadow-md hover:bg-white z-10"
                     onClick={(e) => { e.stopPropagation(); toggleFavorite(book._id); }}
                   >
                     <Heart size={18} fill={isFavorited ? "#0ea5e9" : "none"} className={isFavorited ? "text-sky-500" : "text-gray-400"} />
                   </button>
                 </div>
 
-                {/* Content Section */}
-                <div className="p-4 flex flex-col flex-grow justify-between">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-1">
-                      {book.category} • {book.author}
-                    </p>
-                    {/* Fixed height for title to ensure alignment */}
-                    <h3 className="text-sm font-bold text-gray-900 line-clamp-2 min-h-[40px]">
-                      {book.title}
-                    </h3>
-                    
-                    <div className="flex items-center gap-1 mt-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button key={star} onClick={(e) => { e.stopPropagation(); handleRating(book._id, star); }}>
-                          <span className={`text-lg ${star <= Math.round(book.rating) ? "text-yellow-400" : "text-gray-200"}`}>★</span>
-                        </button>
-                      ))}
-                      <span className="text-xs font-medium text-gray-500 ml-1">{book.rating.toFixed(1)}</span>
-                    </div>
+                {/* Content Section - Use flex-grow to push button to bottom */}
+                <div className="p-4 flex flex-col flex-grow">
+                  <p className="text-[10px] uppercase text-gray-400 font-bold mb-1">
+                    {book.category} • {book.author}
+                  </p>
+                  
+                  {/* Fixed Min-Height for Title Alignment */}
+                  <h3 className="text-sm font-bold text-gray-900 line-clamp-2 min-h-[40px] mb-2">
+                    {book.title}
+                  </h3>
+                  
+                  <div className="flex items-center gap-1 mb-4">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span key={star} className={`text-lg ${star <= Math.round(book.rating) ? "text-yellow-400" : "text-gray-200"}`}>
+                        ★
+                      </span>
+                    ))}
+                    <span className="text-xs font-medium text-gray-500 ml-1">{book.rating.toFixed(1)}</span>
                   </div>
 
-                  <div className="mt-4">
+                  {/* Price & Button Container */}
+                  <div className="mt-auto pt-2">
                     <div className="mb-3">
                       <span className="text-lg font-black text-gray-900">${book.newPrice}</span>
                     </div>
@@ -145,7 +141,7 @@ const TrendingPost = () => {
                       className={`w-full flex items-center justify-center gap-2 text-sm font-bold py-2.5 rounded-lg transition-all ${
                         isInCart 
                           ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
-                          : "bg-sky-500 hover:bg-sky-600 text-white shadow-md shadow-sky-100"
+                          : "bg-sky-500 hover:bg-sky-600 text-white shadow-lg shadow-sky-100"
                       }`}
                       disabled={isInCart}
                     >
@@ -156,18 +152,18 @@ const TrendingPost = () => {
                 </div>
               </motion.div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
 
-      {/* Auth Modal */}
+      {/* Auth Modal remains the same... */}
       <AnimatePresence>
         {showAuthModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 20 }} 
-              animate={{ scale: 1, opacity: 1, y: 0 }} 
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              initial={{ scale: 0.9, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              exit={{ scale: 0.9, opacity: 0 }}
               className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl relative text-center"
             >
               <button onClick={() => setShowAuthModal(false)} className="absolute top-5 right-5 text-gray-400 hover:text-gray-600">
@@ -176,10 +172,10 @@ const TrendingPost = () => {
               <div className="w-20 h-20 bg-sky-50 rounded-full flex items-center justify-center mx-auto mb-6">
                 <ShoppingCart className="text-sky-500" size={32}/>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Almost there!</h3>
-              <p className="text-gray-500 text-sm mb-8 px-4">Log in to your account to save books to your cart and track your orders.</p>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Join the Club</h3>
+              <p className="text-gray-500 text-sm mb-8">Sign in to start building your personal library and manage your cart.</p>
               <div className="space-y-3">
-                <button onClick={() => router.push("/signin")} className="w-full py-3.5 bg-sky-500 text-white rounded-xl font-bold hover:bg-sky-600 transition shadow-lg shadow-sky-100">Sign In</button>
+                <button onClick={() => router.push("/signin")} className="w-full py-3.5 bg-sky-500 text-white rounded-xl font-bold hover:bg-sky-600 transition">Sign In</button>
                 <button onClick={() => router.push("/signup")} className="w-full py-3.5 border-2 border-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition">Create Account</button>
               </div>
             </motion.div>
