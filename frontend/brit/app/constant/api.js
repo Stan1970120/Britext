@@ -43,4 +43,5 @@ export const API = {
     RATE_BOOK: `${PREFIX}/rate`,
   ADD_TO_CART: `${PREFIX}/cart`,      
   TOGGLE_WISHLIST: `${PREFIX}/wishlist`,
+  SUBSCRIBE_NEWSLETTER: `${REST_API}/subscribe`,
 };
