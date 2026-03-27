@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Star, Loader2, ShoppingCart } from "lucide-react";
+import { Star, Loader2, ShoppingCart, Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { API } from "../../constant/api"; 
 import { REST_API } from "../../constant";
 import { useAuth } from "@/app/context/AuthContext";
@@ -55,15 +56,27 @@ const BookStore = () => {
     setBooks(current => current.map(b => b._id === bookId ? { ...b, ...updates } : b));
   };
 
-  const handleRatingClick = async (e: React.MouseEvent, bookId: string, value: number) => {
-    e.preventDefault();
-    e.stopPropagation(); 
-    
+  const toggleWishlist = async (e: React.MouseEvent, bookId: string, currentStatus: boolean) => {
+    e.stopPropagation();
     if (!token) return router.push("/login");
 
-    // Optimistic UI update
-    updateLocalState(bookId, { rating: value });
+    updateLocalState(bookId, { isWishlisted: !currentStatus });
+    try {
+      await fetch(`${REST_API}/wishlist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ bookId }),
+      });
+    } catch (error) {
+      updateLocalState(bookId, { isWishlisted: currentStatus });
+    }
+  };
 
+  const handleRatingClick = async (e: React.MouseEvent, bookId: string, value: number) => {
+    e.stopPropagation(); 
+    if (!token) return router.push("/login");
+
+    updateLocalState(bookId, { rating: value });
     try {
       const res = await fetch(API.RATE_BOOK, {
         method: "POST",
@@ -80,18 +93,17 @@ const BookStore = () => {
   };
 
   const handleAddToCart = async (e: React.MouseEvent, bookId: string) => {
-    e.preventDefault();
     e.stopPropagation();
-
     if (!token) return router.push("/login");
     
     updateLocalState(bookId, { isInCart: true });
     try {
-      await fetch(`${REST_API}/cart`, {
+      const res = await fetch(`${REST_API}/cart`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ bookId }),
       });
+      if (!res.ok) throw new Error();
     } catch (error) {
       updateLocalState(bookId, { isInCart: false });
     }
@@ -119,49 +131,77 @@ const BookStore = () => {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {books.map((book) => (
-            <div 
+            <motion.div 
               key={book._id} 
+              whileHover={{ scale: 1.03 }}
               onClick={() => router.push(`/book-store/${book._id}`)}
-              className="group bg-white rounded-2xl border border-slate-100 hover:shadow-xl transition-all p-4 cursor-pointer"
+              className="bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden relative cursor-pointer border border-gray-200 transition-all duration-200 flex flex-col"
             >
-              <div className="relative aspect-[4/5] w-[85%] mx-auto mb-4 rounded-lg overflow-hidden shadow-md">
-                <Image src={book.coverImage || "/placeholder.png"} alt={book.title} fill className="object-cover" unoptimized />
-              </div>
-              <h3 className="font-bold text-slate-900 truncate">{book.title}</h3>
-              <p className="text-[10px] text-sky-600 font-bold mb-2">{book.author}</p>
-              
-              <div className="flex items-center gap-0.5 mb-4" onClick={(e) => e.stopPropagation()}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star 
-                    key={star} 
-                    size={14} 
-                    onClick={(e) => handleRatingClick(e, book._id, star)}
-                    className={`cursor-pointer ${star <= Math.round(book.rating) ? "fill-amber-400 text-amber-400" : "text-slate-200"}`}
+              <div className="relative flex justify-center items-center py-6 bg-gradient-to-b from-gray-50 to-gray-100">
+                <div className="relative w-25 h-36 md:w-30 md:h-46">
+                  <Image 
+                    src={book.coverImage || "/placeholder.png"} 
+                    alt={book.title} 
+                    fill 
+                    className="object-cover rounded-md shadow-[0_10px_20px_rgba(0,0,0,0.15)] border border-gray-200"
+                    unoptimized 
                   />
-                ))}
-                <span className="text-[10px] ml-1 text-slate-400">{(book.rating || 0).toFixed(1)}</span>
+                </div>
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-24 h-2 bg-gray-400/40 blur-md rounded-full"></div>
+
+                <button
+                  className="absolute top-3 right-3 bg-white/80 rounded-full p-1.5 hover:bg-white transition shadow-sm"
+                  onClick={(e) => toggleWishlist(e, book._id, book.isWishlisted)}
+                >
+                  <Heart
+                    size={18}
+                    fill={book.isWishlisted ? "#FFD700" : "none"}
+                    className={book.isWishlisted ? "text-yellow-400" : "text-gray-500"}
+                  />
+                </button>
               </div>
 
-              <div className="flex justify-between items-center mt-auto pt-2 border-t border-slate-50">
-                <button 
+              <div className="p-4 flex flex-col flex-grow">
+                <p className="text-xs text-gray-500 mb-1">
+                  {book.category} – <span className="text-gray-700">{book.author}</span>
+                </p>
+                <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 min-h-[40px]">
+                  {book.title}
+                </h3>
+
+                <div className="flex items-center gap-1 mt-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button key={star} onClick={(e) => handleRatingClick(e, book._id, star)}>
+                      <span className={`text-sm ${star <= Math.round(book.rating) ? "text-yellow-500" : "text-gray-300"}`}>
+                        ★
+                      </span>
+                    </button>
+                  ))}
+                  <span className="text-xs text-gray-500 ml-1">{(book.rating || 0).toFixed(1)}</span>
+                </div>
+
+                <div className="mt-2">
+                  <span className="text-black font-semibold text-sm">${book.price}</span>
+                </div>
+
+                <button
                   onClick={(e) => handleAddToCart(e, book._id)}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${book.isInCart ? "bg-emerald-50 text-emerald-600" : "bg-sky-500 text-white"}`}
+                  disabled={book.isInCart}
+                  className={`mt-4 w-full flex items-center justify-center gap-2 text-sm py-2.5 rounded-md font-medium transition ${
+                    book.isInCart
+                      ? "bg-gray-200 text-gray-600 cursor-not-allowed"
+                      : "bg-sky-500 hover:bg-sky-600 text-white shadow-sm"
+                  }`}
                 >
-                  {book.isInCart ? "Added" : "Add to cart"}
+                  {book.isInCart ? "Added to Cart" : "Add to Cart"}
+                  <ShoppingCart size={16} />
                 </button>
-                <span className="font-bold text-slate-900">${book.price}</span>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
-
-        {!isLoading && books.length === 0 && (
-          <div className="text-center py-20">
-            <p className="text-slate-400">No books found in this category.</p>
-          </div>
-        )}
       </div>
     </div>
   );
