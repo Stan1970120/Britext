@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Loader2, ShoppingCart, Heart } from "lucide-react";
+import { Loader2, ShoppingCart, Heart, X, LogIn, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { API } from "../../constant/api"; 
 import { REST_API } from "../../constant";
 import { useAuth } from "@/app/context/AuthContext";
@@ -29,6 +29,7 @@ const BookStore = () => {
   const [selectedCategory, setSelectedCategory] = useState("All Books");
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showGuestModal, setShowGuestModal] = useState(false);
 
   const fetchBooks = useCallback(async () => {
     try {
@@ -41,7 +42,21 @@ const BookStore = () => {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await res.json();
-      setBooks(Array.isArray(data) ? data : []);
+      
+      let finalBooks = Array.isArray(data) ? data : [];
+
+      // If Guest, overlay their local interactions
+      if (!token) {
+        const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
+        const guestWish = JSON.parse(localStorage.getItem("guestWishlist") || "[]");
+        finalBooks = finalBooks.map((b: Book) => ({
+          ...b,
+          isInCart: guestCart.includes(b._id),
+          isWishlisted: guestWish.includes(b._id)
+        }));
+      }
+
+      setBooks(finalBooks);
     } catch (error) {
       console.error(`Fetch error at ${REST_API}:`, error);
       setBooks([]);
@@ -58,11 +73,17 @@ const BookStore = () => {
 
   const toggleWishlist = async (e: React.MouseEvent, bookId: string, currentStatus: boolean) => {
     e.stopPropagation();
-    if (!token) return router.push("/login");
+    
+    if (!token) {
+      const guestWish = JSON.parse(localStorage.getItem("guestWishlist") || "[]");
+      const updated = currentStatus ? guestWish.filter((id: string) => id !== bookId) : [...guestWish, bookId];
+      localStorage.setItem("guestWishlist", JSON.stringify(updated));
+      updateLocalState(bookId, { isWishlisted: !currentStatus });
+      return;
+    }
 
     updateLocalState(bookId, { isWishlisted: !currentStatus });
     try {
-      // Use API constant to ensure correct path (prevents 404)
       await fetch(API.TOGGLE_WISHLIST, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -70,13 +91,20 @@ const BookStore = () => {
       });
     } catch (error) {
       updateLocalState(bookId, { isWishlisted: currentStatus });
-      console.error(`Wishlist toggle failed on base ${REST_API}:`, error);
+      console.error(`Wishlist toggle failed:`, error);
     }
   };
 
   const handleRatingClick = async (e: React.MouseEvent, bookId: string, value: number) => {
     e.stopPropagation(); 
-    if (!token) return router.push("/login");
+    
+    if (!token) {
+      const guestRatings = JSON.parse(localStorage.getItem("guestRatings") || "{}");
+      guestRatings[bookId] = value;
+      localStorage.setItem("guestRatings", JSON.stringify(guestRatings));
+      updateLocalState(bookId, { rating: value });
+      return;
+    }
 
     updateLocalState(bookId, { rating: value });
     try {
@@ -90,17 +118,26 @@ const BookStore = () => {
         updateLocalState(bookId, { rating: data.rating });
       }
     } catch (error) {
-      console.error(`Rating failed at ${REST_API}:`, error);
+      console.error(`Rating failed:`, error);
     }
   };
 
   const handleAddToCart = async (e: React.MouseEvent, bookId: string) => {
     e.stopPropagation();
-    if (!token) return router.push("/login");
     
+    if (!token) {
+      const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
+      if (!guestCart.includes(bookId)) {
+        guestCart.push(bookId);
+        localStorage.setItem("guestCart", JSON.stringify(guestCart));
+      }
+      updateLocalState(bookId, { isInCart: true });
+      setShowGuestModal(true);
+      return;
+    }
+
     updateLocalState(bookId, { isInCart: true });
     try {
-      // Use API constant to ensure correct path (prevents 404)
       const res = await fetch(API.ADD_TO_CART, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -109,12 +146,60 @@ const BookStore = () => {
       if (!res.ok) throw new Error();
     } catch (error) {
       updateLocalState(bookId, { isInCart: false });
-      console.error(`Cart update failed for endpoint ${REST_API}:`, error);
+      console.error(`Cart update failed:`, error);
     }
   };
 
   return (
-    <div className="p-4 md:p-10 bg-[#f8fafc] min-h-screen">
+    <div className="p-4 md:p-10 bg-[#f8fafc] min-h-screen relative">
+      <AnimatePresence>
+        {showGuestModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl border border-gray-100 relative"
+            >
+              <button 
+                onClick={() => setShowGuestModal(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+              <div className="text-center">
+                <div className="bg-sky-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <ShoppingCart className="text-sky-600" size={30} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900">Item added to cart!</h3>
+                <p className="text-gray-500 mt-2 mb-6 text-sm">Create an account to save your library across all devices and proceed to checkout.</p>
+                
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={() => router.push("/login")}
+                    className="w-full flex items-center justify-center gap-2 bg-sky-600 text-white py-3 rounded-xl font-semibold hover:bg-sky-700 transition"
+                  >
+                    <LogIn size={18} /> Sign In
+                  </button>
+                  <button 
+                    onClick={() => router.push("/signup")}
+                    className="w-full flex items-center justify-center gap-2 border border-gray-200 py-3 rounded-xl font-semibold hover:bg-gray-50 transition text-gray-700"
+                  >
+                    <UserPlus size={18} /> Create Account
+                  </button>
+                  <button 
+                    onClick={() => setShowGuestModal(false)}
+                    className="text-xs text-gray-400 mt-2 hover:underline"
+                  >
+                    Continue as Guest
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-10">
           <h1 className="text-4xl font-black text-slate-900">The Library</h1>
@@ -153,10 +238,8 @@ const BookStore = () => {
                     unoptimized 
                   />
                 </div>
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-24 h-2 bg-gray-400/40 blur-md rounded-full"></div>
-
                 <button
-                  className="absolute top-3 right-3 bg-white/80 rounded-full p-1.5 hover:bg-white transition shadow-sm"
+                  className="absolute top-3 right-3 bg-white/80 rounded-full p-1.5 hover:bg-white transition shadow-sm z-20"
                   onClick={(e) => toggleWishlist(e, book._id, book.isWishlisted)}
                 >
                   <Heart
@@ -168,35 +251,29 @@ const BookStore = () => {
               </div>
 
               <div className="p-4 flex flex-col flex-grow">
-                <p className="text-xs text-gray-500 mb-1">
-                  {book.category} – <span className="text-gray-700">{book.author}</span>
-                </p>
-                <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 min-h-[40px]">
-                  {book.title}
-                </h3>
+                <p className="text-xs text-gray-500 mb-1">{book.category} – {book.author}</p>
+                <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 min-h-[40px]">{book.title}</h3>
 
                 <div className="flex items-center gap-1 mt-2">
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <button key={star} onClick={(e) => handleRatingClick(e, book._id, star)}>
-                      <span className={`text-sm ${star <= Math.round(book.rating) ? "text-yellow-500" : "text-gray-300"}`}>
-                        ★
-                      </span>
+                    <button 
+                      key={star} 
+                      className="z-20"
+                      onClick={(e) => handleRatingClick(e, book._id, star)}
+                    >
+                      <span className={`text-sm ${star <= Math.round(book.rating) ? "text-yellow-500" : "text-gray-300"}`}>★</span>
                     </button>
                   ))}
                   <span className="text-xs text-gray-500 ml-1">{(book.rating || 0).toFixed(1)}</span>
                 </div>
 
-                <div className="mt-2">
-                  <span className="text-black font-semibold text-sm">${book.price}</span>
-                </div>
+                <div className="mt-2"><span className="text-black font-semibold text-sm">${book.price}</span></div>
 
                 <button
                   onClick={(e) => handleAddToCart(e, book._id)}
                   disabled={book.isInCart}
-                  className={`mt-4 w-full flex items-center justify-center gap-2 text-sm py-2.5 rounded-md font-medium transition ${
-                    book.isInCart
-                      ? "bg-gray-200 text-gray-600 cursor-not-allowed"
-                      : "bg-sky-500 hover:bg-sky-600 text-white shadow-sm"
+                  className={`mt-4 w-full flex items-center justify-center gap-2 text-sm py-2.5 rounded-md font-medium transition z-20 ${
+                    book.isInCart ? "bg-gray-200 text-gray-600" : "bg-sky-500 hover:bg-sky-600 text-white shadow-sm"
                   }`}
                 >
                   {book.isInCart ? "Added to Cart" : "Add to Cart"}
