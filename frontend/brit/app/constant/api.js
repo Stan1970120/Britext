@@ -1,6 +1,6 @@
 import { REST_API } from "./index.js"; 
 
-// ✅ MATCHED TO SERVER.JS: Ensure this matches your backend mount point
+//  backend mount point
 const PREFIX = `${REST_API}/publish-books`;
 
 export const API = {
@@ -40,5 +40,7 @@ export const API = {
 
   /*  USER INTERACTIONS
       */
-  RATE_BOOK: `${PREFIX}/rate`, 
+    RATE_BOOK: `${PREFIX}/rate`,
+  ADD_TO_CART: `${PREFIX}/cart`,      
+  TOGGLE_WISHLIST: `${PREFIX}/wishlist`,
 };

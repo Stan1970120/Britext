@@ -17,22 +17,21 @@ import adminRoutes from "./routes/adminRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import publishBookRoutes from "./routes/publishbook.routes.js"; 
+import bookRatingsRoutes from "./routes/bookRatingsRoutes.js";
 
 const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-/* =======================
-    Middleware
-======================= */
+/* Middleware */
 
-// UPDATED CORS: Added your live domains to the whitelist
+//  Added live domains to the whitelist
 const allowedOrigins = [
   "http://localhost:3000", 
   "https://britext.vercel.app",
-  "https://enjoyreads.com",     // Your main domain
-  "https://www.enjoyreads.com"  // Your www subdomain
+  "https://enjoyreads.com",     
+  "https://www.enjoyreads.com"  
 ];
 
 app.use(
@@ -57,31 +56,26 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(passport.initialize());
 
-/* =======================
-    Static Folder
-======================= */
+/* Static Folder */
 const uploadPath = fs.existsSync(path.join(__dirname, "../uploads"))
   ? path.join(__dirname, "../uploads")
   : path.join(__dirname, "uploads");
 
 app.use("/uploads", express.static(uploadPath));
 
-/* =======================
-    Database
-======================= */
+/* Database */
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error("❌ MongoDB error:", err));
+  .then(() => console.log(" MongoDB connected"))
+  .catch((err) => console.error(" MongoDB error:", err));
 
-/* =======================
-    Routes
-======================= */
+/* Routes */
 app.use("/api/auth", authRoutes);
 app.use("/api/publish-books", publishBookRoutes); 
 app.use("/api/cart", cartRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/publish-books", bookRatingsRoutes);
 
 app.get("/", (req, res) => {
   res.send("Britext API running 🚀");

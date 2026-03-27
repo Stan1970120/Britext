@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const wishlistSchema = new mongoose.Schema(
   {
-    user: {
+    userId: { // Changed from 'user' to 'userId' for consistency
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -11,7 +11,7 @@ const wishlistSchema = new mongoose.Schema(
     books: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "PublishBook", // ✨ Critical: Must match your model name
+        ref: "Book", // Updated to match Book model
       },
     ],
   },
