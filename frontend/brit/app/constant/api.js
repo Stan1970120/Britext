@@ -45,4 +45,5 @@ export const API = {
   TOGGLE_WISHLIST: `${PREFIX}/wishlist`,
   SUBSCRIBE_NEWSLETTER: `${REST_API}/subscribe`,
   COMMENTS: `${REST_API}/comments`,
+  TRENDING: `${REST_API}/trending`,
 };
