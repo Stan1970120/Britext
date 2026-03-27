@@ -62,7 +62,7 @@ const BookStore = () => {
 
     updateLocalState(bookId, { isWishlisted: !currentStatus });
     try {
-      await fetch(`${REST_API}/wishlist`, {
+      await fetch(API.TOGGLE_WISHLIST, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ bookId }),
@@ -94,18 +94,31 @@ const BookStore = () => {
 
   const handleAddToCart = async (e: React.MouseEvent, bookId: string) => {
     e.stopPropagation();
-    if (!token) return router.push("/login");
     
+    // Always update local UI state immediately for responsiveness
     updateLocalState(bookId, { isInCart: true });
+
     try {
-      const res = await fetch(`${REST_API}/cart`, {
+      const res = await fetch(API.ADD_TO_CART, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: token 
+          ? { "Content-Type": "application/json", Authorization: `Bearer ${token}` } 
+          : { "Content-Type": "application/json" },
         body: JSON.stringify({ bookId }),
       });
-      if (!res.ok) throw new Error();
+
+      // Guest logic: Store in localStorage if user is not signed in
+      if (!token) {
+        const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
+        if (!guestCart.includes(bookId)) {
+          localStorage.setItem("guestCart", JSON.stringify([...guestCart, bookId]));
+        }
+      }
+
+      if (!res.ok && token) throw new Error();
     } catch (error) {
-      updateLocalState(bookId, { isInCart: false });
+      // Revert UI state only if logged in and request failed
+      if (token) updateLocalState(bookId, { isInCart: false });
     }
   };
 
@@ -172,9 +185,9 @@ const BookStore = () => {
                 </h3>
 
                 <div className="flex items-center gap-1 mt-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button key={star} onClick={(e) => handleRatingClick(e, book._id, star)}>
-                      <span className={`text-sm ${star <= Math.round(book.rating) ? "text-yellow-500" : "text-gray-300"}`}>
+                  {[1, 2, 3, 4, 5].map((starValue) => (
+                    <button key={starValue} onClick={(e) => handleRatingClick(e, book._id, starValue)}>
+                      <span className={`text-sm ${starValue <= Math.round(book.rating) ? "text-yellow-500" : "text-gray-300"}`}>
                         ★
                       </span>
                     </button>
