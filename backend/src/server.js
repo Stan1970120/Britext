@@ -18,6 +18,7 @@ import cartRoutes from "./routes/cartRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import publishBookRoutes from "./routes/publishbook.routes.js"; 
 import bookRatingsRoutes from "./routes/bookRatingsRoutes.js";
+import subscribeRoutes from "./routes/subscribe.routes.js";
 
 const app = express();
 
@@ -76,6 +77,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/publish-books", bookRatingsRoutes);
+app.use("/api/subscribe", subscribeRoutes);
 
 app.get("/", (req, res) => {
   res.send("Britext API running 🚀");

@@ -1,10 +1,10 @@
 export default function BookTabs({ active, onChange }: { 
-  active: "draft" | "published", 
-  onChange: (val: "draft" | "published") => void 
+  active: "draft" | "published" | "broadcast", 
+  onChange: (val: "draft" | "published" | "broadcast") => void 
 }) {
   return (
     <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-      {(["draft", "published"] as const).map((tab) => (
+      {(["draft", "published", "broadcast"] as const).map((tab) => (
         <button
           key={tab}
           onClick={() => onChange(tab)}
