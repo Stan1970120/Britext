@@ -1,8 +1,6 @@
 import mongoose from "mongoose";
 
-/* =========================
-   📖 CHAPTER SCHEMA
-========================= */
+/*  CHAPTER SCHEMA*/
 const chapterSchema = new mongoose.Schema(
   {
     title: {

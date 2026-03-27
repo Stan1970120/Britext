@@ -1,4 +1,4 @@
-import Book from "../models/book.model.js";
+import Book from "../models/publishbook.model.js";
 
 export const getTrendingBooks = async (req, res) => {
   try {
