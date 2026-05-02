@@ -1,7 +1,6 @@
 import Hero from "../../Components/Hero";
 import Trending from "../../Components/Trending";
 import ShoppingExperience from "../../Components/ShoppingExperience";
-import OtherBooks from "../../Components/OtherBooks";
 import Testmonial from "../../Components/Testmonial";
 import SubscribeSection from "../../Components/SubscribeSection";
 import CommentSection from "../../Components/CommentSection";
@@ -15,7 +14,6 @@ export default async function HomePage() {
       <Hero />
       <Trending />
       <ShoppingExperience />
-      <OtherBooks />
       <Testmonial />
       <SubscribeSection />
       <CommentSection />

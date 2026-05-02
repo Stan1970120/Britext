@@ -21,7 +21,7 @@ interface Book {
   isWishlisted: boolean;
 }
 
-const categories = ["All Books", "Educational", "Fiction", "Non-Fiction", "Professional & Technical", "Faith Based", "Lifestyle", "Journal & Notes"];
+const categories = ["All Books", "Educational", "Fiction", "Non-Fiction", "Professional & Technical", "Faith Based", "Lifestyle", "Motivational"];
 
 const BookStore = () => {
   const router = useRouter();
