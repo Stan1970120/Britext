@@ -3,8 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Send, Image as ImageIcon, Loader2 } from "lucide-react"; // Icons for the form
-
+import { Send, Image as ImageIcon, Loader2 } from "lucide-react"; 
 // Type Imports
 import { DashboardStats, Transaction } from "@/app/types/analytics";
 import { Book } from "@/app/types/books";
@@ -32,7 +31,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // --- NEW: Broadcast Form State ---
+  // NEW: Broadcast Form State
   const [broadcastData, setBroadcastData] = useState({
     subject: "",
     title: "",
@@ -110,7 +109,7 @@ export default function AdminDashboard() {
     }
   }, [fetchDashboardData, authLoading, token, router]);
 
-  // --- NEW: Broadcast Submission Logic ---
+  // NEW: Broadcast Submission Logic
   const handleSendBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
@@ -161,7 +160,7 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900">Admin Dashboard</h1>
+          <h1 className="text-3xl font-black tracking-tight text-slate-900">Dashboard</h1>
           <p className="text-slate-500 text-sm font-medium">Manage manuscripts and monitor global performance.</p>
         </div>
         
@@ -213,7 +212,7 @@ export default function AdminDashboard() {
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Loading Records...</p>
               </div>
             ) : activeTab === "broadcast" ? (
-              /* --- NEW: Broadcast Form UI --- */
+              /* NEW: Broadcast Form UI */
               <form onSubmit={handleSendBroadcast} className="space-y-4 animate-in fade-in duration-500">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">

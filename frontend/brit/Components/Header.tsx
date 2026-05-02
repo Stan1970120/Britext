@@ -27,9 +27,7 @@ const Header = () => {
       // 1. Execute the logout logic (clears token/state)
       await logout(); 
       
-      // 2. HARD RESET: Instead of router.push, we force a window reload to the root.
-      // This prevents the protected admin layout from trying to re-render 
-      // without credentials, which causes that 404/Auth error.
+      
       if (typeof window !== "undefined") {
         window.location.href = "/"; 
       }
@@ -39,8 +37,7 @@ const Header = () => {
     }
   };
 
-  // We use a local constant to prevent the UI from flickering 
-  // during the async logout process.
+  
   const displayUser = isLoggingOut ? null : user;
 
   return (
