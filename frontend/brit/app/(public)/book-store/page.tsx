@@ -230,7 +230,7 @@ const BookStore = () => {
               <BookOpen size={48} className="text-gray-300" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900">Empty Shelf</h2>
-            <p className="text-gray-500 mt-2">We couldn&apose;t find any books in the <span className="font-semibold text-sky-600">{selectedCategory}</span> category.</p>
+            <p className="text-gray-500 mt-2">We couldn&apos;t find any books in the <span className="font-semibold text-sky-600">{selectedCategory}</span> category.</p>
             <button 
               onClick={() => setSelectedCategory("All Books")}
               className="mt-6 text-sky-600 font-bold hover:underline"
