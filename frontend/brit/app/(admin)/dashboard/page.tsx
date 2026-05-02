@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Send, Image as ImageIcon, Loader2, Trash2, CheckCircle } from "lucide-react"; 
+import { Send, Image as ImageIcon, Loader2, Trash2, CheckCircle, AlertTriangle, X } from "lucide-react"; 
 // Type Imports
 import { DashboardStats, Transaction } from "@/app/types/analytics";
 import { Book } from "@/app/types/books";
@@ -24,16 +24,17 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { logout, token, loading: authLoading } = useAuth();
   
-  // Updated state to include "delete"
   const [activeTab, setActiveTab] = useState<"draft" | "published" | "broadcast" | "delete">("published");
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // NEW: UI States for Delete Action
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+  // NEW: UI States for Modals
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [broadcastData, setBroadcastData] = useState({
     subject: "",
@@ -96,7 +97,6 @@ export default function AdminDashboard() {
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "A connection error occurred.";
       setError(errorMessage);
-      console.error("Dashboard Fetch Error:", err);
     } finally {
       setLoading(false);
     }
@@ -112,30 +112,32 @@ export default function AdminDashboard() {
     }
   }, [fetchDashboardData, authLoading, token, router]);
 
-  // NEW: Delete Book Logic
-  const handleDeleteBook = async (bookId: string) => {
-    if (!token || !window.confirm("Are you sure you want to delete this book forever?")) return;
+  // Modal Trigger for Delete
+  const initiateDelete = (id: string) => {
+    setConfirmDeleteId(id);
+  };
+
+  const handleDeleteBook = async () => {
+    if (!token || !confirmDeleteId) return;
     
-    setIsDeletingId(bookId);
+    setIsDeleting(true);
     try {
-      const res = await fetch(`${REST_API}/publish-books/${bookId}`, {
+      const res = await fetch(`${REST_API}/publish-books/${confirmDeleteId}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
 
       if (res.ok) {
-        // Remove from local state immediately
-        setAllBooks(prev => prev.filter(b => b._id !== bookId));
-        // Pop up mini modal
-        setShowDeleteModal(true);
-        setTimeout(() => setShowDeleteModal(false), 3000);
-      } else {
-        alert("Failed to delete book.");
+        setAllBooks(prev => prev.filter(b => b._id !== confirmDeleteId));
+        setConfirmDeleteId(null);
+        setSuccessMessage("Book deleted permanently");
+        setShowSuccessModal(true);
+        setTimeout(() => setShowSuccessModal(false), 3000);
       }
     } catch (err) {
-      alert("Error connecting to server.");
+      console.error(err);
     } finally {
-      setIsDeletingId(null);
+      setIsDeleting(false);
     }
   };
 
@@ -153,13 +155,13 @@ export default function AdminDashboard() {
         body: JSON.stringify(broadcastData),
       });
       if (res.ok) {
-        alert("Newsletter sent successfully!");
         setBroadcastData({ subject: "", title: "", message: "", imageUrl: "" });
-      } else {
-        alert("Failed to send newsletter.");
+        setSuccessMessage("Broadcast sent successfully!");
+        setShowSuccessModal(true);
+        setTimeout(() => setShowSuccessModal(false), 3000);
       }
     } catch (err) {
-      alert("Error connecting to server.");
+      console.error(err);
     } finally {
       setSending(false);
     }
@@ -170,7 +172,6 @@ export default function AdminDashboard() {
     router.replace("/signin");
   };
 
-  // Filter logic: show all books if on "delete" tab, otherwise filter by status
   const filteredBooks = activeTab === "delete" 
     ? allBooks 
     : allBooks.filter(book => book.status === activeTab);
@@ -189,13 +190,45 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50/50 p-6 space-y-8 text-gray-900 relative">
       
-      {/* Mini Success Modal */}
-      {showDeleteModal && (
+      {/* SUCCESS MODAL (TOAST STYLE) */}
+      {showSuccessModal && (
         <div className="fixed top-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top duration-300">
-          <div className="bg-emerald-600 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 font-bold">
-            <CheckCircle size={20} />
-            Book deleted successfully
+          <div className="bg-slate-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 font-bold border border-slate-700">
+            <div className="bg-emerald-500 p-1 rounded-full">
+                <CheckCircle size={16} className="text-white" />
+            </div>
+            {successMessage}
           </div>
+        </div>
+      )}
+
+      {/* CONFIRM DELETE MODAL */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+            <div className="bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200">
+                <div className="bg-red-50 w-16 h-16 rounded-3xl flex items-center justify-center text-red-600 mb-6">
+                    <AlertTriangle size={32} />
+                </div>
+                <h3 className="text-2xl font-black text-slate-900 mb-2">Are you sure?</h3>
+                <p className="text-slate-500 font-medium mb-8">
+                    This action is permanent. The book manuscript and all associated data will be removed from our servers.
+                </p>
+                <div className="flex gap-3">
+                    <button 
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="flex-1 py-4 rounded-2xl font-bold text-slate-500 hover:bg-slate-50 transition-all"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={handleDeleteBook}
+                        disabled={isDeleting}
+                        className="flex-1 py-4 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-100 flex items-center justify-center gap-2"
+                    >
+                        {isDeleting ? <Loader2 className="animate-spin" size={18}/> : "Yes, Delete"}
+                    </button>
+                </div>
+            </div>
         </div>
       )}
 
@@ -307,19 +340,20 @@ export default function AdminDashboard() {
             ) : filteredBooks.length === 0 ? (
               <EmptyState text={`No ${activeTab} books found in the database.`} />
             ) : (
-              <div className="grid gap-4">
+              <div className="grid gap-6">
                 {filteredBooks.map((book) => (
-                  <div key={book._id} className="group relative">
+                  <div key={book._id} className="relative bg-white rounded-[1.5rem] border border-slate-50 hover:border-slate-100 hover:shadow-xl transition-all duration-300 p-2">
                     <BookCard book={book} />
                     {activeTab === "delete" && (
-                      <button 
-                        onClick={() => handleDeleteBook(book._id)}
-                        disabled={isDeletingId === book._id}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-red-50 text-red-600 p-3 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm border border-red-100 flex items-center gap-2 font-bold text-xs"
-                      >
-                        {isDeletingId === book._id ? <Loader2 size={16} className="animate-spin"/> : <Trash2 size={16}/>}
-                        Delete
-                      </button>
+                      <div className="absolute top-4 right-4 flex items-center">
+                        <button 
+                            onClick={() => initiateDelete(book._id)}
+                            className="bg-red-50 text-red-600 h-10 px-4 rounded-xl hover:bg-red-600 hover:text-white transition-all border border-red-100 flex items-center gap-2 font-black text-xs group"
+                        >
+                            <Trash2 size={14} className="group-hover:scale-110 transition-transform" />
+                            Delete
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -357,7 +391,6 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
 
 /*
 'use client';
