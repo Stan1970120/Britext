@@ -342,16 +342,16 @@ export default function AdminDashboard() {
             ) : (
               <div className="grid gap-6">
                 {filteredBooks.map((book) => (
-                  <div key={book._id} className="relative bg-white rounded-[1.5rem] border border-slate-50 hover:border-slate-100 hover:shadow-xl transition-all duration-300 p-2">
+                  <div key={book._id} className="bg-white rounded-[1.5rem] border border-slate-100 hover:shadow-xl transition-all duration-300 p-2 flex flex-col">
                     <BookCard book={book} />
                     {activeTab === "delete" && (
-                      <div className="absolute top-4 right-4 flex items-center">
+                      <div className="px-6 pb-4 pt-2 flex justify-end">
                         <button 
                             onClick={() => initiateDelete(book._id)}
-                            className="bg-red-50 text-red-600 h-10 px-4 rounded-xl hover:bg-red-600 hover:text-white transition-all border border-red-100 flex items-center gap-2 font-black text-xs group"
+                            className="bg-red-50 text-red-600 py-2 px-6 rounded-xl hover:bg-red-600 hover:text-white transition-all border border-red-100 flex items-center gap-2 font-black text-xs group"
                         >
                             <Trash2 size={14} className="group-hover:scale-110 transition-transform" />
-                            Delete
+                            Delete Permanent
                         </button>
                       </div>
                     )}
