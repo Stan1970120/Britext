@@ -41,7 +41,7 @@ const BookStore = () => {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-  /* --------------------------- FETCH BOOKS --------------------------- */
+  /*  FETCH BOOKS  */
   const fetchBooks = async () => {
     try {
       // ✨ Updated URL to match your API constants: /publishbook/store/books
@@ -66,7 +66,7 @@ const BookStore = () => {
     fetchBooks();
   }, [selectedCategory]);
 
-  /* --------------------------- CART / WISHLIST --------------------------- */
+  /*  CART / WISHLIST  */
   const handleAddToCart = async (bookId: string) => {
     try {
       const res = await fetch(`${REST_API}/cart`, {

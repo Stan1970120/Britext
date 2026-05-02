@@ -24,10 +24,10 @@ export default function ChapterEditorPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-  // 1. Fetch Chapters
+  //  Fetch Chapters
   const fetchChapters = async () => {
     try {
-      // apiClient handles Authorization headers automatically
+      
       const res = await apiClient(API.GET_CHAPTERS(bookId as string));
       
       if (res.ok) {

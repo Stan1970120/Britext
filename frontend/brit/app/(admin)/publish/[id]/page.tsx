@@ -32,7 +32,7 @@ export default function PublishPage() {
             author: data.author || "",
             category: data.category || "Educational",
             price: data.price || "",
-            summary: data.summary || "", // Pulls existing description/synopsis
+            summary: data.summary || "", 
           });
         }
       } catch (error) { console.error(error); }
@@ -58,7 +58,7 @@ export default function PublishPage() {
       });
 
       if (res.ok) {
-        // ✅ RETURNS TO DASHBOARD
+        // RETURNS TO DASHBOARD
         router.push("/dashboard"); 
       } else {
         alert("Failed to publish.");
@@ -97,7 +97,7 @@ export default function PublishPage() {
           <textarea required rows={4} className="w-full p-3 border rounded-xl" value={formData.summary} onChange={(e) => setFormData({ ...formData, summary: e.target.value })} />
         </div>
         <button type="submit" disabled={loading} className="w-full bg-[#035b77] text-white py-4 rounded-xl font-bold shadow-lg">
-          {loading ? "Publishing..." : "Confirm & Go Live 🚀"}
+          {loading ? "Publishing..." : "Confirm & Go Live "}
         </button>
       </form>
     </div>

@@ -39,7 +39,7 @@ export default function UploadBookPage() {
       />
 
       <button className="bg-slate-900 text-white px-8 py-3 rounded-full">
-        Upload Book →
+        Upload Book
       </button>
     </div>
   );

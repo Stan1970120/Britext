@@ -4,7 +4,7 @@ import { useState } from "react";
 import { API } from "../../../constant/api";
 import { useRouter } from "next/navigation";
 
-/** 1️⃣ Define a strict type for the form */
+/* Define a strict type for the form */
 type CreateBookForm = {
   title: string;
   author: string;
@@ -12,7 +12,7 @@ type CreateBookForm = {
   language: string;
 };
 
-/** 2️⃣ Explicitly type the fields */
+/* Explicitly type the fields */
 const FIELDS: Array<keyof CreateBookForm> = [
   "title",
   "author",

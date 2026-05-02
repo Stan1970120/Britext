@@ -31,14 +31,14 @@ export default function StatsOverview({
     },
     {
       label: "Daily Revenue",
-      // ✨ Casting to Number to prevent .toFixed is not a function error
+      //  Casting to Number to prevent .toFixed is not a function error
       value: `$${Number(revenue || 0).toFixed(2)}`,
       icon: <FiDollarSign className="text-amber-600" />,
       bg: "bg-amber-50",
     },
     {
       label: "Store Conversion",
-      // ✨ Casting to Number to prevent .toFixed is not a function error
+      //  Casting to Number to prevent .toFixed is not a function error
       value: `${Number(conversion || 0).toFixed(1)}%`,
       icon: <FiActivity className="text-purple-600" />,
       bg: "bg-purple-50",
