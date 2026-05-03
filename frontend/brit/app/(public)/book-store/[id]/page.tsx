@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from "next/image";
@@ -21,7 +20,7 @@ interface Book {
   pages?: number;
   language?: string;
   publisher?: string;
-  publishedYear?: number; // Database uses publishedYear based on your previous controller
+  publishedYear?: number;
   dimensions?: string;
 }
 
@@ -91,7 +90,6 @@ export default function BookDetails() {
       setShowAuthModal(true);
       return;
     }
-    // Logic for saving for later would go here
     alert("Saved to your library!");
   };
 
@@ -136,7 +134,7 @@ export default function BookDetails() {
 
               <div className="w-full space-y-3">
                 <button 
-                  onClick={() => router.push("/signin")}
+                  onClick={() => router.push("/auth")}
                   className="w-full py-4 bg-[#0081C9] text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-sky-700 transition-all"
                 >
                   <LogIn size={20} /> Sign In
@@ -257,7 +255,6 @@ function MetaDetail({ icon, label, value }: { icon: React.ReactNode, label: stri
     </div>
   );
 }
-
 /*
 "use client";
 
