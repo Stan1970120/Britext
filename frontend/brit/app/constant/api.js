@@ -1,13 +1,13 @@
 import { REST_API } from "./index.js"; 
 
-// Keep this for your admin/publishing routes
+
+const BASE_PREFIX = REST_API;
+
+
 const PUBLISH_PREFIX = `${REST_API}/publish-books`;
 
-// Create a clean base prefix for standard API routes
-const BASE_PREFIX = `${REST_API}/api`;
-
 export const API = {
-  /* DASHBOARD & ADMIN - Keep using PUBLISH_PREFIX */
+  /* DASHBOARD & ADMIN (Uses /api/publish-books) */
   GET_ADMIN_STATS: `${PUBLISH_PREFIX}/admin/stats`,
   ADMIN_BOOKS: (status) => `${PUBLISH_PREFIX}/admin/books?status=${status}`,
   CREATE_BOOK: `${PUBLISH_PREFIX}/admin/books`,
@@ -26,10 +26,10 @@ export const API = {
   STORE_BOOKS: `${PUBLISH_PREFIX}/store/books`,
   READER_VIEW: (id) => `${PUBLISH_PREFIX}/store/books/${id}`,
 
-
-  RATE_BOOK: `${BASE_PREFIX}/rate`,
-  CART: `${BASE_PREFIX}/cart`,       
-  TOGGLE_WISHLIST: `${BASE_PREFIX}/wishlist`,
+ 
+  RATE_BOOK: `${BASE_PREFIX}/rate`,        
+  CART: `${BASE_PREFIX}/cart`,              
+  TOGGLE_WISHLIST: `${BASE_PREFIX}/wishlist`, 
   
   SUBSCRIBE_NEWSLETTER: `${REST_API}/subscribe`,
   COMMENTS: `${REST_API}/comments`,
