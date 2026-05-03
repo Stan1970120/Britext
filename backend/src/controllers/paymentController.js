@@ -3,7 +3,13 @@ import User from "../models/User.js";
 
 export const verifyPayment = async (req, res) => {
   const { reference, bookIds } = req.body;
+  
+  
   const userId = req.user.id; 
+
+  if (!reference || !bookIds) {
+    return res.status(400).json({ message: "Reference and Book IDs are required" });
+  }
 
   try {
     
@@ -27,13 +33,17 @@ export const verifyPayment = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: "Books released to library",
-        data: { reference, email: customer.email, amount: amount / 100 }
+        data: { 
+          reference, 
+          email: customer.email, 
+          amount: amount / 100 
+        }
       });
     } else {
       return res.status(400).json({ message: "Payment verification failed" });
     }
   } catch (error) {
     console.error("Paystack Error:", error.response?.data || error.message);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({ message: "Internal Server Error during payment verification" });
   }
 };
