@@ -9,47 +9,72 @@ import {
   LogOut, 
   ShoppingBag, 
   BookOpen,
-  ChevronRight 
+  ChevronRight,
+  Mail,
+  ShieldCheck
 } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/app/context/AuthContext";
 
 type Tab = "personal" | "saved" | "history";
 
 export default function UserDashboard() {
   const router = useRouter();
+  const { user, logout, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("personal");
 
-  // Mock user data - replace with your actual auth state/API call
-  const user = {
-    firstName: "PHILIP TERFA",
-    lastName: "WASEM",
-    email: "autofy18@gmail.com",
-    role: "User"
-  };
-
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    logout();
     router.push("/auth");
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="w-12 h-12 bg-slate-100 rounded-full"></div>
+          <div className="h-4 w-32 bg-slate-100 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-6 text-center">
+        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100 max-w-md">
+          <User className="mx-auto text-gray-300 mb-4" size={48} />
+          <h2 className="text-2xl font-black text-slate-900 mb-2">Access Denied</h2>
+          <p className="text-gray-500 mb-8">Please log in to your account to view your dashboard and orders.</p>
+          <Link 
+            href="/auth" 
+            className="block w-full bg-[#005F7A] text-white font-bold py-4 rounded-xl shadow-lg shadow-sky-100 hover:scale-[1.02] transition-transform"
+          >
+            Login to Account
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white p-6 md:p-12 lg:px-24">
-      {/* Top Navigation for quick access */}
-      <div className="flex justify-between items-center mb-12">
+      {/* Top Navigation */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
         <div>
           <h1 className="text-3xl font-black text-slate-900">Account</h1>
           <p className="text-slate-500 font-medium">Manage your preferences</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-4 w-full md:w-auto">
           <Link 
             href="/book-store" 
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-900 font-bold text-sm transition-all"
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-900 font-bold text-sm transition-all"
           >
             <BookOpen size={18} /> Store
           </Link>
           <Link 
             href="/checkout" 
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm transition-all shadow-lg shadow-sky-100"
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm transition-all shadow-lg shadow-sky-100"
           >
             <ShoppingBag size={18} /> Cart
           </Link>
@@ -64,7 +89,7 @@ export default function UserDashboard() {
             className={`w-full flex items-center gap-3 px-6 py-4 rounded-xl font-bold transition-all ${
               activeTab === "personal" 
               ? "bg-[#005F7A] text-white shadow-lg shadow-sky-50" 
-              : "text-slate-500 hover:bg-slate-50"
+              : "text-slate-500 hover:bg-slate-100/50"
             }`}
           >
             <User size={20} /> Personal Info
@@ -75,7 +100,7 @@ export default function UserDashboard() {
             className={`w-full flex items-center gap-3 px-6 py-4 rounded-xl font-bold transition-all ${
               activeTab === "saved" 
               ? "bg-[#005F7A] text-white shadow-lg shadow-sky-50" 
-              : "text-slate-500 hover:bg-slate-50"
+              : "text-slate-500 hover:bg-slate-100/50"
             }`}
           >
             <Bookmark size={20} /> Saved for Later
@@ -86,7 +111,7 @@ export default function UserDashboard() {
             className={`w-full flex items-center gap-3 px-6 py-4 rounded-xl font-bold transition-all ${
               activeTab === "history" 
               ? "bg-[#005F7A] text-white shadow-lg shadow-sky-50" 
-              : "text-slate-500 hover:bg-slate-50"
+              : "text-slate-500 hover:bg-slate-100/50"
             }`}
           >
             <History size={20} /> Order History
@@ -108,11 +133,11 @@ export default function UserDashboard() {
             {activeTab === "personal" && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <h2 className="text-xl font-black text-slate-900 mb-8">Personal Information</h2>
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid md:grid-cols-2 gap-8">
                   <div className="space-y-2">
                     <label className="text-[10px] uppercase font-black text-slate-400 tracking-widest px-1">First Name</label>
-                    <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700">
-                      {user.firstName}
+                    <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 flex items-center gap-3">
+                      <User size={16} className="text-slate-400" /> {user.firstName}
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -123,14 +148,15 @@ export default function UserDashboard() {
                   </div>
                   <div className="md:col-span-2 space-y-2">
                     <label className="text-[10px] uppercase font-black text-slate-400 tracking-widest px-1">Email Address</label>
-                    <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700">
-                      {user.email}
+                    <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 flex items-center gap-3">
+                      <Mail size={16} className="text-slate-400" /> {user.email}
                     </div>
                   </div>
                   <div className="md:col-span-2 space-y-2">
                     <label className="text-[10px] uppercase font-black text-slate-400 tracking-widest px-1">Account Role</label>
-                    <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-green-500" /> {user.role}
+                    <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 flex items-center gap-3">
+                      <ShieldCheck size={16} className="text-[#005F7A]" /> 
+                      <span className="capitalize">{user.role || "User"}</span>
                     </div>
                   </div>
                 </div>
