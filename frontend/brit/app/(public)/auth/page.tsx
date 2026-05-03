@@ -131,7 +131,7 @@ export default function SignInPage() {
 
       <div className="flex justify-center items-center min-h-screen bg-gray-50 px-4">
         <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-md border border-gray-100">
-          <h2 className="text-2xl font-bold text-center mb-6 text-sky-700">Welcome Back 👋</h2>
+          <h2 className="text-2xl font-bold text-center mb-6 text-sky-700">Welcome Back</h2>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
