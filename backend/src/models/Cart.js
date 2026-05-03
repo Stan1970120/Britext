@@ -4,7 +4,7 @@ const cartItemSchema = new mongoose.Schema(
   {
     bookId: { 
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Book", // Updated to match Book model
+      ref: "PublishBook", 
       required: true,
     },
     quantity: {
@@ -13,7 +13,7 @@ const cartItemSchema = new mongoose.Schema(
       min: 1,
     },
   },
-  { _id: false }
+  { _id: false } 
 );
 
 const cartSchema = new mongoose.Schema(

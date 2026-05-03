@@ -1,12 +1,14 @@
 import express from "express";
-import { addToCart, getCart } from "../controllers/cartController.js";
-// ✅ FIXED: Changed path from adminMiddleware to authMiddleware
+import { addToCart, getCart, removeFromCart } from "../controllers/cartController.js";
 import { protect } from "../middleware/authMiddleware.js"; 
 
 const router = express.Router();
 
-router.use(protect); // Ensures req.user is populated for the controllers
-router.post("/", addToCart);
-router.get("/", getCart);
+// All cart routes require authentication
+router.use(protect); 
+
+router.get("/", getCart);        
+router.post("/", addToCart);      
+router.delete("/:bookId", removeFromCart); 
 
 export default router;

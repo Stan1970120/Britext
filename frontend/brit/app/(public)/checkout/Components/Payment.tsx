@@ -3,6 +3,144 @@
 import React, { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { FaPaypal, FaCcVisa, FaCcMastercard } from "react-icons/fa";
+// Import shared type from parent page
+import { CartItem } from "../page"; 
+
+interface PaymentProps {
+  cartItems: CartItem[];
+  onNext: () => void;
+  onBack: () => void;
+}
+
+const Payment: React.FC<PaymentProps> = ({
+  cartItems,
+  onNext,
+  onBack,
+}) => {
+  const [method, setMethod] = useState<"paypal" | "credit">("credit");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const totalAmount = cartItems.reduce(
+    (sum, item) => sum + (item.book?.price || 0) * item.quantity,
+    0
+  );
+
+  const handlePayment = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      // Simulate API call to process transaction
+      await new Promise((res) => setTimeout(res, 2000));
+      onNext();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (err: unknown) {
+      setError("Payment failed. Please check your card details.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white py-8">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-xl font-bold text-gray-900">Payment Method</h2>
+        <button
+          onClick={onBack}
+          className="flex items-center text-sm font-bold text-[#035b77] hover:underline"
+        >
+          <ArrowLeft size={16} className="mr-1" />
+          Back to Cart
+        </button>
+      </div>
+
+      <div className="grid lg:grid-cols-12 gap-10">
+        {/* Payment Selection */}
+        <div className="lg:col-span-7 space-y-5">
+          <div
+            onClick={() => setMethod("paypal")}
+            className={`border-2 rounded-2xl p-5 flex justify-between items-center cursor-pointer transition-all ${
+              method === "paypal" ? "border-[#035b77] bg-sky-50/30" : "border-gray-100"
+            }`}
+          >
+            <div className="flex items-center gap-4">
+              <input type="radio" checked={method === "paypal"} readOnly className="w-5 h-5 accent-[#035b77]" />
+              <div>
+                <h3 className="font-bold text-slate-800">Paypal</h3>
+                <p className="text-xs text-gray-500">Secure redirect to PayPal</p>
+              </div>
+            </div>
+            <FaPaypal size={32} className="text-[#003087]" />
+          </div>
+
+          <div
+            onClick={() => setMethod("credit")}
+            className={`border-2 rounded-2xl p-5 cursor-pointer transition-all ${
+              method === "credit" ? "border-[#035b77] bg-sky-50/30" : "border-gray-100"
+            }`}
+          >
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <input type="radio" checked={method === "credit"} readOnly className="w-5 h-5 accent-[#035b77]" />
+                <div>
+                  <h3 className="font-bold text-slate-800">Credit Card</h3>
+                  <p className="text-xs text-gray-500">Visa, MasterCard, Verve</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <FaCcVisa size={32} className="text-[#1A1F71]" />
+                <FaCcMastercard size={32} className="text-[#EB001B]" />
+              </div>
+            </div>
+          </div>
+          
+          {error && <p className="text-red-500 text-sm font-medium">{error}</p>}
+        </div>
+
+        {/* Order Summary Card */}
+        <div className="lg:col-span-5">
+          <div className="bg-slate-50 rounded-3xl p-8 border border-slate-100">
+            <h3 className="font-black text-slate-900 mb-6 uppercase tracking-wider text-xs">Summary</h3>
+            <div className="space-y-4 mb-6">
+              {cartItems.map((item) => (
+                <div key={item.bookId} className="flex justify-between text-sm">
+                  <span className="text-slate-600 line-clamp-1 flex-1">{item.book?.title}</span>
+                  <span className="font-bold text-slate-900 ml-4">
+                    ₦{((item.book?.price || 0) * item.quantity).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-slate-200 pt-4 flex justify-between items-center">
+              <span className="font-bold text-slate-900">Total Amount</span>
+              <span className="text-xl font-black text-[#035b77]">₦{totalAmount.toLocaleString()}</span>
+            </div>
+            
+            <button
+              onClick={handlePayment}
+              disabled={loading}
+              className="w-full mt-8 bg-[#035b77] text-white py-4 rounded-xl font-bold shadow-lg shadow-sky-100 transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50"
+            >
+              {loading ? "Processing..." : `Pay ₦${totalAmount.toLocaleString()}`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Payment;
+
+
+/*
+"use client";
+
+import React, { useState } from "react";
+import { ArrowLeft } from "lucide-react";
+import { FaPaypal, FaCcVisa, FaCcMastercard } from "react-icons/fa";
 
 export type CartItem = {
   _id: string;
@@ -56,7 +194,7 @@ const Payment: React.FC<PaymentProps> = ({
 
   return (
     <div className="min-h-screen bg-white py-8 px-4 md:px-20">
-      {/* Header */}
+      
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-semibold text-gray-900">
           Checkout
@@ -71,7 +209,7 @@ const Payment: React.FC<PaymentProps> = ({
         </button>
       </div>
 
-      {/* Step Navigation */}
+      
       <div className="flex items-center gap-2 text-gray-500 text-sm mb-10">
         <span>My Cart</span>
         <span>–</span>
@@ -80,7 +218,7 @@ const Payment: React.FC<PaymentProps> = ({
         <span>Confirmation</span>
       </div>
 
-      {/* Order Summary */}
+      
       <div className="border rounded-2xl p-5 mb-10">
         <h2 className="font-semibold mb-4">Order Summary</h2>
 
@@ -102,13 +240,13 @@ const Payment: React.FC<PaymentProps> = ({
         </div>
       </div>
 
-      {/* Payment Method */}
+      
       <h2 className="text-lg font-semibold mb-6">
         Choose your preferred payment method
       </h2>
 
       <div className="space-y-5">
-        {/* PayPal */}
+        
         <div
           onClick={() => setMethod("paypal")}
           className={`border rounded-2xl p-5 flex justify-between items-center cursor-pointer transition ${
@@ -134,7 +272,7 @@ const Payment: React.FC<PaymentProps> = ({
           <FaPaypal size={40} className="text-[#003087]" />
         </div>
 
-        {/* Credit Card */}
+        
         <div
           onClick={() => setMethod("credit")}
           className={`border rounded-2xl p-5 cursor-pointer transition ${
@@ -166,10 +304,10 @@ const Payment: React.FC<PaymentProps> = ({
         </div>
       </div>
 
-      {/* Error */}
+      
       {error && <p className="text-red-600 mt-6">{error}</p>}
 
-      {/* Pay Button */}
+      
       <div className="mt-10 flex justify-end">
         <button
           onClick={handlePayment}
@@ -186,3 +324,4 @@ const Payment: React.FC<PaymentProps> = ({
 };
 
 export default Payment;
+*/

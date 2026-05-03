@@ -32,14 +32,18 @@ export default function SignInPage() {
       const syncTasks = [];
 
       if (guestCart.length > 0) {
-        syncTasks.push(...guestCart.map((bookId: string) =>
-          fetch(API.ADD_TO_CART, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${userToken}` },
-            body: JSON.stringify({ bookId }),
-          })
-        ));
-      }
+  syncTasks.push(...guestCart.map((bookId: string) =>
+    // API.CART
+    fetch(API.CART, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json", 
+        Authorization: `Bearer ${userToken}` 
+      },
+      body: JSON.stringify({ bookId }),
+    })
+  ));
+}
 
       if (guestWish.length > 0) {
         syncTasks.push(...guestWish.map((bookId: string) =>
