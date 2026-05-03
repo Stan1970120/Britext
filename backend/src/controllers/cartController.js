@@ -1,9 +1,7 @@
 import Cart from "../models/Cart.js";
-import PublishBook from "../models/publishbook.model.js";
 
 export const addToCart = async (req, res) => {
   try {
-    // 1. Fix: Ensure userId is extracted safely from either req.user.id or req.user._id
     const userId = req.user?.id || req.user?._id;
     const { bookId, quantity = 1 } = req.body;
 
@@ -16,12 +14,11 @@ export const addToCart = async (req, res) => {
     if (!cart) {
       cart = await Cart.create({
         userId,
-        items: [{ bookId, quantity }],
+        items: [{ bookId, quantity: Math.max(1, quantity) }],
       });
       return res.status(201).json(cart);
     }
 
-    // 2. Fix: Check if bookId exists to prevent .toString() errors if database is inconsistent
     const existingItem = cart.items.find(
       (item) => item.bookId && item.bookId.toString() === bookId
     );
@@ -29,13 +26,13 @@ export const addToCart = async (req, res) => {
     if (existingItem) {
       existingItem.quantity += quantity;
     } else {
-      cart.items.push({ bookId, quantity });
+      cart.items.push({ bookId, quantity: Math.max(1, quantity) });
     }
 
     await cart.save();
     res.json(cart);
   } catch (err) {
-    console.error("Add to Cart Error:", err); // ✨ Logging the real error helps you see it in Render logs
+    console.error("Add to Cart Error:", err);
     res.status(500).json({ message: "Failed to add to cart", error: err.message });
   }
 };
@@ -44,7 +41,6 @@ export const getCart = async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id;
 
-    // ✨ populate with the specific model to avoid "ref" confusion
     const cart = await Cart.findOne({ userId }).populate({
       path: "items.bookId",
       model: "PublishBook" 
@@ -57,7 +53,7 @@ export const getCart = async (req, res) => {
     let subtotal = 0;
     let totalItems = 0;
 
-    // 3. Fix: Filter out any items where bookId might be null (if a book was deleted)
+    // Filter out items where the book was deleted from the store
     const items = cart.items
       .filter(item => item.bookId !== null) 
       .map((item) => {
@@ -67,6 +63,7 @@ export const getCart = async (req, res) => {
         totalItems += item.quantity;
 
         return {
+          bookId: item.bookId._id, 
           book: item.bookId,
           quantity: item.quantity,
           itemTotal,
@@ -86,20 +83,21 @@ export const removeFromCart = async (req, res) => {
     const { bookId } = req.params;
     
     const cart = await Cart.findOne({ userId });
-    if (!cart) return res.json({ items: [] });
+    if (!cart) return res.status(404).json({ message: "Cart not found" });
 
+    // Filter out the specific bookId
     cart.items = cart.items.filter(
       (item) => item.bookId && item.bookId.toString() !== bookId
     );
 
     await cart.save();
-    res.json(cart);
+    res.json({ message: "Item removed", items: cart.items });
   } catch (err) {
+    console.error("Remove from Cart Error:", err);
     res.status(500).json({ message: "Failed to remove item" });
   }
 };
 
-// Exporting mergeGuestCart for use in login controller
 export const mergeGuestCart = async (userId, guestItems = []) => {
   if (!guestItems || !guestItems.length) return;
   

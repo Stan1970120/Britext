@@ -32,16 +32,14 @@ export const API = {
   UPDATE_CHAPTER: (bookId, chapterId) => 
     `${PREFIX}/admin/books/${bookId}/chapters/${chapterId}`,
 
-  /*  PUBLIC STORE & READER VIEW
-      */
+  //  PUBLIC STORE & READER VIEW
+  
   STORE_BOOKS: `${PREFIX}/store/books`,
   
   READER_VIEW: (id) => `${PREFIX}/store/books/${id}`,
 
-  /*  USER INTERACTIONS
-      */
     RATE_BOOK: `${PREFIX}/rate`,
-  ADD_TO_CART: `${PREFIX}/cart`,      
+  CART: `${PREFIX}/cart`,      
   TOGGLE_WISHLIST: `${PREFIX}/wishlist`,
   SUBSCRIBE_NEWSLETTER: `${REST_API}/subscribe`,
   COMMENTS: `${REST_API}/comments`,

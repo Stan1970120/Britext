@@ -139,18 +139,24 @@ const BookStore = () => {
     }
 
     try {
-      const res = await fetch(API.ADD_TO_CART, {
+      //API
+      const res = await fetch(API.CART, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { 
+          "Content-Type": "application/json", 
+          Authorization: `Bearer ${token}` 
+        },
         body: JSON.stringify({ bookId }),
       });
+      
       if (!res.ok) throw new Error();
     } catch (error) {
+      
       updateLocalState(bookId, { isInCart: false });
+     
       console.error(`Cart update failed:`, error);
     }
   };
-
   return (
     <div className="p-4 md:p-10 bg-[#f8fafc] min-h-screen relative">
       <AnimatePresence>
