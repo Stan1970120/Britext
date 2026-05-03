@@ -21,6 +21,7 @@ import bookRatingsRoutes from "./routes/bookRatingsRoutes.js";
 import subscribeRoutes from "./routes/subscribe.routes.js";
 import commentRoutes from "./routes/comment.route.js";
 import trendingRoutes from "./routes/trending.route.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 
 
 const app = express();
@@ -83,14 +84,14 @@ app.use("/api/publish-books", bookRatingsRoutes);
 app.use("/api/subscribe", subscribeRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/trending", trendingRoutes);
-
+app.use("/api/payments", paymentRoutes);
 
 app.get("/", (req, res) => {
-  res.send("Britext API running 🚀");
+  res.send("Britext API running, Welcome to the world of books");
 });
 
 app.use((err, req, res, next) => {
-  console.error("💥 Global Error:", err.stack);
+  console.error("Global Error:", err.stack);
   res.status(500).json({ message: "Internal Server Error", error: err.message });
 });
 

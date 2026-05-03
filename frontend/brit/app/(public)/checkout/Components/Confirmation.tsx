@@ -1,59 +1,59 @@
 "use client";
 
 import React, { useState } from "react";
-import { CheckCircle, X, AlertTriangle } from "lucide-react";
+import { CheckCircle, X, AlertTriangle, BookOpen, Download, Home } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { API } from "../../../constant/api";
 
-interface ConfirmationProps {
-  onBack: () => void; // Optional: to return to cart or home
+interface PurchaseDetails {
+  bookTitle: string;
+  amount: string;
+  date: string;
+  email: string;
+  reference: string;
 }
 
-const Confirmation: React.FC<ConfirmationProps> = ({ onBack }) => {
+interface ConfirmationProps {
+  onBack: () => void;
+  details?: PurchaseDetails; // Data passed after successful Paystack verification
+}
+
+const Confirmation: React.FC<ConfirmationProps> = ({ onBack, details }) => {
   const [downloading, setDownloading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const router = useRouter();
 
+  // Handle Book Download from the official API
   const handleDownload = async () => {
     try {
       setDownloading(true);
 
-      // Example backend endpoint for the book download
-      const response = await fetch(`"https://your-backend-url.com/api/books/download"`, {
+      const response = await fetch(API.READER_VIEW(details?.reference || "download"), {
         method: "GET",
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to download book");
-      }
+      if (!response.ok) throw new Error("Failed to download book");
 
-      // Convert to blob and create download link
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      setDownloadUrl(url);
-
       const link = document.createElement("a");
       link.href = url;
-      link.download = "YourBook.pdf";
+      link.download = `${details?.bookTitle || "YourBook"}.pdf`;
       link.click();
 
-      // Show success modal
       setShowSuccessModal(true);
     } catch (error) {
       console.error("Download failed:", error);
-      // Show error modal instead of alert
       setShowErrorModal(true);
     } finally {
       setDownloading(false);
     }
   };
 
-  const handleOpenBook = () => {
-    if (downloadUrl) {
-      window.open(downloadUrl, "_blank");
-    }
+  const handleGoToLibrary = () => {
+    router.push("/dashboard/my-books");
   };
 
   const handleGoHome = () => {
@@ -61,123 +61,110 @@ const Confirmation: React.FC<ConfirmationProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-10 bg-white text-center relative">
-      {/* Success Icon */}
-      <CheckCircle size={60} className="text-green-600 mb-4" />
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-10 bg-[#f8fafc] text-center relative">
+      <motion.div 
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-green-100 p-4 rounded-full mb-4"
+      >
+        <CheckCircle size={50} className="text-green-600" />
+      </motion.div>
 
-      {/* Success Message */}
-      <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+      <h2 className="text-3xl font-bold text-gray-900 mb-2">
         Payment Successful!
       </h2>
-      <p className="text-gray-600 mb-8 max-w-md">
-        Your payment has been confirmed. You will also receive an email with
-        your details and a link to download your book.
+      <p className="text-gray-500 mb-8 max-w-md">
+        Your transaction was verified. The book has been added to your personal library and a receipt has been sent to your email.
       </p>
 
       {/* Details Card */}
-      <div className="bg-white border rounded-2xl shadow-sm p-6 md:p-10 w-full max-w-xl text-left">
-        <h3 className="text-lg font-semibold mb-4 text-gray-800">
-          Book Details
+      <div className="bg-white border border-gray-100 rounded-3xl shadow-xl shadow-gray-200/50 p-8 w-full max-w-xl text-left">
+        <h3 className="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
+          <BookOpen size={20} className="text-sky-600" /> Order Summary
         </h3>
-        <div className="space-y-2 text-sm text-gray-700">
-          <div className="flex justify-between">
-            <span>Book:</span>
-            <span>Build Your Family Bank</span>
+        <div className="space-y-3 text-sm text-gray-600">
+          <div className="flex justify-between border-b border-gray-50 pb-2">
+            <span>Book Title:</span>
+            <span className="font-semibold text-gray-900">{details?.bookTitle || "Build Your Family Bank"}</span>
           </div>
-          <div className="flex justify-between">
-            <span>Date:</span>
-            <span>20th July, 2025</span>
+          <div className="flex justify-between border-b border-gray-50 pb-2">
+            <span>Transaction Date:</span>
+            <span className="font-medium">{details?.date || new Date().toLocaleDateString()}</span>
           </div>
-          <div className="flex justify-between">
-            <span>Payment Method:</span>
-            <span>Credit Card</span>
+          <div className="flex justify-between border-b border-gray-50 pb-2">
+            <span>Reference:</span>
+            <span className="font-mono text-xs text-sky-600 uppercase">{details?.reference || "PAY-REF-XYZ"}</span>
           </div>
-        </div>
-
-        <hr className="my-5" />
-
-        <h3 className="text-lg font-semibold mb-3 text-gray-800">
-          👤 Customer Details
-        </h3>
-        <div className="space-y-2 text-sm text-gray-700">
-          <div className="flex justify-between">
-            <span>Email:</span>
-            <span>harzfart233@gmail.com</span>
+          <div className="flex justify-between border-b border-gray-50 pb-2">
+            <span>Customer Email:</span>
+            <span className="font-medium">{details?.email || "User@example.com"}</span>
           </div>
-          <div className="flex justify-between">
-            <span>Phone number:</span>
-            <span>09131852868</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Payment:</span>
-            <span>Visa Credit Card</span>
+          <div className="flex justify-between pt-2">
+            <span className="font-bold text-gray-900">Total Paid:</span>
+            <span className="font-bold text-green-600">₦{details?.amount || "30"}</span>
           </div>
         </div>
       </div>
 
-      {/* Download Button */}
-      <button
-        onClick={handleDownload}
-        disabled={downloading}
-        className={`mt-10 px-8 py-3 rounded-full font-semibold text-white transition ${
-          downloading
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-[#035b77] hover:bg-[#02485d]"
-        }`}
-      >
-        {downloading ? "Downloading..." : "📥 Download Book"}
-      </button>
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row gap-4 mt-10">
+        <button
+          onClick={handleGoToLibrary}
+          className="flex items-center justify-center gap-2 px-10 py-4 rounded-2xl font-bold text-white bg-[#035b77] hover:bg-[#02485d] transition shadow-lg shadow-sky-900/20"
+        >
+          <BookOpen size={20} /> Go to My Books
+        </button>
+        
+        <button
+          onClick={handleDownload}
+          disabled={downloading}
+          className="flex items-center justify-center gap-2 px-10 py-4 rounded-2xl font-bold text-[#035b77] bg-white border-2 border-[#035b77] hover:bg-sky-50 transition"
+        >
+          {downloading ? "Processing..." : <><Download size={20} /> Download PDF</>}
+        </button>
+      </div>
 
-      {/* Optional Return Link */}
       <button
         onClick={onBack}
-        className="mt-6 text-sm text-[#035b77] hover:underline"
+        className="mt-8 text-sm font-medium text-gray-400 hover:text-sky-600 transition"
       >
-        ← Return to My Cart
+        ← Return to Store
       </button>
 
       {/* Success Modal */}
       <AnimatePresence>
         {showSuccessModal && (
           <motion.div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="bg-white rounded-2xl shadow-lg p-8 w-[90%] max-w-md text-center relative"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm text-center relative"
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
             >
-              <button
-                className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
-                onClick={() => setShowSuccessModal(false)}
-              >
-                <X size={20} />
-              </button>
-
-              <CheckCircle size={50} className="text-green-600 mx-auto mb-3" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                Download Complete
-              </h2>
-              <p className="text-gray-600 mb-6">
-                Your book has been downloaded successfully.
+              <div className="bg-green-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Download size={40} className="text-green-600" />
+              </div>
+              <h2 className="text-2xl font-black text-gray-900 mb-2">Enjoy your read!</h2>
+              <p className="text-gray-500 mb-8">
+                Your book has been saved to your device and is permanently available in your library.
               </p>
 
               <div className="flex flex-col gap-3">
                 <button
-                  onClick={handleOpenBook}
-                  className="bg-[#035b77] text-white py-2 rounded-full font-medium hover:bg-[#02485d] transition"
+                  onClick={handleGoToLibrary}
+                  className="bg-[#035b77] text-white py-3 rounded-xl font-bold hover:bg-[#02485d] transition"
                 >
-                  📖 Open Book
+                  View My Library
                 </button>
                 <button
                   onClick={handleGoHome}
-                  className="border border-[#035b77] text-[#035b77] py-2 rounded-full font-medium hover:bg-[#035b77] hover:text-white transition"
+                  className="flex items-center justify-center gap-2 text-gray-500 py-2 font-semibold hover:text-gray-800 transition"
                 >
-                  🏠 Go Home
+                  <Home size={18} /> Back to Home
                 </button>
               </div>
             </motion.div>
@@ -185,44 +172,30 @@ const Confirmation: React.FC<ConfirmationProps> = ({ onBack }) => {
         )}
       </AnimatePresence>
 
-      {/* ❌ Error Modal */}
+      {/* Error Modal */}
       <AnimatePresence>
         {showErrorModal && (
           <motion.div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
           >
             <motion.div
-              className="bg-white rounded-2xl shadow-lg p-8 w-[90%] max-w-md text-center relative"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-3xl p-8 w-full max-w-sm text-center"
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
             >
-              <button
-                className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
-                onClick={() => setShowErrorModal(false)}
-              >
-                <X size={20} />
-              </button>
-
-              <AlertTriangle size={50} className="text-red-500 mx-auto mb-3" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                Download Failed
-              </h2>
-              <p className="text-gray-600 mb-6">
-                Unable to download the book. Please check your network connection.
-              </p>
-
-              <div className="flex justify-center">
-                <button
-                  onClick={() => setShowErrorModal(false)}
-                  className="bg-[#035b77] text-white px-6 py-2 rounded-full font-medium hover:bg-[#02485d] transition"
-                >
-                  Try Again
-                </button>
+              <div className="bg-red-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle size={32} className="text-red-500" />
               </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
+              <p className="text-gray-500 mb-6">We couldn&apos;t process the download. Please try again from your dashboard later.</p>
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="w-full bg-gray-900 text-white py-3 rounded-xl font-bold"
+              >
+                Close
+              </button>
             </motion.div>
           </motion.div>
         )}

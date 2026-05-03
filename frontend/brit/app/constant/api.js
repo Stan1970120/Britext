@@ -34,4 +34,7 @@ export const API = {
   SUBSCRIBE_NEWSLETTER: `${REST_API}/subscribe`,
   COMMENTS: `${REST_API}/comments`,
   TRENDING: `${REST_API}/trending`,
+  INITIALIZE_PAYMENT: `${REST_API}/payments/initialize`,
+  VERIFY_PAYMENT: `${REST_API}/payments/verify`,
+  MY_BOOKS: `${REST_API}/me/books`,
 };
