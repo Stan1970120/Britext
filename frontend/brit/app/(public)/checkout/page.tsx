@@ -6,7 +6,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import MyCart from "./Components/MyCart";
 import Payment from "./Components/Payment";
 import Confirmation from "./Components/Confirmation";
-import { API } from "../../constant/api"; 
+import { API } from "../../constant/api";
 
 export type CartItem = {
   bookId: string;
@@ -22,6 +22,7 @@ export type CartItem = {
 
 interface AppUser {
   id: string;
+  email: string; 
 }
 
 const CartPage = () => {
@@ -29,12 +30,12 @@ const CartPage = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loadingCart, setLoadingCart] = useState(true);
 
-  const { user, token, loading: authLoading } = useAuth() as { 
-    user: AppUser | null; 
-    token: string | null; 
-    loading: boolean 
+  const { user, token, loading: authLoading } = useAuth() as {
+    user: AppUser | null;
+    token: string | null;
+    loading: boolean;
   };
-  
+
   const router = useRouter();
   const params = useSearchParams();
   const redirectTo = params.get("redirect") || "/checkout";
@@ -51,13 +52,12 @@ const CartPage = () => {
 
       try {
         setLoadingCart(true);
-        
-        
+
         const res = await fetch(API.CART, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
           },
         });
 
@@ -98,10 +98,12 @@ const CartPage = () => {
             cartItems={cartItems}
             onNext={() => setStep("confirmation")}
             onBack={() => setStep("cart")}
+            userEmail={user?.email || ""} 
           />
         );
       case "confirmation":
-        return <Confirmation onBack={() => setStep("cart")} />;
+        // Removed onBack prop to match the updated Confirmation component interface
+        return <Confirmation />;
       default:
         return null;
     }
