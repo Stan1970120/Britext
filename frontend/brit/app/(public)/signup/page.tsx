@@ -4,7 +4,7 @@ import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useUser } from "@/app/hooks/useUser";
-import { Eye, EyeOff, Facebook } from "lucide-react"; 
+import { Eye, EyeOff } from "lucide-react"; 
 
 type Sex = "male" | "female" | "custom" | "";
 

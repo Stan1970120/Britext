@@ -25,7 +25,7 @@ const MyCart: React.FC<MyCartProps> = ({
   setCartItems,
   onNext,
 }) => {
-  // Removed 'user' to fix the TS/ESLint unused variable error
+  
   const { token } = useAuth() as AuthContextType;
 
   const removeFromCart = async (bookId: string) => {
