@@ -52,7 +52,7 @@ const CartPage = () => {
       try {
         setLoadingCart(true);
         
-        // ✅ Updated from API.ADD_TO_CART to API.CART
+        
         const res = await fetch(API.CART, {
           method: "GET",
           headers: {
