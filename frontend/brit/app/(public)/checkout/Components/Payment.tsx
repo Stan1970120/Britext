@@ -1,23 +1,34 @@
 "use client";
 
 import React, { useState } from "react";
-import { ArrowLeft } from "lucide-react";
-import { FaPaypal, FaCcVisa, FaCcMastercard } from "react-icons/fa";
-// Import shared type from parent page
-import { CartItem } from "../page"; 
+import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { FaCcVisa, FaCcMastercard } from "react-icons/fa";
+import { usePaystackPayment } from "react-paystack";
+import { REST_API } from "../../../constant";
+import { CartItem } from "../page";
+import { PurchaseDetails } from "./Confirmation";
+
+interface PaystackSuccessResponse {
+  reference: string;
+  trxref?: string;
+  status: string;
+  message: string;
+  transaction: string;
+}
 
 interface PaymentProps {
   cartItems: CartItem[];
-  onNext: () => void;
+  onNext: (details: PurchaseDetails) => void;
   onBack: () => void;
+  userEmail: string;
 }
 
 const Payment: React.FC<PaymentProps> = ({
   cartItems,
   onNext,
   onBack,
+  userEmail,
 }) => {
-  const [method, setMethod] = useState<"paypal" | "credit">("credit");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -26,25 +37,71 @@ const Payment: React.FC<PaymentProps> = ({
     0
   );
 
-  const handlePayment = async () => {
+  const verifyAndComplete = async (reference: string) => {
     setLoading(true);
-    setError("");
-
     try {
-      // Simulate API call to process transaction
-      await new Promise((res) => setTimeout(res, 2000));
-      onNext();
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const response = await fetch(`${REST_API}/payments/verify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          reference,
+          bookIds: cartItems.map((item) => item.bookId),
+          expectedAmount: totalAmount,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        onNext({
+          bookTitle: cartItems.length > 1 
+            ? "Multiple Books" 
+            : (cartItems[0]?.book?.title || "Digital E-Book"),
+          amount: totalAmount.toFixed(2),
+          date: new Date().toLocaleDateString('en-CA'),
+          email: userEmail || "customer@example.com",
+          reference: reference,
+        });
+      } else {
+        throw new Error(result.message || "Verification failed");
+      }
     } catch (err: unknown) {
-      setError("Payment failed. Please check your card details.");
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+      setError(`${errorMessage}. Please contact support.`);
     } finally {
       setLoading(false);
     }
   };
 
+  const onSuccess = (response: PaystackSuccessResponse) => {
+    const reference = response.reference || response.trxref;
+    if (reference) {
+      verifyAndComplete(reference);
+    } else {
+      setError("Payment reference not found.");
+    }
+  };
+
+  const onClose = () => {
+    setError("Payment window closed.");
+  };
+
+  const config = {
+    reference: `REF-${new Date().getTime()}`,
+    email: userEmail || "customer@example.com",
+    amount: Math.round(totalAmount * 100),
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_your_key",
+    currency: "USD",
+  };
+
+  // Directives removed as the types are now resolving correctly
+  const initializePayment = usePaystackPayment(config);
+
   return (
     <div className="bg-white py-8">
-      {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-xl font-bold text-gray-900">Payment Method</h2>
         <button
@@ -57,49 +114,32 @@ const Payment: React.FC<PaymentProps> = ({
       </div>
 
       <div className="grid lg:grid-cols-12 gap-10">
-        {/* Payment Selection */}
         <div className="lg:col-span-7 space-y-5">
-          <div
-            onClick={() => setMethod("paypal")}
-            className={`border-2 rounded-2xl p-5 flex justify-between items-center cursor-pointer transition-all ${
-              method === "paypal" ? "border-[#035b77] bg-sky-50/30" : "border-gray-100"
-            }`}
-          >
+          <div className="border-2 border-[#035b77] bg-sky-50/30 rounded-2xl p-6 flex justify-between items-center">
             <div className="flex items-center gap-4">
-              <input type="radio" checked={method === "paypal"} readOnly className="w-5 h-5 accent-[#035b77]" />
+              <div className="bg-[#035b77] p-2 rounded-lg">
+                <ShieldCheck className="text-white" size={24} />
+              </div>
               <div>
-                <h3 className="font-bold text-slate-800">Paypal</h3>
-                <p className="text-xs text-gray-500">Secure redirect to PayPal</p>
+                <h3 className="font-bold text-slate-800">Paystack Secure Checkout</h3>
+                <p className="text-xs text-gray-500">Pay via Card, Apple Pay, or Bank Transfer</p>
               </div>
             </div>
-            <FaPaypal size={32} className="text-[#003087]" />
-          </div>
-
-          <div
-            onClick={() => setMethod("credit")}
-            className={`border-2 rounded-2xl p-5 cursor-pointer transition-all ${
-              method === "credit" ? "border-[#035b77] bg-sky-50/30" : "border-gray-100"
-            }`}
-          >
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-4">
-                <input type="radio" checked={method === "credit"} readOnly className="w-5 h-5 accent-[#035b77]" />
-                <div>
-                  <h3 className="font-bold text-slate-800">Credit Card</h3>
-                  <p className="text-xs text-gray-500">Visa, MasterCard, Verve</p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <FaCcVisa size={32} className="text-[#1A1F71]" />
-                <FaCcMastercard size={32} className="text-[#EB001B]" />
-              </div>
+            <div className="flex gap-2">
+              <FaCcVisa size={28} className="text-[#1A1F71]" />
+              <FaCcMastercard size={28} className="text-[#EB001B]" />
             </div>
           </div>
           
-          {error && <p className="text-red-500 text-sm font-medium">{error}</p>}
+          <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Your payment is processed securely through Paystack. Brit Academy does not store your card details.
+            </p>
+          </div>
+
+          {error && <p className="text-red-500 text-sm font-semibold bg-red-50 p-3 rounded-lg">{error}</p>}
         </div>
 
-        {/* Order Summary Card */}
         <div className="lg:col-span-5">
           <div className="bg-slate-50 rounded-3xl p-8 border border-slate-100">
             <h3 className="font-black text-slate-900 mb-6 uppercase tracking-wider text-xs">Summary</h3>
@@ -108,22 +148,25 @@ const Payment: React.FC<PaymentProps> = ({
                 <div key={item.bookId} className="flex justify-between text-sm">
                   <span className="text-slate-600 line-clamp-1 flex-1">{item.book?.title}</span>
                   <span className="font-bold text-slate-900 ml-4">
-                    ₦{((item.book?.price || 0) * item.quantity).toLocaleString()}
+                    ${((item.book?.price || 0) * item.quantity).toLocaleString()}
                   </span>
                 </div>
               ))}
             </div>
             <div className="border-t border-slate-200 pt-4 flex justify-between items-center">
               <span className="font-bold text-slate-900">Total Amount</span>
-              <span className="text-xl font-black text-[#035b77]">₦{totalAmount.toLocaleString()}</span>
+              <span className="text-xl font-black text-[#035b77]">${totalAmount.toLocaleString()}</span>
             </div>
             
             <button
-              onClick={handlePayment}
+              onClick={() => {
+                setError("");
+                initializePayment({ onSuccess, onClose });
+              }}
               disabled={loading}
               className="w-full mt-8 bg-[#035b77] text-white py-4 rounded-xl font-bold shadow-lg shadow-sky-100 transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50"
             >
-              {loading ? "Processing..." : `Pay ₦${totalAmount.toLocaleString()}`}
+              {loading ? "Verifying..." : `Pay $${totalAmount.toLocaleString()}`}
             </button>
           </div>
         </div>

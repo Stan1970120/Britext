@@ -5,8 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import MyCart from "./Components/MyCart";
 import Payment from "./Components/Payment";
-import Confirmation from "./Components/Confirmation";
-import { API } from "../../constant/api"; 
+// Import the PurchaseDetails type from the Confirmation component
+import Confirmation, { PurchaseDetails } from "./Components/Confirmation";
+import { API } from "../../constant/api";
 
 export type CartItem = {
   bookId: string;
@@ -22,19 +23,23 @@ export type CartItem = {
 
 interface AppUser {
   id: string;
+  email: string; 
 }
 
 const CartPage = () => {
   const [step, setStep] = useState<"cart" | "payment" | "confirmation">("cart");
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loadingCart, setLoadingCart] = useState(true);
-
-  const { user, token, loading: authLoading } = useAuth() as { 
-    user: AppUser | null; 
-    token: string | null; 
-    loading: boolean 
-  };
   
+  // 1. Add state to hold the successful transaction details
+  const [purchaseDetails, setPurchaseDetails] = useState<PurchaseDetails | null>(null);
+
+  const { user, token, loading: authLoading } = useAuth() as {
+    user: AppUser | null;
+    token: string | null;
+    loading: boolean;
+  };
+
   const router = useRouter();
   const params = useSearchParams();
   const redirectTo = params.get("redirect") || "/checkout";
@@ -48,24 +53,19 @@ const CartPage = () => {
   useEffect(() => {
     const fetchCart = async () => {
       if (!token) return;
-
       try {
         setLoadingCart(true);
-        
-        
         const res = await fetch(API.CART, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
           },
         });
 
         if (res.ok) {
           const data = await res.json();
           setCartItems(data?.items || []);
-        } else {
-          console.error("Failed to fetch cart:", res.statusText);
         }
       } catch (err) {
         console.error("Failed to load cart", err);
@@ -82,6 +82,12 @@ const CartPage = () => {
     setStep("payment");
   };
 
+  // 2. Function to handle successful payment
+  const handlePaymentSuccess = (details: PurchaseDetails) => {
+    setPurchaseDetails(details);
+    setStep("confirmation");
+  };
+
   const renderStep = () => {
     switch (step) {
       case "cart":
@@ -96,12 +102,16 @@ const CartPage = () => {
         return (
           <Payment
             cartItems={cartItems}
-            onNext={() => setStep("confirmation")}
+            // 3. Update Payment component to pass back details on success
+            onNext={handlePaymentSuccess}
             onBack={() => setStep("cart")}
+            userEmail={user?.email || ""} 
           />
         );
       case "confirmation":
-        return <Confirmation onBack={() => setStep("cart")} />;
+        // 4. Only render if we have details, otherwise fallback or loading
+        if (!purchaseDetails) return null;
+        return <Confirmation details={purchaseDetails} />;
       default:
         return null;
     }
