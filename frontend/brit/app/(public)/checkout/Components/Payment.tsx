@@ -6,14 +6,7 @@ import { FaCcVisa, FaCcMastercard } from "react-icons/fa";
 import { usePaystackPayment } from "react-paystack";
 import { REST_API } from "../../../constant";
 import { CartItem } from "../page";
-
-interface PurchaseDetails {
-  bookTitle: string | undefined;
-  amount: string;
-  date: string;
-  email: string;
-  reference: string;
-}
+import { PurchaseDetails } from "./Confirmation";
 
 interface PaystackSuccessResponse {
   reference: string;
@@ -64,10 +57,12 @@ const Payment: React.FC<PaymentProps> = ({
 
       if (response.ok) {
         onNext({
-          bookTitle: cartItems.length > 1 ? "Multiple Books" : cartItems[0].book?.title,
+          bookTitle: cartItems.length > 1 
+            ? "Multiple Books" 
+            : (cartItems[0]?.book?.title || "Digital E-Book"),
           amount: totalAmount.toFixed(2),
-          date: new Date().toLocaleDateString(),
-          email: userEmail,
+          date: new Date().toLocaleDateString('en-CA'),
+          email: userEmail || "customer@example.com",
           reference: reference,
         });
       } else {
@@ -102,7 +97,7 @@ const Payment: React.FC<PaymentProps> = ({
     currency: "USD",
   };
 
-  
+  // Directives removed as the types are now resolving correctly
   const initializePayment = usePaystackPayment(config);
 
   return (
@@ -166,7 +161,6 @@ const Payment: React.FC<PaymentProps> = ({
             <button
               onClick={() => {
                 setError("");
-                
                 initializePayment({ onSuccess, onClose });
               }}
               disabled={loading}

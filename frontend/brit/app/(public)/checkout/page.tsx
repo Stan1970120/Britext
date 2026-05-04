@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import MyCart from "./Components/MyCart";
 import Payment from "./Components/Payment";
-import Confirmation from "./Components/Confirmation";
+// Import the PurchaseDetails type from the Confirmation component
+import Confirmation, { PurchaseDetails } from "./Components/Confirmation";
 import { API } from "../../constant/api";
 
 export type CartItem = {
@@ -29,6 +30,9 @@ const CartPage = () => {
   const [step, setStep] = useState<"cart" | "payment" | "confirmation">("cart");
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loadingCart, setLoadingCart] = useState(true);
+  
+  // 1. Add state to hold the successful transaction details
+  const [purchaseDetails, setPurchaseDetails] = useState<PurchaseDetails | null>(null);
 
   const { user, token, loading: authLoading } = useAuth() as {
     user: AppUser | null;
@@ -49,10 +53,8 @@ const CartPage = () => {
   useEffect(() => {
     const fetchCart = async () => {
       if (!token) return;
-
       try {
         setLoadingCart(true);
-
         const res = await fetch(API.CART, {
           method: "GET",
           headers: {
@@ -64,8 +66,6 @@ const CartPage = () => {
         if (res.ok) {
           const data = await res.json();
           setCartItems(data?.items || []);
-        } else {
-          console.error("Failed to fetch cart:", res.statusText);
         }
       } catch (err) {
         console.error("Failed to load cart", err);
@@ -82,6 +82,12 @@ const CartPage = () => {
     setStep("payment");
   };
 
+  // 2. Function to handle successful payment
+  const handlePaymentSuccess = (details: PurchaseDetails) => {
+    setPurchaseDetails(details);
+    setStep("confirmation");
+  };
+
   const renderStep = () => {
     switch (step) {
       case "cart":
@@ -96,14 +102,16 @@ const CartPage = () => {
         return (
           <Payment
             cartItems={cartItems}
-            onNext={() => setStep("confirmation")}
+            // 3. Update Payment component to pass back details on success
+            onNext={handlePaymentSuccess}
             onBack={() => setStep("cart")}
             userEmail={user?.email || ""} 
           />
         );
       case "confirmation":
-        // Removed onBack prop to match the updated Confirmation component interface
-        return <Confirmation />;
+        // 4. Only render if we have details, otherwise fallback or loading
+        if (!purchaseDetails) return null;
+        return <Confirmation details={purchaseDetails} />;
       default:
         return null;
     }
