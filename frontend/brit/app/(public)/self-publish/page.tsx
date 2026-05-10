@@ -16,7 +16,7 @@ export default function SelfPublishPage() {
   return (
     <div className="w-full min-h-screen bg-white text-gray-900 font-sans flex flex-col">
 
-      {/* ================= HERO SECTION ================= */}
+      {/*  HERO SECTION */}
       <motion.section
         {...fadeInUp(0)}
         className="w-full h-[70vh] flex flex-col justify-center items-center text-center px-6 bg-gradient-to-r from-sky-200 via-white to-sky-100"
@@ -28,7 +28,7 @@ export default function SelfPublishPage() {
           transition={{ delay: 0.2, duration: 0.6 }}
           className="text-4xl md:text-5xl font-bold mb-4 leading-tight"
         >
-          Self Publish With BriText
+          Self Publish With EnjoyReads
         </motion.h1>
         <motion.p
           initial={{ opacity: 0, y: 20 }}
@@ -40,7 +40,7 @@ export default function SelfPublishPage() {
         </motion.p>
       </motion.section>
 
-      {/* ================= COMING SOON CARD ================= */}
+      {/*  COMING SOON CARD  */}
       <motion.div
         {...fadeInUp(0.2)}
         className="max-w-md mx-auto mt-12 bg-white shadow-lg rounded-2xl p-10 text-center flex flex-col items-center gap-6"

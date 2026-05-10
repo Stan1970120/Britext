@@ -16,7 +16,7 @@ export default function BriTextLandingPage() {
   return (
     <div className="w-full min-h-screen bg-white text-gray-900">
 
-      {/* ================= HERO SECTION ================= */}
+      {/*  HERO SECTION  */}
       <motion.section
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
@@ -38,7 +38,7 @@ export default function BriTextLandingPage() {
           transition={{ delay: 0.4, duration: 0.6 }}
           className="text-lg md:text-xl max-w-2xl"
         >
-          Your Digital Library for Every Book You Desire — Educational,
+          Your Digital Library for Every Book You Desire, Educational,
           Fictional, Faith-based, Professional & Lifestyle.
         </motion.p>
 
@@ -55,10 +55,10 @@ export default function BriTextLandingPage() {
         </motion.div>
       </motion.section>
 
-      {/* ================= WHY CHOOSE US ================= */}
+      {/*  WHY CHOOSE US */}
       <section className="py-20 bg-gray-50">
         <motion.h2 {...fadeIn(0)} className="text-3xl font-bold text-center mb-12">
-          Why Choose BriText?
+          Why Choose EnjoyReads?
         </motion.h2>
 
         <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-10 px-6">
@@ -83,7 +83,7 @@ export default function BriTextLandingPage() {
         </div>
       </section>
 
-      {/* ================= HOW IT WORKS ================= */}
+      {/*  HOW IT WORKS  */}
       <section className="py-20 bg-gray-100">
         <motion.h2 {...fadeIn(0)} className="text-3xl font-bold text-center mb-12">
           How It Works

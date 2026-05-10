@@ -3,7 +3,7 @@
 import React from "react";
 import { motion, Variants } from "framer-motion";
 
-// ✅ Reusable fade-up variant
+// Reusable fade-up variant
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 30 },
   visible: (i: number) => ({
@@ -66,7 +66,7 @@ const AboutAuthor = () => {
             <motion.li
               key={i}
               variants={fadeUp}
-              custom={i + 2} // each one slightly after the previous
+              custom={i + 2} 
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true }}

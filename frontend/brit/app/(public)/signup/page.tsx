@@ -70,10 +70,7 @@ export default function SignupPage() {
     }
   };
 
-  /**
-   * ✅ OAuth Handlers
-   * These redirect the user to your Backend Passport.js/OAuth routes
-   */
+ 
   const handleGoogleSignup = () => {
     window.location.href = `${API_URL}/auth/google`;
   };
@@ -88,7 +85,7 @@ export default function SignupPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white p-6 rounded-xl text-center shadow-lg border border-gray-100">
             <h3 className="text-xl font-semibold text-green-600">
-              Account Created 🎉
+              Account Created
             </h3>
             <p className="text-sm text-gray-600 mt-2">
               Redirecting you shortly...

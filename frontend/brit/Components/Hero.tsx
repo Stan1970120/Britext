@@ -41,7 +41,7 @@ const Hero = () => {
   <motion.button
     whileHover={{ scale: 1.05 }}
     className="border border-white hover:bg-white hover:text-[#035b77] font-semibold px-6 sm:px-8 py-3 sm:py-4 rounded-full text-sm sm:text-base transition-all duration-300 flex items-center gap-2"
-    onClick={() => window.location.href = "/book-store"} // <- Navigate to the page
+    onClick={() => window.location.href = "/book-store"} 
   >
     Explore Book
   </motion.button>

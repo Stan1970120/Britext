@@ -20,7 +20,7 @@ const supportTeam: SupportMember[] = [
     role: "Customer Support Lead",
     image: "/images/Bege.jpg",
     phone: "+2348012345678",
-    email: "support1@yourapp.com",
+    email: "support@enjoyreads.com",
   },
   {
     id: "2",
@@ -28,7 +28,7 @@ const supportTeam: SupportMember[] = [
     role: "Technical Support",
     image: "/images/Bege.jpg",
     phone: "+2348098765432",
-    email: "support2@yourapp.com",
+    email: "support@enjoyreads.com",
   },
 ];
 
@@ -43,7 +43,7 @@ export default function SupportTeam() {
   return (
     <div className="w-full bg-white text-gray-900">
 
-      {/* ================= HERO SECTION ================= */}
+      {/*  HERO SECTION  */}
       <section className="w-full h-[50vh] flex flex-col justify-center items-center text-center px-6 bg-gradient-to-b from-sky-100 to-white">
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
@@ -64,7 +64,7 @@ export default function SupportTeam() {
         </motion.p>
       </section>
 
-      {/* ================= SUPPORT TEAM ================= */}
+      {/*  SUPPORT TEAM  */}
       <section className="w-full max-w-6xl mx-auto px-6 py-12">
         <motion.div
           className="grid grid-cols-1 sm:grid-cols-2 gap-10 justify-items-center"
