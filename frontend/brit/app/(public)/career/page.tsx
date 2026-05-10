@@ -33,7 +33,7 @@ export default function CareerPage() {
   return (
     <div className="w-full min-h-screen bg-white text-gray-900 font-sans">
 
-      {/* ================= HERO SECTION ================= */}
+      {/* HERO SECTION  */}
       <motion.section
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
@@ -60,10 +60,10 @@ export default function CareerPage() {
         </motion.p>
       </motion.section>
 
-      {/* ================= HOW BRTEXT HELPS ================= */}
+      {/*  HOW BRTEXT HELPS  */}
       <section className="py-20">
         <motion.h2 {...fadeIn(0)} className="text-3xl font-bold text-center mb-12">
-          How BriText Helps Your Career
+          How EnjoyReads Helps Your Career
         </motion.h2>
 
         <motion.div
@@ -97,7 +97,7 @@ export default function CareerPage() {
       {/*  CATEGORIES OF READERS  */}
       <section className="py-20 bg-gray-50">
         <motion.h2 {...fadeIn(0)} className="text-3xl font-bold text-center mb-12">
-          Who Can Benefit From BriText
+          Who Can Benefit From EnjoyReads
         </motion.h2>
 
         <motion.div

@@ -16,11 +16,11 @@ const faqs = [
     answer: "Click on 'Forgot Password' on the login page and follow the instructions to reset your password.",
   },
   {
-    question: "Can I access BriText offline?",
-    answer: "Currently, BriText requires an internet connection to access our digital library and resources.",
+    question: "Can I access EnjoyReads offline?",
+    answer: "Currently, EnjoyReads requires an internet connection to access our digital library and resources.",
   },
   {
-    question: "How do I join the BriText community?",
+    question: "How do I join the EnjoyReads community?",
     answer: "You can join our community via the WhatsApp link provided in the contact section.",
   },
   {
@@ -43,7 +43,7 @@ export default function HelpPage() {
   return (
     <div className="w-full min-h-screen bg-white text-gray-900 font-sans">
 
-      {/* ================= HERO SECTION ================= */}
+      {/*  HERO SECTION  */}
       <motion.section
         {...fadeInUp(0)}
         className="w-full h-[60vh] flex flex-col justify-center items-center text-center px-6 bg-gradient-to-b from-sky-100 to-white"
@@ -54,7 +54,7 @@ export default function HelpPage() {
         </p>
       </motion.section>
 
-      {/* ================= FAQ SECTION ================= */}
+      {/*  FAQ SECTION  */}
       <section className="py-20 max-w-4xl mx-auto px-6">
         <motion.h2 {...fadeInUp(0)} className="text-3xl font-bold text-center mb-12">
           Frequently Asked Questions
@@ -82,13 +82,13 @@ export default function HelpPage() {
         </div>
       </section>
 
-      {/* ================= DIRECT CONTACT OPTIONS ================= */}
+      {/*  DIRECT CONTACT OPTIONS  */}
       <section className="py-20 max-w-6xl mx-auto px-6">
         <motion.div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8" {...fadeInUp(0.2)}>
 
           {/* WhatsApp Contact */}
           <a
-            href="https://wa.me/2348012345678?text=Hello%20BriText,%20I%20need%20help%20with..."
+            href="https://wa.me/2348012345678?text=Hello%20EnjoyReads,%20I%20need%20help%20with..."
             target="_blank"
             rel="noopener noreferrer"
             className="flex flex-col items-center gap-4 p-8 bg-green-50 rounded-2xl shadow-md hover:bg-green-100 transition cursor-pointer"
@@ -100,17 +100,17 @@ export default function HelpPage() {
 
           {/* Email Contact */}
           <a
-            href="mailto:support@britext.com?subject=Help%20Request&body=Hello%20BriText,%20I%20need%20assistance..."
+            href="mailto:support@enjoyreads.com?subject=Help%20Request&body=Hello%20EnjoyReads,%20I%20need%20assistance..."
             className="flex flex-col items-center gap-4 p-8 bg-blue-50 rounded-2xl shadow-md hover:bg-blue-100 transition cursor-pointer"
           >
             <Mail className="w-8 h-8 text-blue-600" />
             <h3 className="font-semibold text-lg text-blue-700">Email</h3>
-            <p className="text-gray-600 text-sm">support@britext.com</p>
+            <p className="text-gray-600 text-sm">support@enjoyreads.com</p>
           </a>
 
           {/* Community Card */}
           <a
-            href="https://wa.me/2348098765432?text=Hello%20BriText%20Community!"
+            href="https://wa.me/2348098765432?text=Hello%20EnjoyReads%20Community!"
             target="_blank"
             rel="noopener noreferrer"
             className="flex flex-col items-center gap-4 p-8 bg-purple-50 rounded-2xl shadow-md hover:bg-purple-100 transition cursor-pointer"

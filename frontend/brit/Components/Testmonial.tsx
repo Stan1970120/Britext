@@ -74,7 +74,7 @@ const Testimonials = () => {
 
         <div className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {loading ? (
-            <div className="col-span-full py-10 text-gray-400">Loading feedback...</div>
+            <div className="col-span-full py-10 text-gray-400">Loading...</div>
           ) : testimonials.length === 0 ? (
             <div className="col-span-full py-10 text-gray-400 italic">No testimonials yet. Be the first to share!</div>
           ) : (

@@ -45,7 +45,7 @@ export default function AdSignUpPage() {
           transition={{ delay: 0.2, duration: 0.6 }}
           className="text-4xl md:text-5xl font-bold mb-4 leading-tight"
         >
-          Advertise Your Product With BriText
+          Advertise Your Product With EnjoyReads
         </motion.h1>
         <motion.p
           initial={{ opacity: 0, y: 20 }}
@@ -53,7 +53,7 @@ export default function AdSignUpPage() {
           transition={{ delay: 0.4, duration: 0.6 }}
           className="text-gray-700 text-lg md:text-xl max-w-2xl"
         >
-          Reach thousands of users by showcasing your products on BriText. Fill out the form below or contact us directly.
+          Reach thousands of users by showcasing your products on EnjoyReads. Fill out the form below or contact us directly.
         </motion.p>
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -155,7 +155,7 @@ export default function AdSignUpPage() {
               <Mail className="w-6 h-6 text-blue-600" />
               <div>
                 <p className="font-semibold text-blue-700">Email</p>
-                <p className="text-gray-600 text-sm">advertise@britext.com</p>
+                <p className="text-gray-600 text-sm">advertise@enjoyreads.com</p>
               </div>
             </a>
           </motion.div>

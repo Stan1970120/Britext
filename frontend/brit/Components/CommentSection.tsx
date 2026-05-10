@@ -53,7 +53,7 @@ const CommentSection = () => {
 
       if (res.ok) {
         setForm({ name: "", email: "", comment: "" });
-        fetchComments(); // Refresh list
+        fetchComments(); 
       }
     } catch (err) {
       alert("Error submitting comment.");
@@ -75,7 +75,7 @@ const CommentSection = () => {
           Share Your Thoughts 💬
         </h2>
         <p className="text-gray-600 mt-2 text-sm md:text-base">
-          Leave a comment about your experience with BriText. Your feedback helps others
+          Leave a comment about your experience with EnjoyReads. Your feedback helps others
           discover more.
         </p>
       </motion.div>

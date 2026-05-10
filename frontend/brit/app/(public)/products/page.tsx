@@ -8,7 +8,7 @@ export default function ProductsPage() {
   return (
     <div className="w-full min-h-screen bg-white text-gray-900 font-sans">
 
-      {/* ================= HERO SECTION ================= */}
+      {/* HERO SECTION */}
       <motion.section
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
@@ -31,7 +31,7 @@ export default function ProductsPage() {
           className="text-lg md:text-xl max-w-2xl text-gray-700"
         >
           Discover our digital products designed to make learning easier, faster, and more fun. 
-          Educational, lifestyle, technical, and professional resources — all in one place.
+          Educational, lifestyle, technical, and professional resources, all in one place.
         </motion.p>
 
         <motion.div
@@ -47,7 +47,7 @@ export default function ProductsPage() {
         </motion.div>
       </motion.section>
 
-      {/* ================= COMING SOON ================= */}
+      {/*  COMING SOON  */}
       <section className="py-20 bg-gray-90">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
