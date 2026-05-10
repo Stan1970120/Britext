@@ -21,7 +21,7 @@ export default function ProductsPage() {
           transition={{ delay: 0.2, duration: 0.6 }}
           className="text-4xl md:text-6xl font-bold mb-4 leading-tight"
         >
-          Explore BriText Products
+          Explore EnjoyReads Products
         </motion.h1>
 
         <motion.p

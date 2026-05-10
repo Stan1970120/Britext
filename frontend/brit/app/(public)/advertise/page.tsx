@@ -136,7 +136,7 @@ export default function AdSignUpPage() {
             <h2 className="text-2xl font-bold mb-4">Or Contact Directly</h2>
 
             <a
-              href={`https://wa.me/2348012345678?text=Hello%20BriText,%20I%20want%20to%20advertise%20my%20product.`}
+              href={`https://wa.me/2348012345678?text=Hello%20EnjoyReads,%20I%20want%20to%20advertise%20my%20product.`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-4 p-6 bg-green-50 rounded-2xl hover:bg-green-100 transition cursor-pointer"
@@ -149,7 +149,7 @@ export default function AdSignUpPage() {
             </a>
 
             <a
-              href={`mailto:advertise@britext.com?subject=Advertise%20My%20Product&body=Hello%20BriText,%20I%20want%20to%20advertise%20my%20product.`}
+              href={`mailto:advertise@enjoyreads.com?subject=Advertise%20My%20Product&body=Hello%20BriText,%20I%20want%20to%20advertise%20my%20product.`}
               className="flex items-center gap-4 p-6 bg-blue-50 rounded-2xl hover:bg-blue-100 transition cursor-pointer"
             >
               <Mail className="w-6 h-6 text-blue-600" />
