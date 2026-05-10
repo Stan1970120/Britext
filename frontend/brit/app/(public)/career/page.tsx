@@ -46,7 +46,7 @@ export default function CareerPage() {
           transition={{ delay: 0.2, duration: 0.6 }}
           className="text-4xl md:text-6xl font-bold mb-4 leading-tight"
         >
-          Build Your Career With BriText
+          Build Your Career With EnjoyReads
         </motion.h1>
 
         <motion.p
@@ -60,7 +60,7 @@ export default function CareerPage() {
         </motion.p>
       </motion.section>
 
-      {/*  HOW BRTEXT HELPS  */}
+      {/*  HOW ENJOYREADS HELPS  */}
       <section className="py-20">
         <motion.h2 {...fadeIn(0)} className="text-3xl font-bold text-center mb-12">
           How EnjoyReads Helps Your Career

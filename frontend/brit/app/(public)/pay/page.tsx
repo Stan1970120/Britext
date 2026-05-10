@@ -25,7 +25,7 @@ export default function PaymentPage() {
   return (
     <div className="w-full min-h-screen bg-white text-gray-900 font-sans">
 
-      {/* ================= HERO SECTION ================= */}
+      {/*  HERO SECTION  */}
       <motion.section
         {...fadeInUp(0)}
         className="w-full h-[70vh] flex flex-col justify-center items-center text-center px-6 bg-gradient-to-r from-sky-200 via-white to-sky-100"
@@ -37,7 +37,7 @@ export default function PaymentPage() {
           transition={{ delay: 0.2, duration: 0.6 }}
           className="text-4xl md:text-5xl font-bold mb-4 leading-tight"
         >
-          Payment With BriText
+          Payment With EnjoyReads
         </motion.h1>
         <motion.p
           initial={{ opacity: 0, y: 20 }}
@@ -50,10 +50,10 @@ export default function PaymentPage() {
         </motion.p>
       </motion.section>
 
-      {/* ================= PAYMENT FEATURES ================= */}
+      {/*  PAYMENT FEATURES */}
       <section className="py-20">
         <motion.h2 {...fadeInUp(0)} className="text-3xl font-bold text-center mb-12">
-          Why BriText Payments Are Safe & Easy
+          Why EnjoyReads Payments Are Safe & Easy
         </motion.h2>
 
         <motion.div
@@ -97,12 +97,12 @@ export default function PaymentPage() {
         </motion.div>
       </section>
 
-      {/* ================= ADDITIONAL INFO ================= */}
+      {/*  ADDITIONAL INFO  */}
       <section className="py-20 bg-gray-50">
         <motion.div {...fadeInUp(0)} className="max-w-4xl mx-auto text-center px-6">
           <h2 className="text-3xl font-bold mb-6">Safe Payments You Can Trust</h2>
           <p className="text-gray-700 text-lg">
-            BriText partners with leading payment providers to ensure your transactions
+            EnjoyReads partners with leading payment providers to ensure your transactions
             are secure and seamless. Focus on discovering and reading, while we handle
             your payments safely.
           </p>
