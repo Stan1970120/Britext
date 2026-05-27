@@ -93,7 +93,7 @@ const SubscribeSection = () => {
               onChange={(e) => setEmail(e.target.value)}
               disabled={loading}
               placeholder="Enter your email address"
-              className="w-full px-6 py-3.5 rounded-full text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-300 shadow-lg disabled:bg-gray-100 transition-all"
+              className="w-full px-6 py-3.5 bg-white rounded-full text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-300 shadow-lg disabled:bg-gray-100 transition-all"
             />
           </div>
           <button
