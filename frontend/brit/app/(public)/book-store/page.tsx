@@ -1,3 +1,5 @@
+// frontend/brit/app/(public)/book-store/page.tsx
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
