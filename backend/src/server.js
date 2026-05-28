@@ -6,10 +6,10 @@ import cookieParser from "cookie-parser";
 import path from "path"; 
 import fs from "fs"; 
 import { fileURLToPath } from "url";
-import passport from "passport";
+//import passport from "passport";
 
-import "./config/passport-google.js";
-import "./config/passport-facebook.js";
+//import "./config/passport-google.js";
+//import "./config/passport-facebook.js";
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
