@@ -15,7 +15,7 @@ interface Book {
   category: string;
   newPrice: number;
   rating: number;
-  img: string; 
+  coverImage: string; // Updated from 'img' to match your backend model
   isInCart: boolean;
   isWishlisted: boolean;
 }
@@ -144,7 +144,7 @@ const TrendingPost = () => {
         method: "POST",
         headers: { 
           "Content-Type": "application/json", 
-          Authorization: `Bearer ${token}` 
+          "Authorization": `Bearer ${token}` 
         },
         body: JSON.stringify({ bookId }),
       });
@@ -181,7 +181,7 @@ const TrendingPost = () => {
               <div className="relative flex justify-center items-center py-6 bg-gradient-to-b from-gray-50 to-gray-100">
                 <div className="relative w-25 h-36 md:w-30 md:h-46">
                   <Image 
-                    src={getImageUrl(book.img)} 
+                    src={getImageUrl(book.coverImage)} // Updated here to read book.coverImage
                     alt={book.title} 
                     fill 
                     className="object-cover rounded-md shadow-[0_10px_20px_rgba(0,0,0,0.15)] border border-gray-200"

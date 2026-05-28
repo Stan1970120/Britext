@@ -29,9 +29,9 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-/* Middleware */
 
-//  Added live domains to the whitelist
+
+// the whitelist
 const allowedOrigins = [
   "http://localhost:3000", 
   "https://britext.vercel.app",
@@ -42,7 +42,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      // allow requests with no origin (like mobile apps or curl requests)
+      // allow requests with no origin 
       if (!origin) return callback(null, true);
       if (allowedOrigins.indexOf(origin) === -1) {
         var msg = 'The CORS policy for this site does not allow access from the specified Origin.';
@@ -59,7 +59,7 @@ app.use(
 app.options("*", cors()); 
 app.use(cookieParser()); 
 app.use(express.json());
-app.use(passport.initialize());
+//app.use(passport.initialize());
 
 /* Static Folder */
 const uploadPath = fs.existsSync(path.join(__dirname, "../uploads"))
@@ -87,7 +87,7 @@ app.use("/api/trending", trendingRoutes);
 app.use("/api/payments", paymentRoutes);
 
 app.get("/", (req, res) => {
-  res.send("Britext API running, Welcome to the world of books");
+  res.send("EnjoyReads API running, Welcome to the world of books");
 });
 
 app.use((err, req, res, next) => {
