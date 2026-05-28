@@ -1,3 +1,5 @@
+// frontend/brit/Components/Header.tsx
+
 "use client";
 
 import React, { useState } from "react";
@@ -104,7 +106,7 @@ const Header = () => {
             </div>
           </div>
 
-          {/* RIGHT SIDE (Desktop/Tablet): Profile or Auth Buttons */}
+          {/* RIGHT SIDE  Profile or Auth Buttons */}
           <div className="hidden md:flex items-center gap-6 text-gray-700 text-sm">
             {displayUser?.role === "admin" && (
               <button 
@@ -154,7 +156,7 @@ const Header = () => {
             )}
           </div>
 
-          {/* RIGHT SIDE (Mobile Menu Hamburger Button Trigger) */}
+          {/* RIGHT SIDE  */}
           <button 
             className="md:hidden text-gray-700 p-1 relative z-50 ml-1" 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -180,7 +182,7 @@ const Header = () => {
                 onClick={() => { router.push("/admin"); setMobileMenuOpen(false); }} 
                 className="flex items-center gap-3 text-[#035b77] font-bold"
               >
-                <LayoutDashboard size={20} /> Admin Dashboard
+                <LayoutDashboard size={20} /> Dashboard
               </button>
             )}
 
@@ -196,7 +198,7 @@ const Header = () => {
                   onClick={handleLogout} 
                   className="flex items-center gap-3 text-red-500 font-bold pt-4 border-t"
                 >
-                  <LogOut size={20} /> Logout
+                 Logout
                 </button>
               </>
             ) : (
