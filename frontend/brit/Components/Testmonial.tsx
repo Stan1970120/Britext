@@ -68,8 +68,8 @@ const Testimonials = () => {
           transition={{ duration: 0.8, delay: 0.3 }}
           className="text-gray-600 mt-4 text-sm md:text-lg max-w-3xl mx-auto leading-relaxed"
         >
-          Enjoy the ease of online shopping with ReadMore — all your favorites in one place.  
-          Fast delivery, easy checkout, and the best book collections for every reader.
+          Enjoy the ease of online shopping with EnjoyReads, all your favorites in one place.  
+          Fast access, easy checkout, and the best book collections for every reader.
         </motion.p>
 
         <div className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
