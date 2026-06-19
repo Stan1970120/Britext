@@ -1,12 +1,12 @@
 import express from 'express';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { s3, upload } from '../config/s3.js';
+import { s3, upload } from '../config/S3.js'; 
 import Blog from '../models/Blog.js';
 import verifyAdmin from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// UPDATED: upload.single('image') maps to the form payload key from the frontend
+
 router.post('/admin/upload-s3', verifyAdmin, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
@@ -28,7 +28,7 @@ router.post('/admin/upload-s3', verifyAdmin, upload.single('image'), async (req,
     // Construct public access file URL target Location
     const publicUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueFilename}`;
     
-    // UPDATED: Returns coverImage key to match frontend state expectations smoothly
+    // Returns coverImage key to match frontend state expectations smoothly
     return res.status(200).json({ coverImage: publicUrl });
   } catch (err) {
     console.error("S3 Engine Stream Error: ", err);
@@ -117,7 +117,6 @@ router.get('/public/feed', async (req, res) => {
   }
 });
 
-// UPDATED: ESM Export style fixes the Render build crash
 export default router;
 /*
 const express = require('express');
