@@ -1,10 +1,8 @@
-// backend/src/config/S3.js
+import { S3Client } from '@aws-sdk/client-s3';
+import multer from 'multer';
 
-
-const { S3Client } = require('@aws-sdk/client-s3');
-const multer = require('multer');
-
-const s3 = new S3Client({
+// Initialize S3 Client
+export const s3 = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -14,7 +12,8 @@ const s3 = new S3Client({
 
 // Cache image data allocations direct to memory stream buffers
 const storage = multer.memoryStorage();
-const upload = multer({
+
+export const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, 
   fileFilter: (req, file, cb) => {
@@ -25,5 +24,3 @@ const upload = multer({
     }
   }
 });
-
-module.exports = { s3, upload };
