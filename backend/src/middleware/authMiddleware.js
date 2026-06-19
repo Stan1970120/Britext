@@ -1,5 +1,3 @@
-//backend/src/middleware/authMiddleware.js
-
 
 import jwt from "jsonwebtoken";
 
@@ -26,7 +24,7 @@ export const protect = (req, res, next) => {
   }
 };
 
-//Admin-only middleware
+// Admin-only middleware
 export const adminOnly = (req, res, next) => {
   if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({ message: "Admins only" });
