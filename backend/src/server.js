@@ -1,3 +1,4 @@
+/*
 import 'dotenv/config'; 
 import express from "express";
 import mongoose from "mongoose";
@@ -62,20 +63,20 @@ app.use(cookieParser());
 app.use(express.json());
 //app.use(passport.initialize());
 
-/* Static Folder */
+
 const uploadPath = fs.existsSync(path.join(__dirname, "../uploads"))
   ? path.join(__dirname, "../uploads")
   : path.join(__dirname, "uploads");
 
 app.use("/uploads", express.static(uploadPath));
 
-/* Database */
+
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log(" MongoDB connected"))
   .catch((err) => console.error(" MongoDB error:", err));
 
-/* Routes */
+
 app.use("/api/auth", authRoutes);
 app.use("/api/publish-books", publishBookRoutes); 
 app.use("/api/cart", cartRoutes);
@@ -101,7 +102,8 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () =>
   console.log(`Server running on port ${PORT}`)
 );
-/*
+*/
+
 import 'dotenv/config'; 
 import express from "express";
 import mongoose from "mongoose";
@@ -204,4 +206,3 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () =>
   console.log(`Server running on port ${PORT}`)
 );
-*/
