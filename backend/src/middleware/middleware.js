@@ -16,14 +16,14 @@ export const protect = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // { id, role }
+    req.user = decoded; 
     next();
   } catch {
     res.status(401).json({ message: "Invalid token" });
   }
 };
 
-// ✅ Admin-only middleware
+// Admin-only middleware
 export const adminOnly = (req, res, next) => {
   if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({ message: "Admins only" });
