@@ -1,3 +1,5 @@
+// backend/src/routes/blogRoutes.js
+
 const express = require('express');
 const router = express.Router();
 const { PutObjectCommand } = require('@aws-sdk/client-s3');
