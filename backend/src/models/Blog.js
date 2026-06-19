@@ -1,7 +1,4 @@
-// backend/src/models/Blog.js
-
-
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const BlogSchema = new mongoose.Schema({
   title: {
@@ -46,7 +43,7 @@ const BlogSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-// Auto-generate slug before validation checks run
+
 BlogSchema.pre('validate', function(next) {
   if (this.title && !this.slug) {
     this.slug = this.title
@@ -57,4 +54,6 @@ BlogSchema.pre('validate', function(next) {
   next();
 });
 
-module.exports = mongoose.model('Blog', BlogSchema);
+
+const Blog = mongoose.model('Blog', BlogSchema);
+export default Blog;
