@@ -24,6 +24,7 @@ import commentRoutes from "./routes/comment.route.js";
 import trendingRoutes from "./routes/trending.route.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
+import { handlePaystackWebhook } from './controllers/paymentWebhookController.js';
 
 
 const app = express();
@@ -88,6 +89,7 @@ app.use("/api/comments", commentRoutes);
 app.use("/api/trending", trendingRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use('/api/blogs', blogRoutes);
+app.post('/api/payments/webhook', express.json(), handlePaystackWebhook);
 
 app.get("/", (req, res) => {
   res.send("EnjoyReads API running, Welcome to the world of books");
