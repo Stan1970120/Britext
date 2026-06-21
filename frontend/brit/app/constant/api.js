@@ -46,7 +46,7 @@ export const API = {
   BLOG_DELETE_ADMIN: (id) => `${BLOG_PREFIX}/admin/${id}`,
   BLOG_METRICS: `${BLOG_PREFIX}/admin/metrics`,
   BLOG_PUBLIC_FEED: `${BLOG_PREFIX}/public/feed`,
-  STRIPE_CREATE_SESSION: `${REST_API}/payments/create-stripe-session`,
+  FLUTTERWAVE_INITIALIZE: `${REST_API}/payments/create-flutterwave-session`,
   PAYMENT_VERIFY: `${REST_API}/payments/verify`,
   PAYMENT_WEBHOOK: `${REST_API}/payments/webhook`, 
   DOWNLOAD_SECURE_CLAIM: `${REST_API}/downloads/secure-claim`,
