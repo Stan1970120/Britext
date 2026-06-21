@@ -6,7 +6,7 @@ import { protect, adminOnly } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// TEMPORARILY OPENED: Removed 'protect, adminOnly' checkpoints to resolve layout distortion and test base S3 uploading
+
 router.post('/admin/upload-s3', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
@@ -116,7 +116,7 @@ router.get('/public/feed', async (req, res) => {
   }
 });
 
-export default router;
+export default router; 
 /*
 import express from 'express';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
