@@ -46,6 +46,7 @@ export const API = {
   BLOG_DELETE_ADMIN: (id) => `${BLOG_PREFIX}/admin/${id}`,
   BLOG_METRICS: `${BLOG_PREFIX}/admin/metrics`,
   BLOG_PUBLIC_FEED: `${BLOG_PREFIX}/public/feed`,
+  STRIPE_CREATE_SESSION: `${PAYMENT_PREFIX}/create-stripe-session`,
   PAYMENT_VERIFY: `${PAYMENT_PREFIX}/verify`,
   PAYMENT_WEBHOOK: `${PAYMENT_PREFIX}/webhook`, 
   DOWNLOAD_SECURE_CLAIM: `${DOWNLOAD_PREFIX}/secure-claim`,
