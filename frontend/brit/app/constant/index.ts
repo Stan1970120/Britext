@@ -12,3 +12,5 @@ export const REST_API = (() => {
 
     return url;
 })();
+
+
