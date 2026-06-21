@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { ArrowLeft, ShieldCheck, CreditCard } from "lucide-react";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { FaCcVisa, FaCcMastercard } from "react-icons/fa";
 import { usePaystackPayment } from "react-paystack";
 import { REST_API } from "../../../constant";
@@ -38,8 +38,6 @@ interface PaystackHookConfig {
   metadata: PaystackCustomMetadata;
 }
 
-type PaymentGateway = "paystack" | "stripe";
-
 const Payment: React.FC<PaymentProps> = ({
   cartItems,
   onNext,
@@ -48,15 +46,14 @@ const Payment: React.FC<PaymentProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [selectedGateway, setSelectedGateway] = useState<PaymentGateway>("paystack");
 
   const totalAmount = cartItems.reduce(
     (sum, item) => sum + (item.book?.price || 0) * item.quantity,
     0
   );
 
-  // === PAYSTACK VERIFICATION ROUTINE ===
-  const verifyAndCompletePaystack = async (reference: string) => {
+  // === PAYSTACK POST-PAYMENT VERIFICATION ===
+  const verifyAndComplete = async (reference: string) => {
     setLoading(true);
     try {
       const response = await fetch(`${REST_API}/payments/verify`, {
@@ -95,20 +92,20 @@ const Payment: React.FC<PaymentProps> = ({
     }
   };
 
-  const onPaystackSuccess = (response: PaystackSuccessResponse) => {
+  const onSuccess = (response: PaystackSuccessResponse) => {
     const reference = response.reference || response.trxref;
     if (reference) {
-      verifyAndCompletePaystack(reference);
+      verifyAndComplete(reference);
     } else {
       setError("Payment reference not found.");
     }
   };
 
-  const onPaystackClose = () => {
+  const onClose = () => {
     setError("Payment window closed.");
   };
 
-  const paystackConfig: PaystackHookConfig = {
+  const config: PaystackHookConfig = {
     reference: `REF-${new Date().getTime()}`,
     email: userEmail || "customer@example.com",
     amount: Math.round(totalAmount * 100),
@@ -123,48 +120,7 @@ const Payment: React.FC<PaymentProps> = ({
     }
   };
 
-  const initializePaystackPayment = usePaystackPayment(paystackConfig);
-
-  // === STRIPE FLOW INITIALIZATION ===
-  const handleStripeCheckout = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch(`${REST_API}/payments/create-stripe-session`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
-          bookIds: cartItems.map((item) => item.bookId),
-          email: userEmail || "customer@example.com",
-        }),
-      });
-
-      const session = await response.json();
-
-      if (response.ok && session.url) {
-        // Redirect browser to secure Stripe hosted checkout platform
-        window.location.href = session.url;
-      } else {
-        throw new Error(session.message || "Stripe session construction dropped.");
-      }
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Stripe connection failed.";
-      setError(errorMessage);
-      setLoading(false);
-    }
-  };
-
-  const handlePaymentExecution = () => {
-    setError("");
-    if (selectedGateway === "paystack") {
-      initializePaystackPayment({ onSuccess: onPaystackSuccess, onClose: onPaystackClose });
-    } else if (selectedGateway === "stripe") {
-      handleStripeCheckout();
-    }
-  };
+  const initializePayment = usePaystackPayment(config);
 
   return (
     <div className="bg-white py-8">
@@ -180,28 +136,16 @@ const Payment: React.FC<PaymentProps> = ({
       </div>
 
       <div className="grid lg:grid-cols-12 gap-10">
-        <div className="lg:col-span-7 space-y-4">
-          
-          {/* PAYSTACK SELECTOR OPTION */}
-          <div 
-            onClick={() => setSelectedGateway("paystack")}
-            className={`border-2 rounded-2xl p-6 flex justify-between items-center cursor-pointer transition-all ${
-              selectedGateway === "paystack" ? "border-[#035b77] bg-sky-50/30" : "border-slate-200 bg-white hover:border-slate-300"
-            }`}
-          >
+        <div className="lg:col-span-7 space-y-5">
+          {/* SECURE CHECKOUT SELECTION CARD */}
+          <div className="border-2 border-[#035b77] bg-sky-50/30 rounded-2xl p-6 flex justify-between items-center">
             <div className="flex items-center gap-4">
-              <input 
-                type="radio" 
-                checked={selectedGateway === "paystack"} 
-                readOnly 
-                className="accent-[#035b77] h-4 w-4"
-              />
-              <div className="bg-[#035b77] p-2 rounded-lg text-white">
-                <ShieldCheck size={24} />
+              <div className="bg-[#035b77] p-2 rounded-lg">
+                <ShieldCheck className="text-white" size={24} />
               </div>
               <div>
-                <h3 className="font-bold text-slate-800">Paystack Secure Checkout</h3>
-                <p className="text-xs text-gray-500">Pay via Card, Apple Pay, or Bank Transfer</p>
+                <h3 className="font-bold text-slate-800">Secure Global Checkout</h3>
+                <p className="text-xs text-gray-500">Pay securely via local or international cards</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -209,37 +153,10 @@ const Payment: React.FC<PaymentProps> = ({
               <FaCcMastercard size={28} className="text-[#EB001B]" />
             </div>
           </div>
-
-          {/* STRIPE SELECTOR OPTION */}
-          <div 
-            onClick={() => setSelectedGateway("stripe")}
-            className={`border-2 rounded-2xl p-6 flex justify-between items-center cursor-pointer transition-all ${
-              selectedGateway === "stripe" ? "border-indigo-600 bg-indigo-50/10" : "border-slate-200 bg-white hover:border-slate-300"
-            }`}
-          >
-            <div className="flex items-center gap-4">
-              <input 
-                type="radio" 
-                checked={selectedGateway === "stripe"} 
-                readOnly 
-                className="accent-indigo-600 h-4 w-4"
-              />
-              <div className="bg-indigo-600 p-2 rounded-lg text-white">
-                <CreditCard size={24} />
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-800">Stripe Global Gateway</h3>
-                <p className="text-xs text-gray-500">Secure international credit card processing</p>
-              </div>
-            </div>
-            <div className="text-xs font-black tracking-wider text-indigo-600 uppercase bg-indigo-50 px-2.5 py-1 rounded-md">
-              Stripe
-            </div>
-          </div>
           
           <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-200">
             <p className="text-xs text-gray-400 leading-relaxed">
-              Payments are fully encrypted. Your raw card identifiers never parse through our application storage layers.
+              Your payment transaction is handled using end-to-end tokenized encryption. Raw sensitive card data elements never trace or save inside our server endpoints.
             </p>
           </div>
 
@@ -265,13 +182,14 @@ const Payment: React.FC<PaymentProps> = ({
             </div>
             
             <button
-              onClick={handlePaymentExecution}
+              onClick={() => {
+                setError("");
+                initializePayment({ onSuccess, onClose });
+              }}
               disabled={loading}
-              className={`w-full mt-8 text-white py-4 rounded-xl font-bold shadow-lg transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50 ${
-                selectedGateway === "stripe" ? "bg-indigo-600 shadow-indigo-100" : "bg-[#035b77] shadow-sky-100"
-              }`}
+              className="w-full mt-8 bg-[#035b77] text-white py-4 rounded-xl font-bold shadow-lg shadow-sky-100 transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50"
             >
-              {loading ? "Initializing Secure Session..." : `Pay $${totalAmount.toLocaleString()}`}
+              {loading ? "Verifying Transaction..." : `Pay $${totalAmount.toLocaleString()}`}
             </button>
           </div>
         </div>
