@@ -23,6 +23,208 @@ interface PaymentProps {
   userEmail: string;
 }
 
+// Defined structural interface matching react-paystack metadata expectations cleanly
+interface PaystackCustomMetadata {
+  custom_fields: Array<{ display_name: string; variable_name: string; value: string }>;
+  bookIds: string[];
+  userId: string | null;
+}
+
+interface PaystackHookConfig {
+  reference: string;
+  email: string;
+  amount: number;
+  publicKey: string;
+  currency: string;
+  metadata: PaystackCustomMetadata;
+}
+
+const Payment: React.FC<PaymentProps> = ({
+  cartItems,
+  onNext,
+  onBack,
+  userEmail,
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const totalAmount = cartItems.reduce(
+    (sum, item) => sum + (item.book?.price || 0) * item.quantity,
+    0
+  );
+
+  const verifyAndComplete = async (reference: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${REST_API}/payments/verify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          reference,
+          bookIds: cartItems.map((item) => item.bookId),
+          expectedAmount: totalAmount,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        onNext({
+          bookTitle: cartItems.length > 1 
+            ? "Multiple Books" 
+            : (cartItems[0]?.book?.title || "Digital E-Book"),
+          amount: totalAmount.toFixed(2),
+          date: new Date().toLocaleDateString('en-CA'),
+          email: userEmail || "customer@example.com",
+          reference: reference,
+        });
+      } else {
+        throw new Error(result.message || "Verification failed");
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+      setError(`${errorMessage}. Please contact support.`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSuccess = (response: PaystackSuccessResponse) => {
+    const reference = response.reference || response.trxref;
+    if (reference) {
+      verifyAndComplete(reference);
+    } else {
+      setError("Payment reference not found.");
+    }
+  };
+
+  const onClose = () => {
+    setError("Payment window closed.");
+  };
+
+  // Explicitly typed using PaystackHookConfig to eliminate the ESLint 'any' warning
+  const config: PaystackHookConfig = {
+    reference: `REF-${new Date().getTime()}`,
+    email: userEmail || "customer@example.com",
+    amount: Math.round(totalAmount * 100),
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_your_key",
+    currency: "USD",
+    metadata: {
+      custom_fields: [], 
+      bookIds: cartItems.map((item) => item.bookId),
+      userId: localStorage.getItem("token") 
+        ? (JSON.parse(atob(localStorage.getItem("token")!.split('.')[1])).id as string)
+        : null
+    }
+  };
+
+  const initializePayment = usePaystackPayment(config);
+
+  return (
+    <div className="bg-white py-8">
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-xl font-bold text-gray-900">Payment Method</h2>
+        <button
+          onClick={onBack}
+          className="flex items-center text-sm font-bold text-[#035b77] hover:underline"
+        >
+          <ArrowLeft size={16} className="mr-1" />
+          Back to Cart
+        </button>
+      </div>
+
+      <div className="grid lg:grid-cols-12 gap-10">
+        <div className="lg:col-span-7 space-y-5">
+          <div className="border-2 border-[#035b77] bg-sky-50/30 rounded-2xl p-6 flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <div className="bg-[#035b77] p-2 rounded-lg">
+                <ShieldCheck className="text-white" size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800">Paystack Secure Checkout</h3>
+                <p className="text-xs text-gray-500">Pay via Card, Apple Pay, or Bank Transfer</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <FaCcVisa size={28} className="text-[#1A1F71]" />
+              <FaCcMastercard size={28} className="text-[#EB001B]" />
+            </div>
+          </div>
+          
+          <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Your payment is processed securely through Paystack. Brit Academy does not store your card details.
+            </p>
+          </div>
+
+          {error && <p className="text-red-500 text-sm font-semibold bg-red-50 p-3 rounded-lg">{error}</p>}
+        </div>
+
+        <div className="lg:col-span-5">
+          <div className="bg-slate-50 rounded-3xl p-8 border border-slate-100">
+            <h3 className="font-black text-slate-900 mb-6 uppercase tracking-wider text-xs">Summary</h3>
+            <div className="space-y-4 mb-6">
+              {cartItems.map((item) => (
+                <div key={item.bookId} className="flex justify-between text-sm">
+                  <span className="text-slate-600 line-clamp-1 flex-1">{item.book?.title}</span>
+                  <span className="font-bold text-slate-900 ml-4">
+                    ${((item.book?.price || 0) * item.quantity).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-slate-200 pt-4 flex justify-between items-center">
+              <span className="font-bold text-slate-900">Total Amount</span>
+              <span className="text-xl font-black text-[#035b77]">${totalAmount.toLocaleString()}</span>
+            </div>
+            
+            <button
+              onClick={() => {
+                setError("");
+                initializePayment({ onSuccess, onClose });
+              }}
+              disabled={loading}
+              className="w-full mt-8 bg-[#035b77] text-white py-4 rounded-xl font-bold shadow-lg shadow-sky-100 transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50"
+            >
+              {loading ? "Verifying..." : `Pay $${totalAmount.toLocaleString()}`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Payment;
+/*
+"use client";
+
+import React, { useState } from "react";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { FaCcVisa, FaCcMastercard } from "react-icons/fa";
+import { usePaystackPayment } from "react-paystack";
+import { REST_API } from "../../../constant";
+import { CartItem } from "../page";
+import { PurchaseDetails } from "./Confirmation";
+
+interface PaystackSuccessResponse {
+  reference: string;
+  trxref?: string;
+  status: string;
+  message: string;
+  transaction: string;
+}
+
+interface PaymentProps {
+  cartItems: CartItem[];
+  onNext: (details: PurchaseDetails) => void;
+  onBack: () => void;
+  userEmail: string;
+}
+
 const Payment: React.FC<PaymentProps> = ({
   cartItems,
   onNext,

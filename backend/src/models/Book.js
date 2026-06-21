@@ -9,10 +9,7 @@ const chapterSchema = new mongoose.Schema(
       trim: true,
     },
 
-    /**
-     * TipTap JSON output
-     * Stored as object (not any)
-     */
+    
     content: {
       type: Object,
       required: true,
