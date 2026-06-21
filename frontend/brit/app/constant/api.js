@@ -46,10 +46,10 @@ export const API = {
   BLOG_DELETE_ADMIN: (id) => `${BLOG_PREFIX}/admin/${id}`,
   BLOG_METRICS: `${BLOG_PREFIX}/admin/metrics`,
   BLOG_PUBLIC_FEED: `${BLOG_PREFIX}/public/feed`,
-  STRIPE_CREATE_SESSION: `${PAYMENT_PREFIX}/create-stripe-session`,
-  PAYMENT_VERIFY: `${PAYMENT_PREFIX}/verify`,
-  PAYMENT_WEBHOOK: `${PAYMENT_PREFIX}/webhook`, 
-  DOWNLOAD_SECURE_CLAIM: `${DOWNLOAD_PREFIX}/secure-claim`,
+  STRIPE_CREATE_SESSION: `${REST_API}/payments/create-stripe-session`,
+  PAYMENT_VERIFY: `${REST_API}/payments/verify`,
+  PAYMENT_WEBHOOK: `${REST_API}/payments/webhook`, 
+  DOWNLOAD_SECURE_CLAIM: `${REST_API}/downloads/secure-claim`,
 };
 /*
 import { REST_API } from "./index.js"; 
