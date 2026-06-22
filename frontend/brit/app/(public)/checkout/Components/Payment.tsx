@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { FaCcVisa, FaCcMastercard } from "react-icons/fa";
 import { usePaystackPayment } from "react-paystack";
+import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
 import { REST_API } from "../../../constant";
 import { CartItem } from "../page";
 import { PurchaseDetails } from "./Confirmation";
@@ -16,26 +17,17 @@ interface PaystackSuccessResponse {
   transaction: string;
 }
 
+interface FlutterwaveSuccessResponse {
+  status: string;
+  tx_ref: string;
+  transaction_id: number;
+}
+
 interface PaymentProps {
   cartItems: CartItem[];
   onNext: (details: PurchaseDetails) => void;
   onBack: () => void;
   userEmail: string;
-}
-
-interface PaystackCustomMetadata {
-  custom_fields: Array<{ display_name: string; variable_name: string; value: string }>;
-  bookIds: string[];
-  userId: string | null;
-}
-
-interface PaystackHookConfig {
-  reference: string;
-  email: string;
-  amount: number;
-  publicKey: string;
-  currency: string;
-  metadata: PaystackCustomMetadata;
 }
 
 const Payment: React.FC<PaymentProps> = ({
@@ -46,14 +38,25 @@ const Payment: React.FC<PaymentProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedProvider, setSelectedProvider] = useState<"paystack" | "flutterwave">("paystack");
 
   const totalAmount = cartItems.reduce(
     (sum, item) => sum + (item.book?.price || 0) * item.quantity,
     0
   );
 
-  // === PAYSTACK POST-PAYMENT VERIFICATION ===
-  const verifyAndComplete = async (reference: string) => {
+  const getUserIdFromToken = (): string | null => {
+    const token = localStorage.getItem("token");
+    if (!token) return null;
+    try {
+      return (JSON.parse(atob(token.split('.')[1])).id as string);
+    } catch {
+      return null;
+    }
+  };
+
+  // DUAL POST-PAYMENT VERIFICATION INTERACTION
+  const verifyAndComplete = async (reference: string, provider: "paystack" | "flutterwave") => {
     setLoading(true);
     try {
       const response = await fetch(`${REST_API}/payments/verify`, {
@@ -66,6 +69,7 @@ const Payment: React.FC<PaymentProps> = ({
           reference,
           bookIds: cartItems.map((item) => item.bookId),
           expectedAmount: totalAmount,
+          provider, // Backend matches on this parameter string
         }),
       });
 
@@ -92,21 +96,11 @@ const Payment: React.FC<PaymentProps> = ({
     }
   };
 
-  const onSuccess = (response: PaystackSuccessResponse) => {
-    const reference = response.reference || response.trxref;
-    if (reference) {
-      verifyAndComplete(reference);
-    } else {
-      setError("Payment reference not found.");
-    }
-  };
-
-  const onClose = () => {
-    setError("Payment window closed.");
-  };
-
-  const config: PaystackHookConfig = {
-    reference: `REF-${new Date().getTime()}`,
+  
+  // PAYSTACK ENGINE HOOK SETUP
+ 
+  const paystackConfig = {
+    reference: `PAY-${new Date().getTime()}`,
     email: userEmail || "customer@example.com",
     amount: Math.round(totalAmount * 100),
     publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_your_key",
@@ -114,13 +108,74 @@ const Payment: React.FC<PaymentProps> = ({
     metadata: {
       custom_fields: [], 
       bookIds: cartItems.map((item) => item.bookId),
-      userId: localStorage.getItem("token") 
-        ? (JSON.parse(atob(localStorage.getItem("token")!.split('.')[1])).id as string)
-        : null
+      userId: getUserIdFromToken()
     }
   };
 
-  const initializePayment = usePaystackPayment(config);
+  const initializePaystackPayment = usePaystackPayment(paystackConfig);
+
+  const handlePaystackSuccess = (response: PaystackSuccessResponse) => {
+    const reference = response.reference || response.trxref;
+    if (reference) {
+      verifyAndComplete(reference, "paystack");
+    } else {
+      setError("Payment reference not found.");
+    }
+  };
+
+  
+  // FLUTTERWAVE ENGINE HOOK SETUP
+  
+  const flwConfig = {
+    public_key: process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY || "FLWPUBK_TEST-your_key",
+    tx_ref: `FLW-${new Date().getTime()}`,
+    amount: totalAmount,
+    currency: "USD",
+    payment_options: "card,ussd,account",
+    customer: {
+      email: userEmail || "customer@example.com",
+      phone_number: "",
+      name: userEmail?.split("@")[0] || "Customer",
+    },
+    meta: {
+      userId: getUserIdFromToken(),
+      bookIds: JSON.stringify(cartItems.map((item) => item.bookId)),
+    },
+    customizations: {
+      title: "EnjoyReads E-Books",
+      description: "Payment for digital selection checkout",
+      logo: "https://www.enjoyreads.com/logo.png",
+    },
+  };
+
+  const initializeFlutterwavePayment = useFlutterwave(flwConfig);
+
+  const handleFlutterwaveSuccess = (response: FlutterwaveSuccessResponse) => {
+    closePaymentModal();
+    if (response.status === "successful" || response.status === "completed") {
+      verifyAndComplete(response.transaction_id.toString(), "flutterwave");
+    } else {
+      setError("Flutterwave gateway reported transaction unconfirmed.");
+    }
+  };
+
+  
+  // ROUTING TRIGGER CORE ENGINE
+  
+  const handlePaymentProcessing = () => {
+    setError("");
+    if (selectedProvider === "paystack") {
+      initializePaystackPayment({
+        onSuccess: handlePaystackSuccess,
+        onClose: () => setError("Paystack payment window closed.")
+      });
+    } else if (selectedProvider === "flutterwave") {
+      initializeFlutterwavePayment({
+        callback: handleFlutterwaveSuccess,
+        onClose: () => setError("Flutterwave payment window closed.")
+      });
+    }
+  };
 
   return (
     <div className="bg-white py-8">
@@ -131,26 +186,72 @@ const Payment: React.FC<PaymentProps> = ({
           className="flex items-center text-sm font-bold text-[#035b77] hover:underline"
         >
           <ArrowLeft size={16} className="mr-1" />
-          Back to Cart
+          Back
         </button>
       </div>
 
       <div className="grid lg:grid-cols-12 gap-10">
-        <div className="lg:col-span-7 space-y-5">
-          {/* SECURE CHECKOUT SELECTION CARD */}
-          <div className="border-2 border-[#035b77] bg-sky-50/30 rounded-2xl p-6 flex justify-between items-center">
+        <div className="lg:col-span-7 space-y-4">
+          
+          {/* PAYSTACK CARD */}
+          <div 
+            onClick={() => setSelectedProvider("paystack")}
+            className={`border-2 rounded-2xl p-5 flex justify-between items-center cursor-pointer transition-all ${
+              selectedProvider === "paystack" 
+                ? "border-[#035b77] bg-sky-50/30" 
+                : "border-gray-200 hover:border-gray-300"
+            }`}
+          >
             <div className="flex items-center gap-4">
-              <div className="bg-[#035b77] p-2 rounded-lg">
-                <ShieldCheck className="text-white" size={24} />
+              <input 
+                type="radio" 
+                name="provider"
+                checked={selectedProvider === "paystack"}
+                onChange={() => setSelectedProvider("paystack")}
+                className="h-4 w-4 text-[#035b77] focus:ring-[#035b77]"
+              />
+              <div className={`${selectedProvider === "paystack" ? "bg-[#035b77]" : "bg-gray-400"} p-2 rounded-lg text-white`}>
+                <ShieldCheck size={20} />
               </div>
               <div>
-                <h3 className="font-bold text-slate-800">Secure Global Checkout</h3>
-                <p className="text-xs text-gray-500">Pay securely via local or international cards</p>
+                <h3 className="font-bold text-slate-800 text-sm">Paystack Checkout</h3>
+                <p className="text-xs text-gray-500">Secure card, bank transfer, or USSD gateway routing</p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <FaCcVisa size={28} className="text-[#1A1F71]" />
-              <FaCcMastercard size={28} className="text-[#EB001B]" />
+            <div className="flex gap-1">
+              <FaCcVisa size={24} className="text-[#1A1F71]" />
+              <FaCcMastercard size={24} className="text-[#EB001B]" />
+            </div>
+          </div>
+
+          {/* FLUTTERWAVE CARD */}
+          <div 
+            onClick={() => setSelectedProvider("flutterwave")}
+            className={`border-2 rounded-2xl p-5 flex justify-between items-center cursor-pointer transition-all ${
+              selectedProvider === "flutterwave" 
+                ? "border-[#035b77] bg-sky-50/30" 
+                : "border-gray-200 hover:border-gray-300"
+            }`}
+          >
+            <div className="flex items-center gap-4">
+              <input 
+                type="radio" 
+                name="provider"
+                checked={selectedProvider === "flutterwave"}
+                onChange={() => setSelectedProvider("flutterwave")}
+                className="h-4 w-4 text-[#035b77] focus:ring-[#035b77]"
+              />
+              <div className={`${selectedProvider === "flutterwave" ? "bg-[#035b77]" : "bg-gray-400"} p-2 rounded-lg text-white`}>
+                <ShieldCheck size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-sm">Flutterwave Global Checkout</h3>
+                <p className="text-xs text-gray-500">Pay securely via local or international currencies</p>
+              </div>
+            </div>
+            <div className="flex gap-1">
+              <FaCcVisa size={24} className="text-[#1A1F71]" />
+              <FaCcMastercard size={24} className="text-[#EB001B]" />
             </div>
           </div>
           
@@ -182,10 +283,7 @@ const Payment: React.FC<PaymentProps> = ({
             </div>
             
             <button
-              onClick={() => {
-                setError("");
-                initializePayment({ onSuccess, onClose });
-              }}
+              onClick={handlePaymentProcessing}
               disabled={loading}
               className="w-full mt-8 bg-[#035b77] text-white py-4 rounded-xl font-bold shadow-lg shadow-sky-100 transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50"
             >
