@@ -1,5 +1,3 @@
-// frontend/brit/Components/Header.tsx
-
 "use client";
 
 import React, { useState } from "react";
@@ -44,7 +42,7 @@ const Header = () => {
 
   return (
     <>
-      {/* 3D Flip Keyframes Injection */}
+      {/* Flip Keyframes Injection */}
       <style jsx global>{`
         @keyframes flip3d {
           0% { transform: rotateY(0deg); }

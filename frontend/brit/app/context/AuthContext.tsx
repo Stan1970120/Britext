@@ -138,7 +138,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
 
-    // Optional: Refresh or redirect to home to ensure a clean state
+    //Refresh or redirect to home to ensure a clean state
     if (typeof window !== "undefined") {
       window.location.href = "/";
     }

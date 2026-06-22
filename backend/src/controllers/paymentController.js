@@ -1,7 +1,8 @@
-// backend/src/controllers/paymentController.js
-
 import axios from "axios";
+import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import DownloadToken from "../models/DownloadToken.js";
+import { sendEmail } from "../utils/sendEmail.js";
 
 export const verifyPayment = async (req, res) => {
   const { reference, bookIds, expectedAmount, provider = "paystack" } = req.body; 
@@ -17,7 +18,7 @@ export const verifyPayment = async (req, res) => {
     let customerEmail = "";
     let isSuccess = false;
 
-    // === HANDSHAKE LOGIC FOR PAYSTACK ===
+    // HANDSHAKE LOGIC FOR PAYSTACK
     if (provider === "paystack") {
       const response = await axios.get(
         `https://api.paystack.co/transaction/verify/${reference}`,
@@ -30,12 +31,12 @@ export const verifyPayment = async (req, res) => {
 
       const data = response.data.data;
       isSuccess = data.status === "success";
-      paidAmountUSD = data.amount / 100; // Paystack returns amount in cents
+      paidAmountUSD = data.amount / 100; 
       currency = data.currency;
       customerEmail = data.customer.email;
     } 
     
-    // === HANDSHAKE LOGIC FOR FLUTTERWAVE ===
+    //  HANDSHAKE LOGIC FOR FLUTTERWAVE
     else if (provider === "flutterwave") {
       const response = await axios.get(
         `https://api.flutterwave.com/v3/transactions/${reference}/verify`,
@@ -48,12 +49,12 @@ export const verifyPayment = async (req, res) => {
 
       const data = response.data.data;
       isSuccess = data.status === "successful";
-      paidAmountUSD = data.amount; // Flutterwave returns standard decimal amount
+      paidAmountUSD = data.amount; 
       currency = data.currency;
       customerEmail = data.customer.email;
     }
 
-    // === UNIFIED FULFILLMENT MATRIX ===
+    // UNIFIED FULFILLMENT MATRIX
     if (isSuccess) {
       if (expectedAmount && paidAmountUSD < expectedAmount) {
          return res.status(400).json({ message: "Payment amount mismatch detected." });
@@ -68,6 +69,36 @@ export const verifyPayment = async (req, res) => {
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
+
+      // GENERATE SECURE 24-HOUR ACCESS LINK
+      const downloadPayload = { userId, bookIds, reference };
+      const uniqueToken = jwt.sign(downloadPayload, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+      await DownloadToken.create({
+        token: uniqueToken,
+        userId,
+        bookIds,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+      });
+
+      const singleUseDownloadUrl = `${process.env.FRONTEND_URL}/download?token=${uniqueToken}`;
+
+      //  DISPATCH DELIVERY EMAIL VIA RESEND REST API
+      const emailHtml = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+          <h2 style="color: #035b77;">Thank you for your purchase!</h2>
+          <p>Your digital books have been successfully added to your EnjoyReads library portfolio.</p>
+          <p>You can access your secure, single-use download link below. This link is valid for <strong>24 hours</strong>:</p>
+          <div style="margin: 30px 0; text-align: center;">
+            <a href="${singleUseDownloadUrl}" style="background-color: #035b77; color: white; padding: 14px 28px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">Download Your Books</a>
+          </div>
+          <hr style="border: none; border-top: 1px solid #eee;" />
+          <p style="font-size: 12px; color: #888;">If the button above does not work, copy and paste this URL into your browser:</p>
+          <p style="font-size: 12px; color: #035b77; word-break: break-all;">${singleUseDownloadUrl}</p>
+        </div>
+      `;
+
+      await sendEmail(customerEmail, "Your Secure Book Access - EnjoyReads", emailHtml);
 
       return res.status(200).json({
         success: true,
