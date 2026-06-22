@@ -14,7 +14,7 @@ export default function AuthCallbackPage() {
   // effect re-runs if loginWithToken changes
   const handleAuthCallback = useCallback(async (token: string) => {
     try {
-      // 1. Await the token processing in context
+      // Await the token processing in context
       await loginWithToken(token);
       
       // 2. Redirect only AFTER the state has updated

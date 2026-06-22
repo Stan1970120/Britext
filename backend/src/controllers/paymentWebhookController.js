@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import DownloadToken from '../models/DownloadToken.js';
-// import { sendDownloadEmail } from 
+import { sendEmail } from '../utils/sendEmail.js'; 
 
 export const handleUnifiedWebhook = async (req, res) => {
   try {
@@ -11,8 +11,7 @@ export const handleUnifiedWebhook = async (req, res) => {
 
     let orderData = null;
 
-    //  FLUTTERWAVE SIGNATURE PARSING
-    
+    // FLUTTERWAVE SIGNATURE PARSING
     if (flwSignature) {
       if (flwSignature !== process.env.FLW_WEBHOOK_SECRET_HASH) {
         return res.status(401).json({ message: "Untrusted Flutterwave signature signature dropped." });
@@ -20,7 +19,6 @@ export const handleUnifiedWebhook = async (req, res) => {
 
       const { event, data } = req.body;
       if (event === "charge.completed" && data.status === "successful") {
-        // Recover metadata strings cleanly passed from checkout payload
         const bookIds = JSON.parse(data.meta?.bookIds || "[]");
         const userId = data.meta?.userId || null;
 
@@ -33,7 +31,7 @@ export const handleUnifiedWebhook = async (req, res) => {
       }
     } 
     
-    
+    // PAYSTACK SIGNATURE PARSING
     else if (paystackSignature) {
       const hash = crypto
         .createHmac('sha512', process.env.PAYSTACK_SECRET_KEY)
@@ -56,7 +54,7 @@ export const handleUnifiedWebhook = async (req, res) => {
       }
     }
 
-    
+    //  UNIFIED DOWNLOAD LINK GENERATION & EMAIL DISPATCH
     if (orderData && orderData.userId && orderData.bookIds.length > 0) {
       const { userId, bookIds, reference, email } = orderData;
 
@@ -80,7 +78,22 @@ export const handleUnifiedWebhook = async (req, res) => {
       const singleUseDownloadUrl = `${process.env.FRONTEND_URL}/download?token=${uniqueToken}`;
       console.log(`Fulfillment complete. Secure web delivery mapping generated for ${email}: ${singleUseDownloadUrl}`);
       
-      //sendDownloadEmail(email, singleUseDownloadUrl);
+      // Send secure access link email
+      const emailHtml = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+          <h2 style="color: #035b77;">Thank you for your purchase!</h2>
+          <p>Your digital books have been successfully added to your EnjoyReads library portfolio.</p>
+          <p>You can access your secure, single-use download link below. This link is valid for <strong>24 hours</strong>:</p>
+          <div style="margin: 30px 0; text-align: center;">
+            <a href="${singleUseDownloadUrl}" style="background-color: #035b77; color: white; padding: 14px 28px; text-decoration: none; font-weight: bold; border-radius: 6px; display: inline-block;">Download Your Books</a>
+          </div>
+          <hr style="border: none; border-top: 1px solid #eee;" />
+          <p style="font-size: 12px; color: #888;">If the button above does not work, copy and paste this URL into your browser:</p>
+          <p style="font-size: 12px; color: #035b77; word-break: break-all;">${singleUseDownloadUrl}</p>
+        </div>
+      `;
+
+      await sendEmail(email, "Your Secure Book Access - EnjoyReads", emailHtml);
     }
 
     return res.status(200).send('Event captured safely.');
