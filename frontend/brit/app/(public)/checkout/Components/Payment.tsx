@@ -1,3 +1,324 @@
+// frontend/brit/app/(public)/checkout/Components/Payment.tsx
+
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { FaCcVisa, FaCcMastercard } from "react-icons/fa";
+import { usePaystackPayment } from "react-paystack";
+import { useFlutterwave, closePaymentModal } from "flutterwave-react-v3";
+import { REST_API } from "../../../constant";
+import { CartItem } from "../page";
+import { PurchaseDetails } from "./Confirmation";
+
+interface PaystackSuccessResponse {
+  reference: string;
+  trxref?: string;
+  status: string;
+  message: string;
+  transaction: string;
+}
+
+interface FlutterwaveSuccessResponse {
+  status: string;
+  tx_ref: string;
+  transaction_id: number;
+}
+
+interface PaymentProps {
+  cartItems: CartItem[];
+  onNext: (details: PurchaseDetails) => void;
+  onBack: () => void;
+  userEmail: string;
+}
+
+const Payment: React.FC<PaymentProps> = ({
+  cartItems,
+  onNext,
+  onBack,
+  userEmail,
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [selectedProvider, setSelectedProvider] = useState<"paystack" | "flutterwave">("paystack");
+  
+  // Dynamic exchange rate handling
+  const DEFAULT_RATE = Number(process.env.NEXT_PUBLIC_USD_TO_NGN_RATE) || 1500;
+  const [exchangeRate, setExchangeRate] = useState<number>(DEFAULT_RATE);
+
+  useEffect(() => {
+    const fetchExchangeRate = async () => {
+      try {
+        const res = await fetch("https://open.er-api.com/v6/latest/USD");
+        const data = await res.json();
+        if (data?.rates?.NGN) {
+          setExchangeRate(data.rates.NGN);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch live exchange rate, falling back to default.", err);
+      }
+    };
+
+    fetchExchangeRate();
+  }, []);
+
+  const totalAmount = cartItems.reduce(
+    (sum, item) => sum + (item.book?.price || 0) * item.quantity,
+    0
+  );
+
+  const getUserIdFromToken = (): string | null => {
+    const token = localStorage.getItem("token");
+    if (!token) return null;
+    try {
+      return (JSON.parse(atob(token.split('.')[1])).id as string);
+    } catch {
+      return null;
+    }
+  };
+
+  // DUAL POST-PAYMENT VERIFICATION INTERACTION
+  const verifyAndComplete = async (reference: string, provider: "paystack" | "flutterwave") => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${REST_API}/payments/verify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          reference,
+          bookIds: cartItems.map((item) => item.bookId),
+          expectedAmount: totalAmount,
+          provider, // Backend matches on this parameter string
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        onNext({
+          bookTitle: cartItems.length > 1 
+            ? "Multiple Books" 
+            : (cartItems[0]?.book?.title || "Digital E-Book"),
+          amount: totalAmount.toFixed(2),
+          date: new Date().toLocaleDateString('en-CA'),
+          email: userEmail || "customer@example.com",
+          reference: reference,
+        });
+      } else {
+        throw new Error(result.message || "Verification failed");
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "An unknown error occurred";
+      setError(`${errorMessage}. Please contact support.`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  
+  // Converts USD total to NGN in kobo based on the dynamic exchange rate
+  const amountInKobo = Math.round(totalAmount * exchangeRate * 100);
+
+  const paystackConfig = {
+    reference: `PAY-${new Date().getTime()}`,
+    email: userEmail || "customer@example.com",
+    amount: amountInKobo,
+    publicKey: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "pk_test_your_key",
+    currency: "NGN",
+    metadata: {
+      custom_fields: [], 
+      bookIds: cartItems.map((item) => item.bookId),
+      userId: getUserIdFromToken()
+    }
+  };
+
+  const initializePaystackPayment = usePaystackPayment(paystackConfig);
+
+  const handlePaystackSuccess = (response: PaystackSuccessResponse) => {
+    const reference = response.reference || response.trxref;
+    if (reference) {
+      verifyAndComplete(reference, "paystack");
+    } else {
+      setError("Payment reference not found.");
+    }
+  };
+
+  // FLUTTERWAVE ENGINE HOOK SETUP
+  const flwConfig = {
+    public_key: process.env.NEXT_PUBLIC_FLW_PUBLIC_KEY || "FLWPUBK_TEST-your_key",
+    tx_ref: `FLW-${new Date().getTime()}`,
+    amount: totalAmount,
+    currency: "USD",
+    payment_options: "card,ussd,account",
+    customer: {
+      email: userEmail || "customer@example.com",
+      phone_number: "",
+      name: userEmail?.split("@")[0] || "Customer",
+    },
+    meta: {
+      userId: getUserIdFromToken(),
+      bookIds: JSON.stringify(cartItems.map((item) => item.bookId)),
+    },
+    customizations: {
+      title: "EnjoyReads E-Books",
+      description: "Payment for digital selection checkout",
+      logo: "https://www.enjoyreads.com/logo.png",
+    },
+  };
+
+  const initializeFlutterwavePayment = useFlutterwave(flwConfig);
+
+  const handleFlutterwaveSuccess = (response: FlutterwaveSuccessResponse) => {
+    closePaymentModal();
+    if (response.status === "successful" || response.status === "completed") {
+      verifyAndComplete(response.transaction_id.toString(), "flutterwave");
+    } else {
+      setError("Flutterwave gateway reported transaction unconfirmed.");
+    }
+  };
+
+  // ROUTING TRIGGER CORE ENGINE
+  const handlePaymentProcessing = () => {
+    setError("");
+    if (selectedProvider === "paystack") {
+      initializePaystackPayment({
+        onSuccess: handlePaystackSuccess,
+        onClose: () => setError("Paystack payment window closed.")
+      });
+    } else if (selectedProvider === "flutterwave") {
+      initializeFlutterwavePayment({
+        callback: handleFlutterwaveSuccess,
+        onClose: () => setError("Flutterwave payment window closed.")
+      });
+    }
+  };
+
+  return (
+    <div className="bg-white py-8">
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-xl font-bold text-gray-900">Payment Method</h2>
+        <button
+          onClick={onBack}
+          className="flex items-center text-sm font-bold text-[#035b77] hover:underline"
+        >
+          <ArrowLeft size={16} className="mr-1" />
+          Back
+        </button>
+      </div>
+
+      <div className="grid lg:grid-cols-12 gap-10">
+        <div className="lg:col-span-7 space-y-4">
+          
+          {/* PAYSTACK CARD */}
+          <div 
+            onClick={() => setSelectedProvider("paystack")}
+            className={`border-2 rounded-2xl p-5 flex justify-between items-center cursor-pointer transition-all ${
+              selectedProvider === "paystack" 
+                ? "border-[#035b77] bg-sky-50/30" 
+                : "border-gray-200 hover:border-gray-300"
+            }`}
+          >
+            <div className="flex items-center gap-4">
+              <input 
+                type="radio" 
+                name="provider"
+                checked={selectedProvider === "paystack"}
+                onChange={() => setSelectedProvider("paystack")}
+                className="h-4 w-4 text-[#035b77] focus:ring-[#035b77]"
+              />
+              <div className={`${selectedProvider === "paystack" ? "bg-[#035b77]" : "bg-gray-400"} p-2 rounded-lg text-white`}>
+                <ShieldCheck size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-sm">Paystack Checkout</h3>
+                <p className="text-xs text-gray-500">Secure card, bank transfer, or USSD gateway routing</p>
+              </div>
+            </div>
+            <div className="flex gap-1">
+              <FaCcVisa size={24} className="text-[#1A1F71]" />
+              <FaCcMastercard size={24} className="text-[#EB001B]" />
+            </div>
+          </div>
+
+          {/* FLUTTERWAVE CARD */}
+          <div 
+            onClick={() => setSelectedProvider("flutterwave")}
+            className={`border-2 rounded-2xl p-5 flex justify-between items-center cursor-pointer transition-all ${
+              selectedProvider === "flutterwave" 
+                ? "border-[#035b77] bg-sky-50/30" 
+                : "border-gray-200 hover:border-gray-300"
+            }`}
+          >
+            <div className="flex items-center gap-4">
+              <input 
+                type="radio" 
+                name="provider"
+                checked={selectedProvider === "flutterwave"}
+                onChange={() => setSelectedProvider("flutterwave")}
+                className="h-4 w-4 text-[#035b77] focus:ring-[#035b77]"
+              />
+              <div className={`${selectedProvider === "flutterwave" ? "bg-[#035b77]" : "bg-gray-400"} p-2 rounded-lg text-white`}>
+                <ShieldCheck size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-sm">Flutterwave Global Checkout</h3>
+                <p className="text-xs text-gray-500">Pay securely via local or international currencies</p>
+              </div>
+            </div>
+            <div className="flex gap-1">
+              <FaCcVisa size={24} className="text-[#1A1F71]" />
+              <FaCcMastercard size={24} className="text-[#EB001B]" />
+            </div>
+          </div>
+          
+          <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Your payment transaction is handled using end-to-end tokenized encryption. Raw sensitive card data elements never trace or save inside our server endpoints.
+            </p>
+          </div>
+
+          {error && <p className="text-red-500 text-sm font-semibold bg-red-50 p-3 rounded-lg">{error}</p>}
+        </div>
+
+        <div className="lg:col-span-5">
+          <div className="bg-slate-50 rounded-3xl p-8 border border-slate-100">
+            <h3 className="font-black text-slate-900 mb-6 uppercase tracking-wider text-xs">Summary</h3>
+            <div className="space-y-4 mb-6">
+              {cartItems.map((item) => (
+                <div key={item.bookId} className="flex justify-between text-sm">
+                  <span className="text-slate-600 line-clamp-1 flex-1">{item.book?.title}</span>
+                  <span className="font-bold text-slate-900 ml-4">
+                    ${((item.book?.price || 0) * item.quantity).toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-slate-200 pt-4 flex justify-between items-center">
+              <span className="font-bold text-slate-900">Total Amount</span>
+              <span className="text-xl font-black text-[#035b77]">${totalAmount.toLocaleString()}</span>
+            </div>
+            
+            <button
+              onClick={handlePaymentProcessing}
+              disabled={loading}
+              className="w-full mt-8 bg-[#035b77] text-white py-4 rounded-xl font-bold shadow-lg shadow-sky-100 transition-all hover:scale-[1.01] active:scale-95 disabled:opacity-50"
+            >
+              {loading ? "Verifying Transaction..." : `Pay $${totalAmount.toLocaleString()}`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Payment;
+
+
+/*
 "use client";
 
 import React, { useState } from "react";
@@ -193,7 +514,7 @@ const Payment: React.FC<PaymentProps> = ({
       <div className="grid lg:grid-cols-12 gap-10">
         <div className="lg:col-span-7 space-y-4">
           
-          {/* PAYSTACK CARD */}
+          
           <div 
             onClick={() => setSelectedProvider("paystack")}
             className={`border-2 rounded-2xl p-5 flex justify-between items-center cursor-pointer transition-all ${
@@ -224,7 +545,7 @@ const Payment: React.FC<PaymentProps> = ({
             </div>
           </div>
 
-          {/* FLUTTERWAVE CARD */}
+          
           <div 
             onClick={() => setSelectedProvider("flutterwave")}
             className={`border-2 rounded-2xl p-5 flex justify-between items-center cursor-pointer transition-all ${
@@ -297,6 +618,8 @@ const Payment: React.FC<PaymentProps> = ({
 };
 
 export default Payment;
+
+*/
 /*
 "use client";
 
