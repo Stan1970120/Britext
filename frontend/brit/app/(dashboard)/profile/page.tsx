@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useAuth } from "@/app/context/AuthContext";
 import Header from "@/Components/Header"; 
 import { REST_API } from "../../constant";
+import BookStore from "@/app/(public)/book-store/page";
 
 // Define a clear Interface for your User to fix the .id error
 interface AppUser {
@@ -46,10 +47,6 @@ export default function UserDashboard() {
   const [ownedBooks, setOwnedBooks] = useState<Book[]>([]);
   const [fetchingBooks, setFetchingBooks] = useState(false);
 
-  // Store catalog state
-  const [storeBooks, setStoreBooks] = useState<Book[]>([]);
-  const [fetchingStoreBooks, setFetchingStoreBooks] = useState(false);
-
   // Fetch My Books
   useEffect(() => {
     const fetchMyBooks = async () => {
@@ -74,29 +71,6 @@ export default function UserDashboard() {
       fetchMyBooks();
     }
   }, [user?.id, activeTab]);
-
-  // Fetch Store Books
-  useEffect(() => {
-    const fetchStoreBooks = async () => {
-      try {
-        setFetchingStoreBooks(true);
-        const response = await fetch(`${REST_API}/books`);
-        
-        if (response.ok) {
-          const data: Book[] = await response.json();
-          setStoreBooks(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch store catalog:", error);
-      } finally {
-        setFetchingStoreBooks(false);
-      }
-    };
-
-    if (activeTab === "store") {
-      fetchStoreBooks();
-    }
-  }, [activeTab]);
 
   if (authLoading) {
     return (
@@ -171,7 +145,7 @@ export default function UserDashboard() {
 
           {/* Content Area */}
           <div className="lg:col-span-9">
-            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 md:p-12 shadow-sm min-h-[500px]">
+            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 md:p-10 shadow-sm min-h-[500px]">
               
               {/* MY BOOKS TAB */}
               {activeTab === "my-books" && (
@@ -223,54 +197,10 @@ export default function UserDashboard() {
                 </div>
               )}
 
-              {/* STORE TAB */}
+              {/* STORE TAB - Directly renders your existing BookStore component */}
               {activeTab === "store" && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
-                  <h2 className="text-xl font-black text-slate-900 mb-8">The Store</h2>
-                  
-                  {fetchingStoreBooks ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                      {[1, 2, 3, 4, 5, 6].map((i) => (
-                        <div key={i} className="animate-pulse">
-                          <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3" />
-                          <div className="h-4 bg-slate-100 rounded w-3/4 mb-2" />
-                          <div className="h-3 bg-slate-100 rounded w-1/2" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : storeBooks.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                      {storeBooks.map((book) => (
-                        <div key={book.id} className="group border border-slate-100 rounded-2xl p-4 hover:shadow-md transition-shadow">
-                          <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3 overflow-hidden">
-                            {book.coverImage && (
-                              <img 
-                                src={book.coverImage} 
-                                alt={book.title} 
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
-                              />
-                            )}
-                          </div>
-                          <h4 className="font-bold text-slate-900 line-clamp-1">{book.title}</h4>
-                          <p className="text-xs text-slate-500 mb-3">{book.author}</p>
-                          <div className="flex items-center justify-between border-t border-slate-50 pt-2">
-                            <span className="font-black text-slate-900">${book.price || 0}</span>
-                            <Link href={`/book-store/${book.id}`} className="text-xs font-bold text-[#005F7A] hover:underline">
-                              View Details
-                            </Link>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                      <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-4">
-                        <Store size={32} />
-                      </div>
-                      <h3 className="text-xl font-black text-slate-900">No Store Items Found</h3>
-                      <p className="text-slate-500 mt-2">Check back later for new releases.</p>
-                    </div>
-                  )}
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <BookStore />
                 </div>
               )}
 
@@ -291,6 +221,7 @@ export default function UserDashboard() {
                   </button>
                 </div>
               )}
+
             </div>
           </div>
         </div>
