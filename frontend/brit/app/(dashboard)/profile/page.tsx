@@ -19,7 +19,6 @@ import Header from "@/Components/Header";
 import { REST_API } from "../../constant";
 import BookStore from "@/app/(public)/book-store/page";
 
-// Define a clear Interface for your User to fix the .id error
 interface AppUser {
   id: string;
   email?: string | null;
@@ -153,8 +152,8 @@ export default function UserDashboard() {
                   <h2 className="text-xl font-black text-slate-900 mb-8">My Library</h2>
                   
                   {fetchingBooks ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                      {[1, 2, 3].map((i) => (
+                    <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-6">
+                      {[1, 2].map((i) => (
                         <div key={i} className="animate-pulse">
                           <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3" />
                           <div className="h-4 bg-slate-100 rounded w-3/4 mb-2" />
@@ -162,7 +161,7 @@ export default function UserDashboard() {
                       ))}
                     </div>
                   ) : ownedBooks.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-6">
                       {ownedBooks.map((book) => (
                         <div key={book.id} className="group cursor-pointer">
                           <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3 overflow-hidden">
@@ -197,7 +196,7 @@ export default function UserDashboard() {
                 </div>
               )}
 
-              {/* STORE TAB - Directly renders your existing BookStore component */}
+              {/* STORE TAB */}
               {activeTab === "store" && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <BookStore />
