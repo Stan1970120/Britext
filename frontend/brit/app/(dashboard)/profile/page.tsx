@@ -1,3 +1,305 @@
+// frontend/brit/app/(dashboard)/profile/page.tsx
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { 
+  User as UserIcon, 
+  Bookmark, 
+  History, 
+  ShoppingBag, 
+  BookOpen,
+  ChevronRight,
+  Library,
+  Store
+} from "lucide-react";
+import Link from "next/link";
+import { useAuth } from "@/app/context/AuthContext";
+import Header from "@/Components/Header"; 
+import { REST_API } from "../../constant";
+
+// Define a clear Interface for your User to fix the .id error
+interface AppUser {
+  id: string;
+  email?: string | null;
+  name?: string | null;
+}
+
+type Tab = "my-books" | "store" | "saved" | "history";
+
+interface Book {
+  id: string;
+  title: string;
+  author: string;
+  price?: number;
+  category?: string;
+  coverImage?: string;
+}
+
+export default function UserDashboard() {
+  const { user, loading: authLoading } = useAuth() as { 
+    user: AppUser | null; 
+    loading: boolean 
+  };
+
+  const [activeTab, setActiveTab] = useState<Tab>("my-books");
+  const [ownedBooks, setOwnedBooks] = useState<Book[]>([]);
+  const [fetchingBooks, setFetchingBooks] = useState(false);
+
+  // Store catalog state
+  const [storeBooks, setStoreBooks] = useState<Book[]>([]);
+  const [fetchingStoreBooks, setFetchingStoreBooks] = useState(false);
+
+  // Fetch My Books
+  useEffect(() => {
+    const fetchMyBooks = async () => {
+      if (!user?.id) return;
+      
+      try {
+        setFetchingBooks(true);
+        const response = await fetch(`${REST_API}/users/${user.id}/books`);
+        
+        if (response.ok) {
+          const data: Book[] = await response.json();
+          setOwnedBooks(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user books:", error);
+      } finally {
+        setFetchingBooks(false);
+      }
+    };
+
+    if (activeTab === "my-books") {
+      fetchMyBooks();
+    }
+  }, [user?.id, activeTab]);
+
+  // Fetch Store Books
+  useEffect(() => {
+    const fetchStoreBooks = async () => {
+      try {
+        setFetchingStoreBooks(true);
+        const response = await fetch(`${REST_API}/books`);
+        
+        if (response.ok) {
+          const data: Book[] = await response.json();
+          setStoreBooks(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch store catalog:", error);
+      } finally {
+        setFetchingStoreBooks(false);
+      }
+    };
+
+    if (activeTab === "store") {
+      fetchStoreBooks();
+    }
+  }, [activeTab]);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="w-12 h-12 bg-slate-100 rounded-full"></div>
+          <div className="h-4 w-32 bg-slate-100 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-6 text-center">
+        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100 max-w-md">
+          <UserIcon className="mx-auto text-gray-300 mb-4" size={48} />
+          <h2 className="text-2xl font-black text-slate-900 mb-2">Access Denied</h2>
+          <p className="text-gray-500 mb-8">Please log in to your account to view your dashboard and orders.</p>
+          <Link 
+            href="/auth" 
+            className="block w-full bg-[#005F7A] text-white font-bold py-4 rounded-xl shadow-lg shadow-sky-100 hover:scale-[1.02] transition-transform"
+          >
+            Login to Account
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Header />
+      <div className="min-h-screen bg-white p-6 md:p-12 lg:px-24">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900">Account</h1>
+            <p className="text-slate-500 font-medium">Manage your library and preferences</p>
+          </div>
+          <div className="flex gap-4 w-full md:w-auto">
+            <Link 
+              href="/checkout" 
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm transition-all shadow-lg shadow-sky-100"
+            >
+              <ShoppingBag size={18} /> Cart
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-12 gap-12">
+          {/* Sidebar Navigation */}
+          <div className="lg:col-span-3 space-y-2">
+            {(["my-books", "store", "saved", "history"] as Tab[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`w-full flex items-center gap-3 px-6 py-4 rounded-xl font-bold transition-all capitalize ${
+                  activeTab === tab 
+                  ? "bg-[#005F7A] text-white shadow-lg shadow-sky-50" 
+                  : "text-slate-500 hover:bg-slate-100/50"
+                }`}
+              >
+                {tab === "my-books" && <Library size={20} />}
+                {tab === "store" && <Store size={20} />}
+                {tab === "saved" && <Bookmark size={20} />}
+                {tab === "history" && <History size={20} />}
+                {tab.replace("-", " ")}
+              </button>
+            ))}
+          </div>
+
+          {/* Content Area */}
+          <div className="lg:col-span-9">
+            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 md:p-12 shadow-sm min-h-[500px]">
+              
+              {/* MY BOOKS TAB */}
+              {activeTab === "my-books" && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
+                  <h2 className="text-xl font-black text-slate-900 mb-8">My Library</h2>
+                  
+                  {fetchingBooks ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="animate-pulse">
+                          <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3" />
+                          <div className="h-4 bg-slate-100 rounded w-3/4 mb-2" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : ownedBooks.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                      {ownedBooks.map((book) => (
+                        <div key={book.id} className="group cursor-pointer">
+                          <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3 overflow-hidden">
+                            {book.coverImage && (
+                              <img 
+                                src={book.coverImage} 
+                                alt={book.title} 
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
+                              />
+                            )}
+                          </div>
+                          <h4 className="font-bold text-slate-900 line-clamp-1">{book.title}</h4>
+                          <p className="text-xs text-slate-500">{book.author}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                      <div className="w-16 h-16 bg-[#005F7A]/10 rounded-full flex items-center justify-center text-[#005F7A] mb-4">
+                        <BookOpen size={32} />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900">Your shelf is empty</h3>
+                      <p className="text-slate-500 mt-2 mb-6">You haven&apos;t purchased any books yet.</p>
+                      <button 
+                        onClick={() => setActiveTab("store")}
+                        className="bg-[#005F7A] text-white px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity"
+                      >
+                        Explore Store
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* STORE TAB */}
+              {activeTab === "store" && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
+                  <h2 className="text-xl font-black text-slate-900 mb-8">The Store</h2>
+                  
+                  {fetchingStoreBooks ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                      {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <div key={i} className="animate-pulse">
+                          <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3" />
+                          <div className="h-4 bg-slate-100 rounded w-3/4 mb-2" />
+                          <div className="h-3 bg-slate-100 rounded w-1/2" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : storeBooks.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                      {storeBooks.map((book) => (
+                        <div key={book.id} className="group border border-slate-100 rounded-2xl p-4 hover:shadow-md transition-shadow">
+                          <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3 overflow-hidden">
+                            {book.coverImage && (
+                              <img 
+                                src={book.coverImage} 
+                                alt={book.title} 
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
+                              />
+                            )}
+                          </div>
+                          <h4 className="font-bold text-slate-900 line-clamp-1">{book.title}</h4>
+                          <p className="text-xs text-slate-500 mb-3">{book.author}</p>
+                          <div className="flex items-center justify-between border-t border-slate-50 pt-2">
+                            <span className="font-black text-slate-900">${book.price || 0}</span>
+                            <Link href={`/book-store/${book.id}`} className="text-xs font-bold text-[#005F7A] hover:underline">
+                              View Details
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                      <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-4">
+                        <Store size={32} />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900">No Store Items Found</h3>
+                      <p className="text-slate-500 mt-2">Check back later for new releases.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* SAVED & HISTORY TABS */}
+              {activeTab !== "my-books" && activeTab !== "store" && (
+                <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-4">
+                    {activeTab === "saved" ? <Bookmark size={32} /> : <History size={32} />}
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900">
+                    {activeTab === "saved" ? "Your wishlist is empty" : "No orders yet"}
+                  </h3>
+                  <button 
+                    onClick={() => setActiveTab("store")}
+                    className="text-sky-600 font-bold mt-4 hover:underline flex items-center justify-center gap-1"
+                  >
+                    Visit Store <ChevronRight size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/*
 "use client";
 
 import { useState, useEffect } from "react";
@@ -101,7 +403,7 @@ export default function UserDashboard() {
     <>
       <Header />
       <div className="min-h-screen bg-white p-6 md:p-12 lg:px-24">
-        {/* Header Section */}
+       
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
           <div>
             <h1 className="text-3xl font-black text-slate-900">Account</h1>
@@ -124,7 +426,7 @@ export default function UserDashboard() {
         </div>
 
         <div className="grid lg:grid-cols-12 gap-12">
-          {/* Sidebar Navigation */}
+          
           <div className="lg:col-span-3 space-y-2">
             {(["my-books", "saved", "history"] as Tab[]).map((tab) => (
               <button
@@ -144,7 +446,7 @@ export default function UserDashboard() {
             ))}
           </div>
 
-          {/* Content Area */}
+          
           <div className="lg:col-span-9">
             <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 md:p-12 shadow-sm min-h-[500px]">
               {activeTab === "my-books" && (
@@ -193,7 +495,7 @@ export default function UserDashboard() {
                 </div>
               )}
 
-              {/* Placeholder for other tabs (Saved/History) */}
+              
               {activeTab !== "my-books" && (
                 <div className="flex flex-col items-center justify-center h-full text-center py-12">
                   <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-4">
