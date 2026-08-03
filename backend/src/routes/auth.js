@@ -4,8 +4,7 @@ import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
-// --- Google Routes ---
-// This is what the "Login with Google" button on your frontend hits
+
 router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
 router.get(
@@ -19,8 +18,7 @@ router.get(
       { expiresIn: "7d" }
     );
 
-    // Redirect back to your Next.js frontend with the token
-    // Example: https://enjoyreads.com/auth/callback?token=xyz...
+   
     res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
   }
 );
