@@ -1,5 +1,3 @@
-// frontend/brit/app/(dashboard)/profile/page.tsx
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -11,7 +9,9 @@ import {
   BookOpen,
   ChevronRight,
   Library,
-  Store
+  Store,
+  PanelLeftClose,
+  PanelLeftOpen
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/app/context/AuthContext";
@@ -19,6 +19,7 @@ import Header from "@/Components/Header";
 import { REST_API } from "../../constant";
 import BookStore from "@/app/(public)/book-store/page";
 
+// Define a clear Interface for your User to fix the .id error
 interface AppUser {
   id: string;
   email?: string | null;
@@ -45,6 +46,9 @@ export default function UserDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>("my-books");
   const [ownedBooks, setOwnedBooks] = useState<Book[]>([]);
   const [fetchingBooks, setFetchingBooks] = useState(false);
+  
+  // State to toggle sidebar collapse/expand
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Fetch My Books
   useEffect(() => {
@@ -105,12 +109,25 @@ export default function UserDashboard() {
       <Header />
       <div className="min-h-screen bg-white p-6 md:p-12 lg:px-24">
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
           <div>
             <h1 className="text-3xl font-black text-slate-900">Account</h1>
             <p className="text-slate-500 font-medium">Manage your library and preferences</p>
           </div>
-          <div className="flex gap-4 w-full md:w-auto">
+          
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            {/* Sidebar Toggle Toggle Button */}
+            <button
+              onClick={() => setIsSidebarOpen((prev) => !prev)}
+              className="flex items-center gap-2 px-4 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm transition-all shadow-sm"
+              title={isSidebarOpen ? "Collapse Navigation" : "Expand Navigation"}
+            >
+              {isSidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+              <span className="hidden sm:inline">
+                {isSidebarOpen ? "Hide Menu" : "Show Menu"}
+              </span>
+            </button>
+
             <Link 
               href="/checkout" 
               className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm transition-all shadow-lg shadow-sky-100"
@@ -120,30 +137,32 @@ export default function UserDashboard() {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-12">
-          {/* Sidebar Navigation */}
-          <div className="lg:col-span-3 space-y-2">
-            {(["my-books", "store", "saved", "history"] as Tab[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`w-full flex items-center gap-3 px-6 py-4 rounded-xl font-bold transition-all capitalize ${
-                  activeTab === tab 
-                  ? "bg-[#005F7A] text-white shadow-lg shadow-sky-50" 
-                  : "text-slate-500 hover:bg-slate-100/50"
-                }`}
-              >
-                {tab === "my-books" && <Library size={20} />}
-                {tab === "store" && <Store size={20} />}
-                {tab === "saved" && <Bookmark size={20} />}
-                {tab === "history" && <History size={20} />}
-                {tab.replace("-", " ")}
-              </button>
-            ))}
-          </div>
+        <div className="grid lg:grid-cols-12 gap-8 items-start transition-all duration-300">
+          {/* Sidebar Navigation (Conditionally Hidden/Shown) */}
+          {isSidebarOpen && (
+            <div className="lg:col-span-3 space-y-2 animate-in fade-in slide-in-from-left-4 duration-300">
+              {(["my-books", "store", "saved", "history"] as Tab[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`w-full flex items-center gap-3 px-6 py-4 rounded-xl font-bold transition-all capitalize ${
+                    activeTab === tab 
+                    ? "bg-[#005F7A] text-white shadow-lg shadow-sky-50" 
+                    : "text-slate-500 hover:bg-slate-100/50"
+                  }`}
+                >
+                  {tab === "my-books" && <Library size={20} />}
+                  {tab === "store" && <Store size={20} />}
+                  {tab === "saved" && <Bookmark size={20} />}
+                  {tab === "history" && <History size={20} />}
+                  {tab.replace("-", " ")}
+                </button>
+              ))}
+            </div>
+          )}
 
-          {/* Content Area */}
-          <div className="lg:col-span-9">
+          {/* Content Area (Dynamically spans 12 columns when menu is closed, 9 when open) */}
+          <div className={isSidebarOpen ? "lg:col-span-9" : "lg:col-span-12"}>
             <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 md:p-10 shadow-sm min-h-[500px]">
               
               {/* MY BOOKS TAB */}
@@ -152,8 +171,8 @@ export default function UserDashboard() {
                   <h2 className="text-xl font-black text-slate-900 mb-8">My Library</h2>
                   
                   {fetchingBooks ? (
-                    <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-6">
-                      {[1, 2].map((i) => (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                      {[1, 2, 3, 4].map((i) => (
                         <div key={i} className="animate-pulse">
                           <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3" />
                           <div className="h-4 bg-slate-100 rounded w-3/4 mb-2" />
@@ -161,7 +180,7 @@ export default function UserDashboard() {
                       ))}
                     </div>
                   ) : ownedBooks.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                       {ownedBooks.map((book) => (
                         <div key={book.id} className="group cursor-pointer">
                           <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3 overflow-hidden">
@@ -196,7 +215,7 @@ export default function UserDashboard() {
                 </div>
               )}
 
-              {/* STORE TAB */}
+              {/* STORE TAB - Embedded directly */}
               {activeTab === "store" && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <BookStore />
