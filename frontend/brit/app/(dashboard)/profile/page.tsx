@@ -26,7 +26,7 @@ interface AppUser {
   name?: string | null;
 }
 
-type Tab = "my-books" | "store" | "saved" | "history";
+type Tab = "my-books" | "store" | "cart" | "saved" | "history";
 
 interface Book {
   id: string;
@@ -116,7 +116,7 @@ export default function UserDashboard() {
           </div>
           
           <div className="flex items-center gap-3 w-full md:w-auto">
-            {/* Sidebar Toggle Toggle Button */}
+            {/* Sidebar Toggle Button */}
             <button
               onClick={() => setIsSidebarOpen((prev) => !prev)}
               className="flex items-center gap-2 px-4 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm transition-all shadow-sm"
@@ -141,7 +141,7 @@ export default function UserDashboard() {
           {/* Sidebar Navigation (Conditionally Hidden/Shown) */}
           {isSidebarOpen && (
             <div className="lg:col-span-3 space-y-2 animate-in fade-in slide-in-from-left-4 duration-300">
-              {(["my-books", "store", "saved", "history"] as Tab[]).map((tab) => (
+              {(["my-books", "store", "cart", "saved", "history"] as Tab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -153,6 +153,7 @@ export default function UserDashboard() {
                 >
                   {tab === "my-books" && <Library size={20} />}
                   {tab === "store" && <Store size={20} />}
+                  {tab === "cart" && <ShoppingBag size={20} />}
                   {tab === "saved" && <Bookmark size={20} />}
                   {tab === "history" && <History size={20} />}
                   {tab.replace("-", " ")}
@@ -161,7 +162,7 @@ export default function UserDashboard() {
             </div>
           )}
 
-          {/* Content Area (Dynamically spans 12 columns when menu is closed, 9 when open) */}
+          {/* Content Area */}
           <div className={isSidebarOpen ? "lg:col-span-9" : "lg:col-span-12"}>
             <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 md:p-10 shadow-sm min-h-[500px]">
               
@@ -215,15 +216,32 @@ export default function UserDashboard() {
                 </div>
               )}
 
-              {/* STORE TAB - Embedded directly */}
+              {/* STORE TAB */}
               {activeTab === "store" && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <BookStore />
                 </div>
               )}
 
+              {/* CART TAB */}
+              {activeTab === "cart" && (
+                <div className="flex flex-col items-center justify-center h-full text-center py-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-4">
+                    <ShoppingBag size={32} />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900">Your Cart</h3>
+                  <p className="text-slate-500 mt-2 mb-6">Proceed to checkout to review your selected items.</p>
+                  <Link 
+                    href="/checkout"
+                    className="bg-[#005F7A] text-white px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity"
+                  >
+                    Go to Checkout
+                  </Link>
+                </div>
+              )}
+
               {/* SAVED & HISTORY TABS */}
-              {activeTab !== "my-books" && activeTab !== "store" && (
+              {activeTab !== "my-books" && activeTab !== "store" && activeTab !== "cart" && (
                 <div className="flex flex-col items-center justify-center h-full text-center py-12">
                   <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-4">
                     {activeTab === "saved" ? <Bookmark size={32} /> : <History size={32} />}
