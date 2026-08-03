@@ -1,10 +1,238 @@
+
+import User from "../models/User.js";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { sendOtpEmail } from "../utils/sendEmail.js";
+
+// Helper function to generate a 6-digit OTP code
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+
+export const register = async (req, res) => {
+  try {
+    const { firstName, lastName, name, email, password, sex } = req.body;
+
+    const fName = firstName || (name ? name.split(" ")[0] : "");
+    const lName = lastName || (name ? name.split(" ").slice(1).join(" ") : "");
+
+    if ((!fName && !name) || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      if (!existingUser.isVerified) {
+        // If account exists but wasn't verified, generate fresh OTP and allow update
+        const otpCode = generateOTP();
+        const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000); 
+
+        existingUser.password = await bcrypt.hash(password, 12);
+        existingUser.otpCode = otpCode;
+        existingUser.otpExpiresAt = otpExpiresAt;
+        await existingUser.save();
+
+        await sendOtpEmail(email, otpCode);
+
+        return res.status(200).json({
+          message: "Account already exists but unverified. Verification code resent.",
+          requiresVerification: true,
+          email,
+        });
+      }
+
+      return res.status(409).json({ message: "User already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const otpCode = generateOTP();
+    const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
+    await User.create({
+      firstName: fName,
+      lastName: lName,
+      email,
+      password: hashedPassword,
+      role: "user",
+      isVerified: false,
+      otpCode,
+      otpExpiresAt,
+    });
+
+    // Send OTP via email
+    await sendOtpEmail(email, otpCode);
+
+    res.status(201).json({
+      message: "Account created successfully. Verification code sent.",
+      requiresVerification: true,
+      email,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+export const verifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP are required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: "User is already verified" });
+    }
+
+    if (user.otpCode !== otp) {
+      return res.status(400).json({ message: "Invalid verification code" });
+    }
+
+    if (user.otpExpiresAt < new Date()) {
+      return res.status(400).json({ message: "Verification code has expired" });
+    }
+
+    // Mark user as verified and clear OTP fields
+    user.isVerified = true;
+    user.otpCode = null;
+    user.otpExpiresAt = null;
+    await user.save();
+
+    // Issue Token
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(200).json({
+      message: "Email verified successfully",
+      token,
+      user: {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+export const resendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: "User is already verified" });
+    }
+
+    const otpCode = generateOTP();
+    user.otpCode = otpCode;
+    user.otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000); 
+    await user.save();
+
+    await sendOtpEmail(email, otpCode);
+
+    res.status(200).json({ message: "Verification code resent successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+export const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user)
+      return res.status(401).json({ message: "Invalid credentials" });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res.status(401).json({ message: "Invalid credentials" });
+
+    // Check if user is verified
+    if (user.isVerified === false) {
+      return res.status(403).json({
+        message: "Please verify your email before logging in.",
+        requiresVerification: true,
+        email: user.email,
+      });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({
+      token,
+      user: {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+export const logout = (req, res) => {
+  res.cookie("token", "", {
+    httpOnly: true,
+    expires: new Date(0),
+    sameSite: "none",
+    secure: true,
+  });
+  res.status(200).json({ message: "Logged out successfully." });
+};
+
+/*
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-/**
- * REGISTER
- */
+
 export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -31,9 +259,7 @@ export const register = async (req, res) => {
   }
 };
 
-/**
- * LOGIN
- */
+
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -74,10 +300,7 @@ export const login = async (req, res) => {
   }
 };
 
-/**
- * LOGOUT 
- * This is the "Refresh" button for your session.
- */
+
 export const logout = (req, res) => {
   res.cookie("token", "", {
     httpOnly: true,
@@ -87,3 +310,4 @@ export const logout = (req, res) => {
   });
   res.status(200).json({ message: "Logged out. Please log in again to see Admin stats." });
 };
+*/
