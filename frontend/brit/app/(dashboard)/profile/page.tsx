@@ -11,15 +11,19 @@ import {
   Library,
   Store,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Trash2,
+  Plus,
+  Minus
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/app/context/AuthContext";
 import Header from "@/Components/Header"; 
 import { REST_API } from "../../constant";
+import { API } from "../../constant/api";
 import BookStore from "@/app/(public)/book-store/page";
 
-// Define a clear Interface for your User to fix the .id error
+// Types
 interface AppUser {
   id: string;
   email?: string | null;
@@ -37,16 +41,33 @@ interface Book {
   coverImage?: string;
 }
 
+export type CartItem = {
+  bookId: string;
+  quantity: number;
+  book?: {
+    _id: string;
+    title: string;
+    category: string;
+    price: number;
+    coverImage?: string;
+  };
+};
+
 export default function UserDashboard() {
-  const { user, loading: authLoading } = useAuth() as { 
+  const { user, token, loading: authLoading } = useAuth() as { 
     user: AppUser | null; 
-    loading: boolean 
+    token: string | null;
+    loading: boolean;
   };
 
   const [activeTab, setActiveTab] = useState<Tab>("my-books");
   const [ownedBooks, setOwnedBooks] = useState<Book[]>([]);
   const [fetchingBooks, setFetchingBooks] = useState(false);
   
+  // Cart tab states
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [loadingCart, setLoadingCart] = useState(false);
+
   // State to toggle sidebar collapse/expand
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -74,6 +95,90 @@ export default function UserDashboard() {
       fetchMyBooks();
     }
   }, [user?.id, activeTab]);
+
+  // Fetch Cart Items from API when Cart tab is selected
+  useEffect(() => {
+    const fetchCart = async () => {
+      if (!token) return;
+      try {
+        setLoadingCart(true);
+        const res = await fetch(API.CART, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setCartItems(data?.items || []);
+        }
+      } catch (err) {
+        console.error("Failed to load cart", err);
+      } finally {
+        setLoadingCart(false);
+      }
+    };
+
+    if (activeTab === "cart" && token) {
+      fetchCart();
+    }
+  }, [token, activeTab]);
+
+  // Quantity updates for Cart
+  const updateQuantity = async (bookId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeItem(bookId);
+      return;
+    }
+
+    try {
+      const res = await fetch(API.CART, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ bookId, quantity }),
+      });
+
+      if (res.ok) {
+        setCartItems((prev) =>
+          prev.map((item) =>
+            item.bookId === bookId ? { ...item, quantity } : item
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Failed to update cart quantity", err);
+    }
+  };
+
+  // Remove Item from Cart
+  const removeItem = async (bookId: string) => {
+    try {
+      const res = await fetch(`${API.CART}/${bookId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        setCartItems((prev) => prev.filter((item) => item.bookId !== bookId));
+      }
+    } catch (err) {
+      console.error("Failed to remove item from cart", err);
+    }
+  };
+
+  const calculateSubtotal = () => {
+    return cartItems.reduce(
+      (sum, item) => sum + (item.book?.price || 0) * item.quantity,
+      0
+    );
+  };
 
   if (authLoading) {
     return (
@@ -116,29 +221,22 @@ export default function UserDashboard() {
           </div>
           
           <div className="flex items-center gap-3 w-full md:w-auto">
-            {/* Sidebar Toggle Button */}
+            {/* Sidebar Toggle Button (Cart Removed from Header) */}
             <button
               onClick={() => setIsSidebarOpen((prev) => !prev)}
               className="flex items-center gap-2 px-4 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm transition-all shadow-sm"
               title={isSidebarOpen ? "Collapse Navigation" : "Expand Navigation"}
             >
               {isSidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
-              <span className="hidden sm:inline">
+              <span>
                 {isSidebarOpen ? "Hide Menu" : "Show Menu"}
               </span>
             </button>
-
-            <Link 
-              href="/checkout" 
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm transition-all shadow-lg shadow-sky-100"
-            >
-              <ShoppingBag size={18} /> Cart
-            </Link>
           </div>
         </div>
 
         <div className="grid lg:grid-cols-12 gap-8 items-start transition-all duration-300">
-          {/* Sidebar Navigation (Conditionally Hidden/Shown) */}
+          {/* Sidebar Navigation */}
           {isSidebarOpen && (
             <div className="lg:col-span-3 space-y-2 animate-in fade-in slide-in-from-left-4 duration-300">
               {(["my-books", "store", "cart", "saved", "history"] as Tab[]).map((tab) => (
@@ -223,20 +321,96 @@ export default function UserDashboard() {
                 </div>
               )}
 
-              {/* CART TAB */}
+              {/* CART TAB (Populated using Cart API) */}
               {activeTab === "cart" && (
-                <div className="flex flex-col items-center justify-center h-full text-center py-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-4">
-                    <ShoppingBag size={32} />
-                  </div>
-                  <h3 className="text-xl font-black text-slate-900">Your Cart</h3>
-                  <p className="text-slate-500 mt-2 mb-6">Proceed to checkout to review your selected items.</p>
-                  <Link 
-                    href="/checkout"
-                    className="bg-[#005F7A] text-white px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity"
-                  >
-                    Go to Checkout
-                  </Link>
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <h2 className="text-xl font-black text-slate-900 mb-6">Your Cart</h2>
+                  
+                  {loadingCart ? (
+                    <div className="flex justify-center items-center py-16">
+                      <div className="w-10 h-10 border-4 border-slate-100 border-t-[#005F7A] rounded-full animate-spin"></div>
+                    </div>
+                  ) : cartItems.length > 0 ? (
+                    <div className="space-y-6">
+                      <div className="divide-y divide-slate-100">
+                        {cartItems.map((item) => (
+                          <div key={item.bookId} className="py-4 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                              <div className="w-16 h-20 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
+                                {item.book?.coverImage && (
+                                  <img 
+                                    src={item.book.coverImage} 
+                                    alt={item.book.title} 
+                                    className="w-full h-full object-cover" 
+                                  />
+                                )}
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-slate-900 line-clamp-1">{item.book?.title || "Book"}</h4>
+                                <p className="text-xs text-slate-500 mb-1">{item.book?.category}</p>
+                                <p className="text-sm font-semibold text-[#005F7A]">${item.book?.price}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-6">
+                              {/* Quantity Control */}
+                              <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1">
+                                <button 
+                                  onClick={() => updateQuantity(item.bookId, item.quantity - 1)}
+                                  className="p-1 hover:bg-slate-100 rounded text-slate-600"
+                                >
+                                  <Minus size={14} />
+                                </button>
+                                <span className="text-sm font-bold w-6 text-center">{item.quantity}</span>
+                                <button 
+                                  onClick={() => updateQuantity(item.bookId, item.quantity + 1)}
+                                  className="p-1 hover:bg-slate-100 rounded text-slate-600"
+                                >
+                                  <Plus size={14} />
+                                </button>
+                              </div>
+
+                              {/* Delete */}
+                              <button 
+                                onClick={() => removeItem(item.bookId)}
+                                className="text-slate-400 hover:text-red-500 transition-colors"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Cart Footer */}
+                      <div className="border-t border-slate-100 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div>
+                          <p className="text-xs text-slate-500">Subtotal</p>
+                          <p className="text-2xl font-black text-slate-900">${calculateSubtotal().toFixed(2)}</p>
+                        </div>
+                        <Link 
+                          href="/checkout"
+                          className="w-full sm:w-auto bg-[#005F7A] text-white px-8 py-3.5 rounded-xl font-bold hover:opacity-90 transition-opacity text-center shadow-lg shadow-sky-50"
+                        >
+                          Proceed to Checkout
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-center py-12">
+                      <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-4">
+                        <ShoppingBag size={32} />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900">Your cart is empty</h3>
+                      <p className="text-slate-500 mt-1 mb-6">Looks like you haven&apos;t added any items to your cart yet.</p>
+                      <button 
+                        onClick={() => setActiveTab("store")}
+                        className="bg-[#005F7A] text-white px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity"
+                      >
+                        Explore Store
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
