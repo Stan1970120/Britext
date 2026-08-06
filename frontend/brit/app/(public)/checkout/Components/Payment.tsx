@@ -277,7 +277,7 @@ const Payment: React.FC<PaymentProps> = ({
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-slate-800 text-sm">Flutterwave Global Checkout</h3>
                   <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">
-                    Recommended International (USD)
+                    Default (USD)
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">Pay seamlessly in USD or international cards</p>
