@@ -9,29 +9,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         }),
     ],
     callbacks: {
-        async signIn({ user, account }) {
-            if (account?.provider === "google") {
-                try {
-                    const res = await fetch(
-                        `${process.env.NEXT_PUBLIC_REST_API}/auth/google-sync`,
-                        {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                email: user.email,
-                                firstName: user.name?.split(" ")[0] || "",
-                                lastName: user.name?.split(" ").slice(1).join(" ") || "",
-                                image: user.image,
-                                provider: "google",
-                            }),
-                        }
-                    );
-                    return res.ok;
-                } catch (error) {
-                    console.error("Backend OAuth Sync Error:", error);
-                    return false;
-                }
-            }
+        async signIn() {
+
             return true;
         },
         async jwt({ token, account }) {

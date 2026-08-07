@@ -1,4 +1,260 @@
-// // frontend/brit/app/context/AuthContext.tsx
+"use client";
+
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { useSession, signOut as nextAuthSignOut } from "next-auth/react";
+import { REST_API } from "../constant";
+
+export interface User {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role?: "admin" | "user";
+  provider?: string;
+  isVerified?: boolean; 
+}
+
+interface AuthContextType {
+  user: User | null;
+  token: string | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (payload: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    sex?: string;
+  }) => Promise<{ email: string; requiresVerification: boolean }>;
+  verifyOtp: (email: string, otp: string) => Promise<void>;
+  resendOtp: (email: string) => Promise<void>;
+  logout: () => Promise<void>;
+  loginWithToken: (token: string) => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
+  return context;
+};
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Safely extract NextAuth session context to handle SSG/prerendering gracefully
+  const sessionContext = useSession();
+  const session = sessionContext?.data;
+  const status = sessionContext?.status || "unauthenticated";
+
+  // Save auth data helper
+  const saveAuth = (userData: User, jwt: string) => {
+    setUser(userData);
+    setToken(jwt);
+    localStorage.setItem("user", JSON.stringify(userData));
+    localStorage.setItem("token", jwt);
+  };
+
+  // Load auth from localStorage on initial mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    const storedToken = localStorage.getItem("token");
+
+    if (storedUser && storedToken) {
+      setUser(JSON.parse(storedUser));
+      setToken(storedToken);
+    }
+
+    setLoading(false);
+  }, []);
+
+  // Sync Google OAuth session from NextAuth into AuthContext
+  useEffect(() => {
+    const syncNextAuthSession = async () => {
+      if (status === "authenticated" && session?.user?.email && !token) {
+        setLoading(true);
+        try {
+          const nameParts = session.user.name?.split(" ") || ["", ""];
+          const firstName = nameParts[0] || "";
+          const lastName = nameParts.slice(1).join(" ") || "";
+
+          const res = await fetch(`${REST_API}/auth/google-sync`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: session.user.email,
+              firstName,
+              lastName,
+              image: session.user.image,
+              provider: "google",
+            }),
+          });
+
+          const data = await res.json();
+          if (res.ok && data.user && data.token) {
+            saveAuth(data.user, data.token);
+          }
+        } catch (err) {
+          console.error("Failed to sync NextAuth Google session with AuthContext:", err);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    if (status !== "loading") {
+      syncNextAuthSession();
+    }
+  }, [session, status, token]);
+
+  const login = async (email: string, password: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${REST_API}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", 
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Login failed");
+
+      // Check if user account is verified before logging in completely
+      if (data.user && data.user.isVerified === false) {
+        throw new Error("UNVERIFIED_ACCOUNT");
+      }
+
+      saveAuth(data.user, data.token);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signup = async (payload: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    sex?: string;
+  }) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${REST_API}/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include", 
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Signup failed");
+
+      // Returns details so frontend can redirect to /verify-otp
+      return { 
+        email: payload.email, 
+        requiresVerification: true 
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyOtp = async (email: string, otp: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${REST_API}/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Invalid OTP code");
+
+      // Save session once verified successfully
+      if (data.user && data.token) {
+        saveAuth(data.user, data.token);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendOtp = async (email: string) => {
+    const res = await fetch(`${REST_API}/auth/resend-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to resend code");
+  };
+
+  const loginWithToken = async (jwtToken: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${REST_API}/auth/profile`, {
+        method: "GET",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${jwtToken}`
+        },
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error("Failed to fetch user profile");
+
+      saveAuth(data.user, jwtToken);
+    } catch (err) {
+      console.error("Token login error:", err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+
+    try {
+      await nextAuthSignOut({ redirect: false });
+    } catch (err) {
+      console.error("NextAuth signout error:", err);
+    }
+
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
+  };
+
+  return (
+    <AuthContext.Provider 
+      value={{ 
+        user, 
+        token, 
+        loading, 
+        login, 
+        signup, 
+        verifyOtp, 
+        resendOtp, 
+        logout, 
+        loginWithToken 
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+/*
 
 "use client";
 
@@ -199,316 +455,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         loginWithToken 
       }}
     >
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-/*
-"use client";
-
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { REST_API } from "../constant";
-
-export interface User {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role?: "admin" | "user";
-  provider?: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (payload: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-    sex?: string;
-  }) => Promise<void>;
-  logout: () => Promise<void>;
-  loginWithToken: (token: string) => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
-  return context;
-};
-
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Load auth from localStorage on first mount
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const storedToken = localStorage.getItem("token");
-
-    if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser));
-      setToken(storedToken);
-    }
-
-    setLoading(false);
-  }, []);
-
-  const saveAuth = (userData: User, jwt: string) => {
-    setUser(userData);
-    setToken(jwt);
-    localStorage.setItem("user", JSON.stringify(userData));
-    localStorage.setItem("token", jwt);
-  };
-
-  const login = async (email: string, password: string) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${REST_API}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", 
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed");
-
-      saveAuth(data.user, data.token);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signup = async (payload: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-    sex?: string;
-  }) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${REST_API}/auth/signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", 
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Signup failed");
-
-      saveAuth(data.user, data.token);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loginWithToken = async (jwtToken: string) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${REST_API}/auth/profile`, {
-        method: "GET",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${jwtToken}`
-        },
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error("Failed to fetch user profile");
-
-      saveAuth(data.user, jwtToken);
-    } catch (err) {
-      console.error("Token login error:", err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  
-  const logout = async () => {
-    // Clear state
-    setUser(null);
-    setToken(null);
-
-    // Clear physical storage
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-
-    //Refresh or redirect to home to ensure a clean state
-    if (typeof window !== "undefined") {
-      window.location.href = "/";
-    }
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, token, loading, login, signup, logout, loginWithToken }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-/*
-"use client";
-
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { REST_API } from "../constant";
-
-export interface User {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role?: "admin" | "user";
-  provider?: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (payload: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-    sex?: string;
-  }) => Promise<void>;
-  logout: () => Promise<void>;
-  loginWithToken: (token: string) => Promise<void>; // ✨ Added this
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
-  return context;
-};
-
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Load auth from localStorage on first mount
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const storedToken = localStorage.getItem("token");
-
-    if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser));
-      setToken(storedToken);
-    }
-
-    setLoading(false);
-  }, []);
-
-  const saveAuth = (userData: User, jwt: string) => {
-    setUser(userData);
-    setToken(jwt);
-    localStorage.setItem("user", JSON.stringify(userData));
-    localStorage.setItem("token", jwt);
-  };
-
-  const login = async (email: string, password: string) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${REST_API}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", 
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Login failed");
-
-      saveAuth(data.user, data.token);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const signup = async (payload: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-    sex?: string;
-  }) => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${REST_API}/auth/signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", 
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Signup failed");
-
-      saveAuth(data.user, data.token);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  
-  const loginWithToken = async (jwtToken: string) => {
-    setLoading(true);
-    try {
-      // Fetch user profile using the token to set user state
-      const res = await fetch(`${REST_API}/auth/profile`, {
-        method: "GET",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${jwtToken}`
-        },
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error("Failed to fetch user profile");
-
-      saveAuth(data.user, jwtToken);
-    } catch (err) {
-      console.error("Token login error:", err);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const logout = async () => {
-    try {
-      await fetch(`${REST_API}/auth/logout`, { 
-        method: "POST", 
-        credentials: "include" 
-      });
-    } catch (err) {
-      console.error("Logout error:", err);
-    } finally {
-      setUser(null);
-      setToken(null);
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
-    }
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, token, loading, login, signup, logout, loginWithToken }}>
       {children}
     </AuthContext.Provider>
   );
