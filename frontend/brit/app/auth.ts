@@ -1,18 +1,11 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
-const googleClientId = process.env.AUTH_GOOGLE_ID || process.env.GOOGLE_CLIENT_ID;
-const googleClientSecret = process.env.AUTH_GOOGLE_SECRET || process.env.GOOGLE_CLIENT_SECRET;
-
-if (!googleClientId || !googleClientSecret) {
-    console.error("Missing Google OAuth environment variables. Check AUTH_GOOGLE_ID / GOOGLE_CLIENT_ID and AUTH_GOOGLE_SECRET / GOOGLE_CLIENT_SECRET.");
-}
-
 export const { handlers, signIn, signOut, auth } = NextAuth({
     providers: [
         GoogleProvider({
-            clientId: googleClientId!,
-            clientSecret: googleClientSecret!,
+            clientId: process.env.AUTH_GOOGLE_ID || process.env.GOOGLE_CLIENT_ID || "",
+            clientSecret: process.env.AUTH_GOOGLE_SECRET || process.env.GOOGLE_CLIENT_SECRET || "",
         }),
     ],
     callbacks: {
