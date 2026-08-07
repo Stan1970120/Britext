@@ -45,12 +45,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Safely extract NextAuth session context to handle SSG/prerendering gracefully
+  // Safely extract NextAuth session context for SSR / prerendering
   const sessionContext = useSession();
   const session = sessionContext?.data;
   const status = sessionContext?.status || "unauthenticated";
 
-  // Save auth data helper
+  // Helper to persist auth state
   const saveAuth = (userData: User, jwt: string) => {
     setUser(userData);
     setToken(jwt);
@@ -58,24 +58,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem("token", jwt);
   };
 
-  // Load auth from localStorage on initial mount
+  // Unified Initialization logic to prevent race condition
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    const storedToken = localStorage.getItem("token");
+    const initializeAuth = async () => {
+      // 1. Check local storage first
+      const storedUser = localStorage.getItem("user");
+      const storedToken = localStorage.getItem("token");
 
-    if (storedUser && storedToken) {
-      setUser(JSON.parse(storedUser));
-      setToken(storedToken);
-    }
+      if (storedUser && storedToken) {
+        setUser(JSON.parse(storedUser));
+        setToken(storedToken);
+        setLoading(false);
+        return;
+      }
 
-    setLoading(false);
-  }, []);
+      // 2. Wait if NextAuth is still initializing session status
+      if (status === "loading") {
+        return; 
+      }
 
-  // Sync Google OAuth session from NextAuth into AuthContext
-  useEffect(() => {
-    const syncNextAuthSession = async () => {
+      // 3. Sync NextAuth Google session if user is authenticated via OAuth
       if (status === "authenticated" && session?.user?.email && !token) {
-        setLoading(true);
         try {
           const nameParts = session.user.name?.split(" ") || ["", ""];
           const firstName = nameParts[0] || "";
@@ -98,16 +101,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             saveAuth(data.user, data.token);
           }
         } catch (err) {
-          console.error("Failed to sync NextAuth Google session with AuthContext:", err);
-        } finally {
-          setLoading(false);
+          console.error("Failed to sync NextAuth Google session:", err);
         }
       }
+
+      // 4. Set loading to false once all checks are complete
+      setLoading(false);
     };
 
-    if (status !== "loading") {
-      syncNextAuthSession();
-    }
+    initializeAuth();
   }, [session, status, token]);
 
   const login = async (email: string, password: string) => {
@@ -123,7 +125,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Login failed");
 
-      // Check if user account is verified before logging in completely
       if (data.user && data.user.isVerified === false) {
         throw new Error("UNVERIFIED_ACCOUNT");
       }
@@ -153,7 +154,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Signup failed");
 
-      // Returns details so frontend can redirect to /verify-otp
       return { 
         email: payload.email, 
         requiresVerification: true 
@@ -175,7 +175,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Invalid OTP code");
 
-      // Save session once verified successfully
       if (data.user && data.token) {
         saveAuth(data.user, data.token);
       }
