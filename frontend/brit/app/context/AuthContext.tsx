@@ -45,7 +45,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const { data: session, status } = useSession();
+  // Safely extract NextAuth session context to handle SSG/prerendering gracefully
+  const sessionContext = useSession();
+  const session = sessionContext?.data;
+  const status = sessionContext?.status || "unauthenticated";
 
   // Save auth data helper
   const saveAuth = (userData: User, jwt: string) => {
@@ -250,7 +253,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
-
 
 /*
 
