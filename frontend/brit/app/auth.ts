@@ -1,9 +1,9 @@
 import NextAuth, { type User } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-// Importing JWT directly allows module augmentation for 'next-auth/jwt'
+
 import type { JWT } from "next-auth/jwt";
 
-// Type augmentation for NextAuth module
+
 declare module "next-auth" {
     interface User {
         backendToken?: string;
