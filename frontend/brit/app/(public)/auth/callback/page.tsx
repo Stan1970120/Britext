@@ -1,3 +1,98 @@
+"use client";
+
+import { useEffect, useState, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { useAuth } from "@/app/context/AuthContext";
+
+export default function AuthCallbackPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
+  const { loginWithToken } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+
+  // Prevent duplicate execution cycles
+  const hasProcessed = useRef(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const processAuth = async () => {
+      // Lock execution immediately
+      if (hasProcessed.current) return;
+
+      const queryToken = searchParams.get("token");
+      const redirectTarget = searchParams.get("redirect") || "/profile";
+
+      if (queryToken) {
+        hasProcessed.current = true;
+        try {
+          await loginWithToken(queryToken);
+          if (isMounted) router.replace(redirectTarget);
+        } catch {
+          if (isMounted) {
+            setError("Failed to verify user token.");
+            setTimeout(() => router.replace("/auth"), 2500);
+          }
+        }
+        return;
+      }
+
+      const backendToken = session?.backendToken;
+
+      if (status === "authenticated" && backendToken) {
+        hasProcessed.current = true;
+        try {
+          await loginWithToken(backendToken);
+          if (isMounted) router.replace(redirectTarget);
+        } catch {
+          if (isMounted) {
+            setError("Failed to synchronize session.");
+            setTimeout(() => router.replace("/auth"), 2500);
+          }
+        }
+        return;
+      }
+
+      if (status === "unauthenticated") {
+        hasProcessed.current = true;
+        if (isMounted) {
+          setError("Authentication failed. Redirecting...");
+          setTimeout(() => router.replace("/auth"), 2500);
+        }
+      }
+    };
+
+    if (status !== "loading") {
+      processAuth();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [searchParams, session, status, loginWithToken, router]);
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center">
+        {error ? (
+          <>
+            <h1 className="text-xl font-bold text-red-600 mb-2">Auth Error</h1>
+            <p className="text-gray-600 text-sm">{error}</p>
+          </>
+        ) : (
+          <>
+            <div className="animate-spin h-10 w-10 border-4 border-[#035b77] border-t-transparent rounded-full mx-auto mb-4"></div>
+            <h1 className="text-xl font-bold text-gray-800">Verifying...</h1>
+            <p className="text-gray-500 text-sm">Please wait while we log you in.</p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+/*
 
 "use client";
 
