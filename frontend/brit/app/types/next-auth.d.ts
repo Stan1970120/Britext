@@ -1,3 +1,5 @@
+// Britext/frontend/brit/app/types/next-auth.d.ts
+
 import "next-auth";
 import "next-auth/jwt";
 
