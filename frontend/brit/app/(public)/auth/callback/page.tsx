@@ -19,7 +19,6 @@ export default function AuthCallbackPage() {
       const queryToken = searchParams.get("token");
       const redirectTarget = searchParams.get("redirect") || "/profile";
 
-      // Case 1: Direct backend token in URL query
       if (queryToken) {
         try {
           await loginWithToken(queryToken);
@@ -33,10 +32,11 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      // Case 2: Token inside NextAuth session
-      if (status === "authenticated" && session?.backendToken) {
+      const backendToken = (session as { backendToken?: string })?.backendToken;
+
+      if (status === "authenticated" && backendToken) {
         try {
-          await loginWithToken(session.backendToken);
+          await loginWithToken(backendToken);
           if (isMounted) router.replace(redirectTarget);
         } catch {
           if (isMounted) {
@@ -47,7 +47,6 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      // Case 3: Failed OAuth attempt
       if (status === "unauthenticated") {
         setTimeout(() => {
           if (isMounted) {
