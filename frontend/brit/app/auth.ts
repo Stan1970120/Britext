@@ -1,5 +1,19 @@
-import NextAuth, { type User } from "next-auth";
+import NextAuth, { type User, type Session } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import type { JWT } from "next-auth/jwt";
+
+interface CustomUser extends User {
+    backendToken?: string;
+}
+
+interface CustomSession extends Session {
+    backendToken?: string;
+}
+
+interface CustomJWT extends JWT {
+    backendToken?: string;
+    accessToken?: string;
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
     providers: [
@@ -15,7 +29,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     const rawApiBase = process.env.NEXT_PUBLIC_REST_API || "";
                     if (!rawApiBase) {
                         console.error("OAuth Error: NEXT_PUBLIC_REST_API is undefined.");
-                        return false;
+                        return true;
                     }
 
                     const apiBase = rawApiBase.replace(/\/+$/, "");
@@ -35,40 +49,37 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                         }),
                     });
 
-                    if (!res.ok) {
-                        const errorDetails = await res.text();
-                        console.error(`Backend OAuth sync failed (${res.status}) at ${syncEndpoint}:`, errorDetails);
-                        return false;
+                    if (res.ok) {
+                        const data = (await res.json()) as { token?: string };
+                        if (data?.token) {
+                            const customUser = user as CustomUser;
+                            customUser.backendToken = String(data.token);
+                        }
                     }
-
-                    const data = await res.json();
-                    if (data?.token) {
-                        (user as User).backendToken = String(data.token);
-                    }
-
-                    return true;
                 } catch (error) {
                     console.error("Backend OAuth Sync Exception:", error);
-                    return false;
                 }
             }
             return true;
         },
         async jwt({ token, user, account }) {
+            const customToken = token as CustomJWT;
             if (account) {
-                token.accessToken = account.access_token;
+                customToken.accessToken = account.access_token;
             }
-            const customUser = user as User | undefined;
+            const customUser = user as CustomUser | undefined;
             if (customUser?.backendToken) {
-                token.backendToken = customUser.backendToken;
+                customToken.backendToken = customUser.backendToken;
             }
-            return token;
+            return customToken;
         },
         async session({ session, token }) {
-            if (typeof token.backendToken === "string") {
-                session.backendToken = token.backendToken;
+            const customSession = session as CustomSession;
+            const customToken = token as CustomJWT;
+            if (typeof customToken.backendToken === "string") {
+                customSession.backendToken = customToken.backendToken;
             }
-            return session;
+            return customSession;
         },
     },
 });
