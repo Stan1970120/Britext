@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -19,49 +19,58 @@ export default function SignInPage() {
   const [showSuccess, setShowSuccess] = useState(false);
 
   const hasSynced = useRef(false);
+  const hasRedirected = useRef(false);
 
-  const syncGuestData = async (userToken: string) => {
+  const syncGuestData = useCallback(async (userToken: string) => {
+    // CRITICAL FIX: Lock immediately BEFORE starting async work to prevent duplicate loops
     if (hasSynced.current) return;
-
-    const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
-    const guestWish = JSON.parse(localStorage.getItem("guestWishlist") || "[]");
-    const guestRatings = JSON.parse(localStorage.getItem("guestRatings") || "{}");
+    hasSynced.current = true;
 
     try {
+      const guestCart = JSON.parse(localStorage.getItem("guestCart") || "[]");
+      const guestWish = JSON.parse(localStorage.getItem("guestWishlist") || "[]");
+      const guestRatings = JSON.parse(localStorage.getItem("guestRatings") || "{}");
+
       const syncTasks = [];
 
-      if (guestCart.length > 0) {
-        syncTasks.push(...guestCart.map((bookId: string) =>
-          fetch(API.CART, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${userToken}`,
-            },
-            body: JSON.stringify({ bookId }),
-          })
-        ));
+      if (Array.isArray(guestCart) && guestCart.length > 0) {
+        syncTasks.push(
+          ...guestCart.map((bookId: string) =>
+            fetch(API.CART, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${userToken}`,
+              },
+              body: JSON.stringify({ bookId }),
+            })
+          )
+        );
       }
 
-      if (guestWish.length > 0) {
-        syncTasks.push(...guestWish.map((bookId: string) =>
-          fetch(API.TOGGLE_WISHLIST, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${userToken}` },
-            body: JSON.stringify({ bookId }),
-          })
-        ));
+      if (Array.isArray(guestWish) && guestWish.length > 0) {
+        syncTasks.push(
+          ...guestWish.map((bookId: string) =>
+            fetch(API.TOGGLE_WISHLIST, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${userToken}` },
+              body: JSON.stringify({ bookId }),
+            })
+          )
+        );
       }
 
       const ratingEntries = Object.entries(guestRatings);
       if (ratingEntries.length > 0) {
-        syncTasks.push(...ratingEntries.map(([bookId, rating]) =>
-          fetch(API.RATE_BOOK, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${userToken}` },
-            body: JSON.stringify({ bookId, rating }),
-          })
-        ));
+        syncTasks.push(
+          ...ratingEntries.map(([bookId, rating]) =>
+            fetch(API.RATE_BOOK, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${userToken}` },
+              body: JSON.stringify({ bookId, rating }),
+            })
+          )
+        );
       }
 
       if (syncTasks.length > 0) {
@@ -71,29 +80,31 @@ export default function SignInPage() {
         localStorage.removeItem("guestRatings");
         console.log("Guest data successfully synced to account.");
       }
-
-      hasSynced.current = true;
     } catch (err) {
       console.error("Critical sync failure:", err);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    if (user && token) {
+    if (user && token && !hasRedirected.current) {
       syncGuestData(token);
 
       const destination = user.role === "admin" ? "/dashboard" : "/profile";
 
       if (showSuccess) {
         const timer = setTimeout(() => {
-          router.replace(destination);
+          if (!hasRedirected.current) {
+            hasRedirected.current = true;
+            router.replace(destination);
+          }
         }, 2000);
         return () => clearTimeout(timer);
       } else {
+        hasRedirected.current = true;
         router.replace(destination);
       }
     }
-  }, [user, token, showSuccess, router]);
+  }, [user, token, showSuccess, router, syncGuestData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -210,6 +221,8 @@ export default function SignInPage() {
     </>
   );
 }
+
+
 /*
 "use client";
 

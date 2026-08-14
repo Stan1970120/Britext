@@ -1,3 +1,4 @@
+/*
 "use client";
 
 import { useEffect, useState } from "react";
@@ -86,9 +87,9 @@ export default function AuthCallbackPage() {
     </div>
   );
 }
+*/
 
 
-/*
 "use client";
 
 import { useEffect, useState } from "react";
