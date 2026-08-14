@@ -1,8 +1,6 @@
 import NextAuth, { type User } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-
 import type { JWT } from "next-auth/jwt";
-
 
 declare module "next-auth" {
     interface User {
@@ -31,21 +29,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         async signIn({ user, account }) {
             if (account?.provider === "google") {
                 try {
-                    const apiBase = process.env.NEXT_PUBLIC_REST_API || "";
-                    const res = await fetch(`${apiBase}/auth/google-sync`, {
+                    const rawApiBase = process.env.NEXT_PUBLIC_REST_API || "";
+                    if (!rawApiBase) {
+                        console.error("OAuth Error: NEXT_PUBLIC_REST_API is undefined.");
+                        return false;
+                    }
+
+                    // Remove trailing slashes
+                    const apiBase = rawApiBase.replace(/\/+$/, "");
+
+                    // If NEXT_PUBLIC_REST_API already ends with /api, construct clean endpoint
+                    const syncEndpoint = apiBase.endsWith("/api")
+                        ? `${apiBase}/auth/google-sync`
+                        : `${apiBase}/api/auth/google-sync`;
+
+                    const res = await fetch(syncEndpoint, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             email: user.email,
-                            firstName: user.name?.split(" ")[0] || "",
-                            lastName: user.name?.split(" ").slice(1).join(" ") || "",
+                            firstName: user.name?.split(" ")[0] || "Google",
+                            lastName: user.name?.split(" ").slice(1).join(" ") || "User",
                             image: user.image,
                             provider: "google",
                         }),
                     });
 
                     if (!res.ok) {
-                        console.error("Backend sync responded with status:", res.status);
+                        const errorDetails = await res.text();
+                        console.error(`Backend OAuth sync failed (${res.status}) at ${syncEndpoint}:`, errorDetails);
                         return false;
                     }
 
@@ -56,7 +68,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
                     return true;
                 } catch (error) {
-                    console.error("Backend OAuth Sync Error:", error);
+                    console.error("Backend OAuth Sync Exception:", error);
                     return false;
                 }
             }
