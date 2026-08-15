@@ -1,4 +1,36 @@
 import express from "express";
+import {
+  register,
+  login,
+  verifyOtp,
+  resendOtp,
+  googleSync,
+  getProfile,
+  logout,
+} from "../controllers/authController.js";
+
+const router = express.Router();
+
+// Authentication Endpoints
+router.post("/register", register);
+router.post("/signup", register);
+router.post("/login", login);
+router.post("/verify-otp", verifyOtp);
+router.post("/resend-otp", resendOtp);
+
+// Google Sync
+router.post("/google-sync", googleSync);
+
+// Profile Alias Endpoints (Fixes 404 on /profile and /me)
+router.get("/profile", getProfile);
+router.get("/me", getProfile);
+
+// Logout
+router.post("/logout", logout);
+
+export default router;
+/*
+import express from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js"; 
 
