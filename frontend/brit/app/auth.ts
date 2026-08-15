@@ -14,13 +14,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 token.googleId = profile.sub;
                 token.email = profile.email;
 
-
-                const rawBackendUrl =
+                // Get base URL fallback
+                let rawBackendUrl =
                     process.env.NEXT_PUBLIC_REST_API ||
                     process.env.REST_API_URL ||
                     "https://britext.onrender.com/api";
 
-                const backendUrl = rawBackendUrl.replace(/\/$/, "");
+                // Trim trailing slashes
+                rawBackendUrl = rawBackendUrl.replace(/\/$/, "");
+
+                const backendUrl = rawBackendUrl.endsWith("/api")
+                    ? rawBackendUrl
+                    : `${rawBackendUrl}/api`;
 
                 try {
 
@@ -72,7 +77,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         signIn: "/auth",
     },
 });
-
 
 /*
 import NextAuth from "next-auth";
