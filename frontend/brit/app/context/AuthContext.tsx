@@ -1,5 +1,3 @@
-// // frontend/brit/app/context/AuthContext.tsx
-
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
@@ -12,7 +10,7 @@ export interface User {
   email: string;
   role?: "admin" | "user";
   provider?: string;
-  isVerified?: boolean; // Track verification status
+  isVerified?: boolean; 
 }
 
 interface AuthContextType {
