@@ -1,4 +1,53 @@
-// app/layout.tsx
+"use client";
+
+import { SessionProvider } from "next-auth/react";
+import { AuthProvider } from "@/app/context/AuthContext";
+import Spinner from "./Components/Spinner";
+import "./globals.css";
+import { useState, useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
+  const isInitialMount = useRef(true);
+
+  useEffect(() => {
+    //  Initial Page Load
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      const initialTimer = setTimeout(() => setLoading(false), 500);
+      return () => clearTimeout(initialTimer);
+    }
+
+  
+    const startTimer = setTimeout(() => setLoading(true), 0);
+    const stopTimer = setTimeout(() => setLoading(false), 300);
+
+    return () => {
+      clearTimeout(startTimer);
+      clearTimeout(stopTimer);
+    };
+  }, [pathname]);
+
+  return (
+    <html lang="en">
+      <body className="antialiased bg-white">
+        <SessionProvider>
+          <AuthProvider>
+            {loading ? <Spinner /> : children}
+          </AuthProvider>
+        </SessionProvider>
+      </body>
+    </html>
+  );
+}
+
+/*
 "use client";
 
 import { AuthProvider } from "@/app/context/AuthContext";
@@ -45,3 +94,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+*/

@@ -45,47 +45,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Safe extraction to prevent build prerendering crashes when session context is undefined
   const sessionContext = useSession();
   const session = sessionContext?.data;
   const sessionStatus = sessionContext?.status || "unauthenticated";
 
-  // Sync LocalStorage auth state
+  // Consolidated Auth State Sync
   useEffect(() => {
+    // 1. Wait until NextAuth settles its initial session check
+    if (sessionStatus === "loading") {
+      setLoading(true);
+      return;
+    }
+
     try {
       const storedUser = localStorage.getItem("user");
       const storedToken = localStorage.getItem("token");
 
+      // 2. Check local credentials first
       if (storedUser && storedToken) {
         setUser(JSON.parse(storedUser));
         setToken(storedToken);
+      } 
+      // 3. Fallback to Google OAuth session if local state isn't present
+      else if (session?.user) {
+        const googleUser: User = {
+          _id: (session.user as { id?: string }).id || "",
+          firstName: session.user.name?.split(" ")[0] || "User",
+          lastName: session.user.name?.split(" ").slice(1).join(" ") || "",
+          email: session.user.email || "",
+          role: "user",
+          provider: "google",
+          isVerified: true,
+        };
+        setUser(googleUser);
+      } else {
+        setUser(null);
+        setToken(null);
       }
     } catch (err) {
       console.error("Failed to parse stored auth user:", err);
       localStorage.removeItem("user");
       localStorage.removeItem("token");
+      setUser(null);
+      setToken(null);
     } finally {
-      if (sessionStatus !== "loading") {
-        setLoading(false);
-      }
+      setLoading(false);
     }
-  }, [sessionStatus]);
-
-  // Sync NextAuth (Google OAuth) session into AuthContext state
-  useEffect(() => {
-    if (session?.user && !user) {
-      const googleUser: User = {
-        _id: (session.user as { id?: string }).id || "",
-        firstName: session.user.name?.split(" ")[0] || "User",
-        lastName: session.user.name?.split(" ").slice(1).join(" ") || "",
-        email: session.user.email || "",
-        role: "user",
-        provider: "google",
-        isVerified: true,
-      };
-      setUser(googleUser);
-    }
-  }, [session, user]);
+  }, [session, sessionStatus]);
 
   const saveAuth = (userData: User, jwt: string) => {
     setUser(userData);
