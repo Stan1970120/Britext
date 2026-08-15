@@ -5,6 +5,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useSession, signOut as nextAuthSignOut } from "next-auth/react";
 import { REST_API } from "../constant";
+import { API } from "../constant/api"; // Ensure proper import of API constant object
 
 export interface User {
   _id: string;
@@ -51,7 +52,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const session = sessionContext?.data;
   const sessionStatus = sessionContext?.status || "unauthenticated";
 
-  // Consolidated Auth State Sync
   useEffect(() => {
     if (sessionStatus === "loading") {
       setLoading(true);
@@ -182,36 +182,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const loginWithToken = async (jwtToken: string) => {
     setLoading(true);
     try {
-      // Primary profile route endpoint
-      let profileUrl = `${REST_API}/auth/profile`;
-      
-      let res = await fetch(profileUrl, {
-        method: "GET",
+      // Use API.GOOGLE_SYNC or fallback directly to sync verification endpoint
+      const targetEndpoint = API.GOOGLE_SYNC || `${REST_API}/auth/google-sync`;
+
+      const res = await fetch(targetEndpoint, {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${jwtToken}`,
         },
       });
 
-      // Fallback route check if backend uses /auth/me or /users/profile
-      if (res.status === 404) {
-        profileUrl = `${REST_API}/auth/me`;
-        res = await fetch(profileUrl, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${jwtToken}`,
-          },
-        });
-      }
-
       const contentType = res.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        throw new Error(`Profile endpoint returned invalid content type (${res.status} ${res.statusText})`);
+        throw new Error(`Auth sync returned invalid content type (${res.status} ${res.statusText})`);
       }
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to fetch user profile");
+      if (!res.ok) throw new Error(data.message || "Failed to verify token session");
 
       saveAuth(data.user || data, jwtToken);
     } catch (err) {
@@ -255,8 +243,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
-
-
 /*
 "use client";
 
