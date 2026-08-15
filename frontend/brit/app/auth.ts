@@ -1,3 +1,35 @@
+import NextAuth from "next-auth";
+import Google from "next-auth/providers/google";
+
+export const { handlers, auth, signIn, signOut } = NextAuth({
+    providers: [
+        Google({
+            clientId: process.env.AUTH_GOOGLE_ID,
+            clientSecret: process.env.AUTH_GOOGLE_SECRET,
+        }),
+    ],
+    callbacks: {
+        async jwt({ token, account, profile }) {
+            // Runs when user logs in with Google
+            if (account && profile) {
+                token.googleId = profile.sub;
+                token.email = profile.email;
+            }
+            return token;
+        },
+        async session({ session, token }) {
+            if (session.user) {
+                session.user.id = token.sub as string;
+            }
+            return session;
+        },
+    },
+    pages: {
+        signIn: "/auth",
+    },
+});
+
+/*
 import NextAuth, { type User } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import type { JWT } from "next-auth/jwt";
@@ -92,3 +124,4 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         },
     },
 });
+*/
