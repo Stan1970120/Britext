@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import { API } from "./constant/api";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     providers: [
@@ -15,12 +16,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 token.googleId = profile.sub;
                 token.email = profile.email;
 
-                // Construct backend sync URL safely
-                const backendUrl = process.env.NEXT_PUBLIC_REST_API || "http://localhost:5000/api";
-                const syncEndpoint = `${backendUrl}/auth/google-sync`;
-
+                // Exchange Google credentials with backend to retrieve your custom Express JWT
                 try {
-                    const response = await fetch(syncEndpoint, {
+                    const response = await fetch(API.GOOGLE_SYNC || `${process.env.NEXT_PUBLIC_REST_API}/auth/google-sync`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
