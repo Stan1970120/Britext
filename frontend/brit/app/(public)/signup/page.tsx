@@ -1,5 +1,265 @@
-// frontend/brit/app/(public)/signup/page.tsx
+"use client";
 
+import { useState, FormEvent, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
+import { signIn } from "next-auth/react";
+import { useUser } from "@/app/hooks/useUser";
+import { Eye, EyeOff } from "lucide-react"; 
+import VerifyOtpModal from "@/app/Components/VerifyOtpModal";
+
+type Sex = "male" | "female" | "custom" | "";
+
+function SignupContent() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const redirectTo = params.get("redirect") || "/profile";
+
+  const { signup, user } = useUser();
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [sex, setSex] = useState<Sex>("");
+  const [email, setEmail] = useState("");
+  const [password1, setPassword1] = useState("");
+  const [password2, setPassword2] = useState("");
+
+  const [showPassword, setShowPassword] = useState(false); 
+  const [loading, setLoading] = useState(false);
+  const [passwordNotMatch, setPasswordNotMatch] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [error, setError] = useState("");
+
+  /* OTP Verification Modal State */
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
+
+  /* Redirect AFTER success modal */
+  useEffect(() => {
+    if (!showSuccess || !user) return;
+
+    const timer = setTimeout(() => {
+      if (user.role === "admin") {
+        router.replace("/dashboard");
+      } else {
+        router.replace(redirectTo);
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [showSuccess, user, router, redirectTo]);
+
+  const handleSignup = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    if (password1 !== password2) {
+      setPasswordNotMatch(true);
+      return;
+    }
+
+    setPasswordNotMatch(false);
+    setLoading(true);
+
+    try {
+      const res = await signup({
+        firstName,
+        lastName,
+        email,
+        password: password1,
+        sex,
+      });
+
+      // If backend returns requiresVerification or signup succeeded, pop up OTP modal
+      if (res?.requiresVerification || email) {
+        setRegisteredEmail(email);
+        setShowOtpModal(true);
+      } else {
+        setShowSuccess(true);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Signup failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignup = () => {
+    signIn("google", { callbackUrl: redirectTo });
+  };
+
+  return (
+    <>
+      {showSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white p-6 rounded-xl text-center shadow-lg border border-gray-100">
+            <h3 className="text-xl font-semibold text-green-600">
+              Account Created
+            </h3>
+            <p className="text-sm text-gray-600 mt-2">
+              Redirecting you shortly...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* OTP Verification Pop-Up Modal */}
+      <VerifyOtpModal
+        isOpen={showOtpModal}
+        email={registeredEmail}
+        onClose={() => setShowOtpModal(false)}
+        onSuccessRedirect={redirectTo}
+      />
+
+      <section className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
+        <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-md border border-gray-100">
+          <h2 className="text-2xl font-bold text-center mb-6 text-sky-700">
+            Create Your Account
+          </h2>
+
+          <form onSubmit={handleSignup} className="space-y-4">
+            <div className="flex gap-2">
+              <input
+                placeholder="First Name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+                className="w-1/2 border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
+              />
+              <input
+                placeholder="Last Name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+                className="w-1/2 border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
+              />
+            </div>
+
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
+            />
+
+            <div className="space-y-3">
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Password"
+                  value={password1}
+                  onChange={(e) => setPassword1(e.target.value)}
+                  required
+                  className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-sky-600"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Confirm Password"
+                value={password2}
+                onChange={(e) => setPassword2(e.target.value)}
+                required
+                className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none"
+              />
+            </div>
+
+            {passwordNotMatch && (
+              <p className="text-xs text-red-600 font-medium italic">Passwords do not match</p>
+            )}
+            {error && <p className="text-sm text-red-600 bg-red-50 p-2 rounded">{error}</p>}
+
+            <div className="flex gap-4 text-sm py-2">
+              {(["male", "female", "custom"] as const).map((v) => (
+                <label key={v} className="flex items-center gap-1 cursor-pointer group">
+                  <input
+                    type="radio"
+                    value={v}
+                    checked={sex === v}
+                    onChange={(e) =>
+                      setSex(e.target.value as "male" | "female" | "custom")
+                    }
+                    required
+                    className="accent-sky-700"
+                  />
+                  <span className="capitalize text-gray-600 group-hover:text-sky-700 transition">
+                    {v}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <button
+              disabled={loading}
+              className="w-full bg-sky-700 hover:bg-sky-800 text-white font-semibold py-2.5 rounded-lg transition-colors shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {loading ? "Creating Account..." : "Sign Up"}
+            </button>
+          </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-white px-2 text-gray-500 uppercase tracking-wider text-xs">or</span>
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <button
+              onClick={handleGoogleSignup}
+              className="w-full flex items-center justify-center gap-2 border border-gray-300 px-4 py-2.5 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <Image
+                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                alt="Google"
+                width={18}
+                height={18}
+              />
+              <span className="text-sm font-medium text-gray-700">Continue with Google</span>
+            </button>
+          </div>
+
+          <p className="text-center text-sm text-gray-600 mt-6">
+            Already have an account?{" "}
+            <Link href="/auth" className="text-sky-700 font-semibold hover:underline">
+              Sign in
+            </Link>
+          </p>
+        </div>
+      </section>
+    </>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center items-center h-screen">
+          <div className="w-12 h-12 border-4 border-gray-300 border-t-sky-700 rounded-full animate-spin"></div>
+        </div>
+      }
+    >
+      <SignupContent />
+    </Suspense>
+  );
+}
+
+
+
+/*
 "use client";
 
 import { useState, FormEvent, useEffect } from "react";
@@ -30,11 +290,11 @@ export default function SignupPage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  /* OTP Verification Modal State */
+ 
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
 
-  /* Redirect AFTER success modal */
+  
   useEffect(() => {
     if (!showSuccess || !user) return;
 
@@ -103,7 +363,7 @@ export default function SignupPage() {
         </div>
       )}
 
-      {/* OTP Verification Pop-Up Modal */}
+      
       <VerifyOtpModal
         isOpen={showOtpModal}
         email={registeredEmail}

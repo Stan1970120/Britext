@@ -47,7 +47,7 @@ const MyCart: React.FC<MyCartProps> = ({
       console.error("Failed to remove item", err);
     }
   };
-
+// Britext/frontend/brit/app/(dashboard)/profile/page.tsx
   const totalAmount = cartItems.reduce(
     (sum, item) => sum + (item.book?.price || 0) * item.quantity,
     0
