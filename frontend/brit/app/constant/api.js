@@ -50,7 +50,7 @@ export const API = {
   PAYMENT_VERIFY: `${REST_API}/payments/verify`,
   PAYMENT_WEBHOOK: `${REST_API}/payments/webhook`, 
   DOWNLOAD_SECURE_CLAIM: `${REST_API}/downloads/secure-claim`,
-  GOOGLE_SYNC: `${BASE_URL}/auth/google-sync`,
+  GOOGLE_SYNC: `${REST_API}/auth/google-sync`,
 };
 /*
 import { REST_API } from "./index.js"; 
