@@ -10,17 +10,74 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ],
     callbacks: {
         async jwt({ token, account, profile }) {
+            // Runs only on initial Google login
+            if (account && profile) {
+                token.googleId = profile.sub;
+                token.email = profile.email;
+
+                const backendUrl = process.env.NEXT_PUBLIC_REST_API || process.env.REST_API_URL || "http://localhost:5000/api";
+
+                try {
+                    const response = await fetch(`${backendUrl}/auth/google-sync`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            email: profile.email,
+                            firstName: profile.given_name || profile.name?.split(" ")[0] || "",
+                            lastName: profile.family_name || profile.name?.split(" ")[1] || "",
+                        }),
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        token.backendToken = data.token;
+                    } else {
+                        console.error("Google Sync non-OK response:", response.status);
+                    }
+                } catch (error) {
+                    console.error("Failed to sync Google user with Express backend:", error);
+                }
+            }
+            return token;
+        },
+        async session({ session, token }) {
+            if (session.user) {
+                session.user.id = token.sub as string;
+            }
+            if (token.backendToken) {
+                (session as { backendToken?: string }).backendToken = token.backendToken as string;
+            }
+            return session;
+        },
+    },
+    pages: {
+        signIn: "/auth",
+    },
+});
+
+
+/*
+import NextAuth from "next-auth";
+import Google from "next-auth/providers/google";
+import { API } from "./constant/api";
+
+export const { handlers, auth, signIn, signOut } = NextAuth({
+    providers: [
+        Google({
+            clientId: process.env.AUTH_GOOGLE_ID,
+            clientSecret: process.env.AUTH_GOOGLE_SECRET,
+        }),
+    ],
+    callbacks: {
+        async jwt({ token, account, profile }) {
             // Runs when user logs in with Google
             if (account && profile) {
                 token.googleId = profile.sub;
                 token.email = profile.email;
 
-                // Construct backend sync URL safely
-                const backendUrl = process.env.NEXT_PUBLIC_REST_API || "http://localhost:5000/api";
-                const syncEndpoint = `${backendUrl}/auth/google-sync`;
-
+                // Exchange Google credentials with backend to retrieve your custom Express JWT
                 try {
-                    const response = await fetch(syncEndpoint, {
+                    const response = await fetch(API.GOOGLE_SYNC || `${process.env.NEXT_PUBLIC_REST_API}/auth/google-sync`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
