@@ -1,3 +1,5 @@
+// Britext/frontend/brit/app/(public)/auth/page.tsx
+
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
