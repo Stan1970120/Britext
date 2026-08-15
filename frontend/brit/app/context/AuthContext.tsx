@@ -45,9 +45,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const { data: session, status: sessionStatus } = useSession();
+  // Safe extraction to prevent build prerendering crashes when session context is undefined
+  const sessionContext = useSession();
+  const session = sessionContext?.data;
+  const sessionStatus = sessionContext?.status || "unauthenticated";
 
-  //Sync LocalStorage auth state
+  // Sync LocalStorage auth state
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem("user");
