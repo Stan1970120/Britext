@@ -10,21 +10,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ],
     callbacks: {
         async jwt({ token, account, profile }) {
-            // Runs only on initial Google login
             if (account && profile) {
                 token.googleId = profile.sub;
                 token.email = profile.email;
 
-                const backendUrl = process.env.NEXT_PUBLIC_REST_API || process.env.REST_API_URL || "http://localhost:5000/api";
+
+                const rawBackendUrl =
+                    process.env.NEXT_PUBLIC_REST_API ||
+                    process.env.REST_API_URL ||
+                    "https://britext.onrender.com/api";
+
+                const backendUrl = rawBackendUrl.replace(/\/$/, "");
 
                 try {
+
                     const response = await fetch(`${backendUrl}/auth/google-sync`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             email: profile.email,
-                            firstName: profile.given_name || profile.name?.split(" ")[0] || "",
-                            lastName: profile.family_name || profile.name?.split(" ")[1] || "",
+                            firstName:
+                                profile.given_name || profile.name?.split(" ")[0] || "",
+                            lastName:
+                                profile.family_name ||
+                                profile.name?.split(" ").slice(1).join(" ") ||
+                                "",
                         }),
                     });
 
@@ -32,10 +42,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         const data = await response.json();
                         token.backendToken = data.token;
                     } else {
-                        console.error("Google Sync non-OK response:", response.status);
+                        const errorText = await response.text();
+                        console.error(
+                            `Google Sync failed (${response.status}):`,
+                            errorText
+                        );
                     }
                 } catch (error) {
-                    console.error("Failed to sync Google user with Express backend:", error);
+                    console.error(
+                        "Failed to sync Google user with Express backend:",
+                        error
+                    );
                 }
             }
             return token;
@@ -45,7 +62,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 session.user.id = token.sub as string;
             }
             if (token.backendToken) {
-                (session as { backendToken?: string }).backendToken = token.backendToken as string;
+                (session as { backendToken?: string }).backendToken =
+                    token.backendToken as string;
             }
             return session;
         },
