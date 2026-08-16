@@ -1,5 +1,3 @@
-// Britext/frontend/brit/app/(public)/auth/callback/page.tsx
-
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -20,19 +18,20 @@ export default function AuthCallbackPage() {
     let isMounted = true;
 
     const processAuth = async () => {
-      // Don't execute processing while NextAuth is still resolving session status
+     
       if (status === "loading" || hasProcessed.current) return;
 
       const queryToken = searchParams.get("token");
       const redirectTarget = searchParams.get("redirect") || "/profile";
 
-      // Case 1: Direct backend token in URL query
+      // Direct backend token in URL query
       if (queryToken) {
         hasProcessed.current = true;
         try {
           await loginWithToken(queryToken);
           if (isMounted) router.replace(redirectTarget);
-        } catch {
+        } catch (err) {
+          console.error("Token sync error:", err);
           if (isMounted) {
             setError("Failed to verify user token.");
             setTimeout(() => router.replace("/auth"), 2500);
@@ -44,31 +43,40 @@ export default function AuthCallbackPage() {
       // Safe cast to access backendToken from extended session
       const backendToken = (session as { backendToken?: string })?.backendToken;
 
-      // Case 2: Token inside NextAuth session
+      // Case 2: Authenticated via NextAuth Session
       if (status === "authenticated") {
-        if (backendToken) {
-          hasProcessed.current = true;
-          try {
+        hasProcessed.current = true;
+
+        try {
+          if (backendToken) {
+            // Option A: Custom backendToken attached to session
             await loginWithToken(backendToken);
-            if (isMounted) router.replace(redirectTarget);
-          } catch {
-            if (isMounted) {
-              setError("Failed to synchronize session.");
-              setTimeout(() => router.replace("/auth"), 2500);
-            }
+          } else if (session?.user?.email) {
+            // Option B: Standard Google session -> Sync directly with backend googleSync
+            const firstName = session.user.name?.split(" ")[0] || "Google";
+            const lastName = session.user.name?.split(" ").slice(1).join(" ") || "User";
+
+            await loginWithToken({
+              email: session.user.email,
+              firstName,
+              lastName,
+            });
+          } else {
+            throw new Error("No user email or token available from session.");
           }
-        } else {
-          // Authenticated with Google but backendToken is missing (e.g. backend sync failure)
-          hasProcessed.current = true;
+
+          if (isMounted) router.replace(redirectTarget);
+        } catch (err) {
+          console.error("Callback sync error:", err);
           if (isMounted) {
-            setError("Backend authentication failed. Retrying...");
+            setError("Failed to synchronize session with server.");
             setTimeout(() => router.replace("/auth"), 2500);
           }
         }
         return;
       }
 
-      // Case 3: Failed OAuth attempt
+      // Case 3: Failed OAuth attempt or unauthenticated
       if (status === "unauthenticated") {
         hasProcessed.current = true;
         if (isMounted) {
@@ -87,7 +95,7 @@ export default function AuthCallbackPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center">
+      <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center max-w-sm w-full">
         {error ? (
           <>
             <h1 className="text-xl font-bold text-red-600 mb-2">Auth Error</h1>
@@ -104,8 +112,6 @@ export default function AuthCallbackPage() {
     </div>
   );
 }
-
-
 /*
 "use client";
 
