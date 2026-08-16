@@ -1,9 +1,7 @@
-// Britext/frontend/brit/Components/Header.tsx
-
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/app/context/AuthContext";
 import Image from "next/image";
 import {
@@ -12,31 +10,44 @@ import {
   X,
   LayoutDashboard,
   LogOut,
+  AlertCircle,
 } from "lucide-react";
 
 const Header = () => {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, logout } = useAuth();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const handleLogout = async () => {
+  const handleConfirmLogout = async () => {
     const isAdmin = user?.role === "admin";
-    
+    const redirectTarget = isAdmin ? "/404" : "/";
+
     try {
       setIsLoggingOut(true);
-      setMobileMenuOpen(false);
-      
-      await logout(); 
-      
+
+      // Pre-emptively redirect off protected routes before clearing state to prevent Access Denied flash
+      if (pathname?.startsWith("/profile") || pathname?.startsWith("/admin")) {
+        router.replace(redirectTarget);
+      }
+
+      await logout();
+
       if (typeof window !== "undefined") {
-        window.location.href = isAdmin ? "/404" : "/"; 
+        window.location.href = redirectTarget;
       }
     } catch (error) {
       console.error("Logout failed:", error);
       if (typeof window !== "undefined") {
-        window.location.href = isAdmin ? "/404" : "/";
+        window.location.href = redirectTarget;
       }
+    } finally {
+      setIsLoggingOut(false);
+      setShowLogoutModal(false);
+      setMobileMenuOpen(false);
     }
   };
 
@@ -88,7 +99,7 @@ const Header = () => {
             </div>
           </div>
 
-          {/*Fluid 3D Flipping Informational Card */}
+          {/* Fluid 3D Flipping Informational Card */}
           <div className="flex justify-center items-center flex-1 px-2" style={{ perspective: "1000px" }}>
             <div className="relative h-10 w-24 xs:w-28 sm:w-32 md:h-12 md:w-40 preserve-3d animate-flip-3d">
               
@@ -106,7 +117,257 @@ const Header = () => {
             </div>
           </div>
 
-          {/* RIGHT SIDE  Profile or Auth Buttons */}
+          {/* RIGHT SIDE: Profile or Auth Buttons */}
+          <div className="hidden md:flex items-center gap-6 text-gray-700 text-sm">
+            {displayUser?.role === "admin" && (
+              <button 
+                onClick={() => router.push("/admin")} 
+                className="flex items-center gap-1 text-[#035b77] font-semibold hover:opacity-80 transition"
+              >
+                <LayoutDashboard size={18} />
+                <span>Dashboard</span>
+              </button>
+            )}
+
+            {displayUser ? (
+              <div className="flex items-center gap-4 border-l pl-6">
+                <button 
+                  onClick={() => router.push("/profile")} 
+                  className="flex items-center gap-2 font-medium text-gray-900 hover:text-[#035b77] transition"
+                >
+                  <div className="w-8 h-8 bg-[#035b77] text-white rounded-full flex items-center justify-center text-xs font-bold">
+                    {displayUser?.firstName?.[0] || ""}{displayUser?.lastName?.[0] || ""}
+                  </div>
+                  <span>Profile</span>
+                </button>
+                <button 
+                  onClick={() => setShowLogoutModal(true)} 
+                  className="text-gray-400 hover:text-red-500 transition disabled:opacity-50"
+                  title="Logout"
+                  disabled={isLoggingOut}
+                >
+                  <LogOut size={18} className={isLoggingOut ? "animate-spin" : ""} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => router.push("/auth")} 
+                  className="text-gray-600 font-medium hover:text-[#035b77]"
+                >
+                  Sign In
+                </button>
+                <button 
+                  onClick={() => router.push("/signup")} 
+                  className="bg-[#035b77] text-white px-5 py-2 rounded-lg font-semibold hover:bg-[#024a61] transition"
+                >
+                  Get Started
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT SIDE: Mobile Menu Toggle */}
+          <button 
+            className="md:hidden text-gray-700 p-1 relative z-50 ml-1" 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle Navigation"
+          >
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+
+        </div>
+
+        {/* Mobile Portal Overlays */}
+        {mobileMenuOpen && (
+          <div className="absolute top-full left-0 right-0 bg-white shadow-xl flex flex-col p-6 space-y-6 md:hidden border-t animate-in fade-in slide-in-from-top-2">
+            {displayUser && (
+              <div className="border-b pb-4">
+                <p className="text-sm text-gray-500">Logged in as</p>
+                <p className="font-bold text-[#035b77]">{displayUser?.firstName} {displayUser?.lastName}</p>
+              </div>
+            )}
+            
+            {displayUser?.role === "admin" && (
+              <button 
+                onClick={() => { router.push("/admin"); setMobileMenuOpen(false); }} 
+                className="flex items-center gap-3 text-[#035b77] font-bold"
+              >
+                <LayoutDashboard size={20} /> Dashboard
+              </button>
+            )}
+
+            {displayUser ? (
+              <>
+                <button 
+                  onClick={() => { router.push("/profile"); setMobileMenuOpen(false); }} 
+                  className="flex items-center gap-3 font-medium"
+                >
+                  <User size={20} /> Profile Settings
+                </button>
+                <button 
+                  onClick={() => { setMobileMenuOpen(false); setShowLogoutModal(true); }} 
+                  className="flex items-center gap-3 text-red-500 font-bold pt-4 border-t"
+                >
+                  <LogOut size={20} /> Logout
+                </button>
+              </>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={() => { router.push("/auth"); setMobileMenuOpen(false); }} 
+                  className="w-full bg-[#035b77] text-white py-3 rounded-xl font-bold"
+                >
+                  Login / Sign Up
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </header>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-gray-100 text-center">
+            <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-3">
+              <AlertCircle size={26} />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Sign Out?</h3>
+            <p className="text-sm text-gray-500 mb-6">Are you sure you want to log out of your account?</p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowLogoutModal(false)}
+                className="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition text-sm"
+                disabled={isLoggingOut}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmLogout}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition text-sm flex items-center justify-center gap-2"
+                disabled={isLoggingOut}
+              >
+                {isLoggingOut ? "Signing out..." : "Log Out"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+export default Header;
+
+/*
+"use client";
+
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/context/AuthContext";
+import Image from "next/image";
+import {
+  User,
+  Menu,
+  X,
+  LayoutDashboard,
+  LogOut,
+} from "lucide-react";
+
+const Header = () => {
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    const isAdmin = user?.role === "admin";
+    
+    try {
+      setIsLoggingOut(true);
+      setMobileMenuOpen(false);
+      
+      await logout(); 
+      
+      if (typeof window !== "undefined") {
+        window.location.href = isAdmin ? "/404" : "/"; 
+      }
+    } catch (error) {
+      console.error("Logout failed:", error);
+      if (typeof window !== "undefined") {
+        window.location.href = isAdmin ? "/404" : "/";
+      }
+    }
+  };
+
+  const displayUser = isLoggingOut ? null : user;
+
+  return (
+    <>
+     
+      <style jsx global>{`
+        @keyframes flip3d {
+          0% { transform: rotateY(0deg); }
+          100% { transform: rotateY(360deg); }
+        }
+        .animate-flip-3d {
+          animation: flip3d 5s linear infinite;
+        }
+        .preserve-3d {
+          transform-style: preserve-3d;
+        }
+        .backface-hidden {
+          backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+          transform: rotateY(180deg);
+        }
+      `}</style>
+
+      <header className="w-full bg-white shadow-sm py-3 px-4 sm:px-6 md:px-8 relative z-50">
+        <div className="w-full flex items-center justify-between">
+          
+          
+          <div className="flex items-center">
+            <div className="flex flex-col items-center">
+              <div 
+                onClick={() => router.push("/")}
+                className="relative h-9 w-28 sm:h-10 sm:w-40 cursor-pointer font-black"
+              >
+                <Image
+                  src="/images/file_00000000d448724396c6e1ff98649aaf.png"
+                  alt="Logo"
+                  fill
+                  className="object-contain font-black brightness-95 contrast-125"
+                  priority
+                />
+              </div>
+              <span className="text-[10px] sm:text-xs font-medium text-slate-900 tracking-wide mt-0.5 select-none">
+                <span className="text-[#035b77]">Enjoy</span>Reads
+              </span>
+            </div>
+          </div>
+
+          
+          <div className="flex justify-center items-center flex-1 px-2" style={{ perspective: "1000px" }}>
+            <div className="relative h-10 w-24 xs:w-28 sm:w-32 md:h-12 md:w-40 preserve-3d animate-flip-3d">
+              
+             
+              <div className="absolute inset-0 bg-[#035b77] text-white rounded-md flex flex-col items-center justify-center font-bold px-1 text-center shadow-md backface-hidden select-none border border-[#024a61]">
+                <span className="text-[8px] xs:text-[9px] sm:text-xs uppercase tracking-wider text-teal-200">Secrets</span>
+                <span className="text-[9px] xs:text-[10px] sm:text-sm leading-tight">of Reading</span>
+              </div>
+
+             
+              <div className="absolute inset-0 bg-white text-gray-900 rounded-md flex items-center justify-center font-bold px-1 text-center shadow-md backface-hidden rotate-y-180 select-none border border-[#035b77]">
+                <span className="text-[9px] xs:text-[11px] sm:text-sm tracking-wide"><span className="text-[#035b77]">Enjoy</span>Reads</span>
+              </div>
+
+            </div>
+          </div>
+
+          
           <div className="hidden md:flex items-center gap-6 text-gray-700 text-sm">
             {displayUser?.role === "admin" && (
               <button 
@@ -156,7 +417,7 @@ const Header = () => {
             )}
           </div>
 
-          {/* RIGHT SIDE  */}
+          
           <button 
             className="md:hidden text-gray-700 p-1 relative z-50 ml-1" 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -167,7 +428,7 @@ const Header = () => {
 
         </div>
 
-        {/* Mobile Portal Overlays */}
+        
         {mobileMenuOpen && (
           <div className="absolute top-full left-0 right-0 bg-white shadow-xl flex flex-col p-6 space-y-6 md:hidden border-t animate-in fade-in slide-in-from-top-2">
             {displayUser && (
