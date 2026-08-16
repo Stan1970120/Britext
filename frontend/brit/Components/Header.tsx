@@ -1,5 +1,3 @@
-// Britext/frontend/brit/Components/Header.tsx
-
 "use client";
 
 import React, { useState } from "react";
@@ -307,7 +305,7 @@ const Header = () => {
 
   return (
     <>
-      {/* Flip Keyframes Injection */}
+     
       <style jsx global>{`
         @keyframes flip3d {
           0% { transform: rotateY(0deg); }
@@ -330,7 +328,7 @@ const Header = () => {
       <header className="w-full bg-white shadow-sm py-3 px-4 sm:px-6 md:px-8 relative z-50">
         <div className="w-full flex items-center justify-between">
           
-          {/* LEFT SIDE: Logo & Brand Group */}
+          
           <div className="flex items-center">
             <div className="flex flex-col items-center">
               <div 
@@ -351,17 +349,17 @@ const Header = () => {
             </div>
           </div>
 
-          {/*Fluid 3D Flipping Informational Card */}
+          
           <div className="flex justify-center items-center flex-1 px-2" style={{ perspective: "1000px" }}>
             <div className="relative h-10 w-24 xs:w-28 sm:w-32 md:h-12 md:w-40 preserve-3d animate-flip-3d">
               
-              {/* Front Side of Card */}
+             
               <div className="absolute inset-0 bg-[#035b77] text-white rounded-md flex flex-col items-center justify-center font-bold px-1 text-center shadow-md backface-hidden select-none border border-[#024a61]">
                 <span className="text-[8px] xs:text-[9px] sm:text-xs uppercase tracking-wider text-teal-200">Secrets</span>
                 <span className="text-[9px] xs:text-[10px] sm:text-sm leading-tight">of Reading</span>
               </div>
 
-              {/* Back Side of Card */}
+             
               <div className="absolute inset-0 bg-white text-gray-900 rounded-md flex items-center justify-center font-bold px-1 text-center shadow-md backface-hidden rotate-y-180 select-none border border-[#035b77]">
                 <span className="text-[9px] xs:text-[11px] sm:text-sm tracking-wide"><span className="text-[#035b77]">Enjoy</span>Reads</span>
               </div>
@@ -369,7 +367,7 @@ const Header = () => {
             </div>
           </div>
 
-          {/* RIGHT SIDE  Profile or Auth Buttons */}
+          
           <div className="hidden md:flex items-center gap-6 text-gray-700 text-sm">
             {displayUser?.role === "admin" && (
               <button 
@@ -419,7 +417,7 @@ const Header = () => {
             )}
           </div>
 
-          {/* RIGHT SIDE  */}
+          
           <button 
             className="md:hidden text-gray-700 p-1 relative z-50 ml-1" 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -430,7 +428,7 @@ const Header = () => {
 
         </div>
 
-        {/* Mobile Portal Overlays */}
+        
         {mobileMenuOpen && (
           <div className="absolute top-full left-0 right-0 bg-white shadow-xl flex flex-col p-6 space-y-6 md:hidden border-t animate-in fade-in slide-in-from-top-2">
             {displayUser && (
