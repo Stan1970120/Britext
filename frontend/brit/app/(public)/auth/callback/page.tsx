@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useAuth } from "@/app/context/AuthContext";
@@ -9,101 +9,68 @@ export default function AuthCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
-  const { loginWithToken } = useAuth();
+  const { user, loginWithToken } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   const hasProcessed = useRef(false);
+  const redirectTarget = searchParams.get("redirect") || "/profile";
 
   useEffect(() => {
-    let isMounted = true;
-
-    const processAuth = async () => {
-     
-      if (status === "loading" || hasProcessed.current) return;
-
-      const queryToken = searchParams.get("token");
-      const redirectTarget = searchParams.get("redirect") || "/profile";
-
-      // Direct backend token in URL query
-      if (queryToken) {
-        hasProcessed.current = true;
-        try {
-          await loginWithToken(queryToken);
-          if (isMounted) router.replace(redirectTarget);
-        } catch (err) {
-          console.error("Token sync error:", err);
-          if (isMounted) {
-            setError("Failed to verify user token.");
-            setTimeout(() => router.replace("/auth"), 2500);
-          }
-        }
-        return;
-      }
-
-      // Safe cast to access backendToken from extended session
-      const backendToken = (session as { backendToken?: string })?.backendToken;
-
-      // Case 2: Authenticated via NextAuth Session
-      if (status === "authenticated") {
+    // 1. If AuthContext or NextAuth already has the logged-in user, redirect immediately
+    if (user || status === "authenticated") {
+      // Attempt backend sync in background if needed, then route
+      const syncAndRedirect = async () => {
+        if (hasProcessed.current) return;
         hasProcessed.current = true;
 
+        const queryToken = searchParams.get("token");
+        const backendToken = (session as { backendToken?: string })?.backendToken;
+
         try {
-          if (backendToken) {
-            // Option A: Custom backendToken attached to session
+          if (queryToken) {
+            await loginWithToken(queryToken);
+          } else if (backendToken) {
             await loginWithToken(backendToken);
           } else if (session?.user?.email) {
-            // Option B: Standard Google session -> Sync directly with backend googleSync
             const firstName = session.user.name?.split(" ")[0] || "Google";
             const lastName = session.user.name?.split(" ").slice(1).join(" ") || "User";
-
             await loginWithToken({
               email: session.user.email,
               firstName,
               lastName,
             });
-          } else {
-            throw new Error("No user email or token available from session.");
           }
-
-          if (isMounted) router.replace(redirectTarget);
         } catch (err) {
-          console.error("Callback sync error:", err);
-          if (isMounted) {
-            setError("Failed to synchronize session with server.");
-            setTimeout(() => router.replace("/auth"), 2500);
-          }
+          console.warn("Backend sync warning (proceeding with session):", err);
+        } finally {
+          // Always perform redirect once authenticated
+          router.replace(redirectTarget);
         }
-        return;
-      }
+      };
 
-      // Case 3: Failed OAuth attempt or unauthenticated
-      if (status === "unauthenticated") {
-        hasProcessed.current = true;
-        if (isMounted) {
-          setError("Authentication failed. Redirecting...");
-          setTimeout(() => router.replace("/auth"), 2500);
-        }
-      }
-    };
+      syncAndRedirect();
+      return;
+    }
 
-    processAuth();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [searchParams, session, status, loginWithToken, router]);
+    // 2. Handle unauthenticated state
+    if (status === "unauthenticated" && !hasProcessed.current) {
+      hasProcessed.current = true;
+      setError("Authentication failed. Redirecting to login...");
+      setTimeout(() => router.replace("/auth"), 2000);
+    }
+  }, [user, status, session, searchParams, redirectTarget, loginWithToken, router]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
       <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center max-w-sm w-full">
         {error ? (
           <>
-            <h1 className="text-xl font-bold text-red-600 mb-2">Auth Error</h1>
+            <h1 className="text-xl font-bold text-red-600 mb-2">Auth Notice</h1>
             <p className="text-gray-600 text-sm">{error}</p>
           </>
         ) : (
           <>
-            <div className="animate-spin h-10 w-10 border-4 border-sky-700 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <div className="animate-spin h-10 w-10 border-4 border-sky-700 border-t-transparent rounded-full mx-auto mb-4" />
             <h1 className="text-xl font-bold text-gray-800">Verifying...</h1>
             <p className="text-gray-500 text-sm">Please wait while we log you in.</p>
           </>
