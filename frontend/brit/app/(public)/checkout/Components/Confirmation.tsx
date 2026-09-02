@@ -1,3 +1,5 @@
+// frontend/brit/app/(public)/checkout/Components/Confirmation.tsx
+
 "use client";
 
 import React from "react";
