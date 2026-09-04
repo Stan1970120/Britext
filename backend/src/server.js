@@ -23,6 +23,7 @@ import commentRoutes from "./routes/comment.route.js";
 import trendingRoutes from "./routes/trending.route.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 const app = express();
 
@@ -82,8 +83,9 @@ app.use("/api/publish-books", bookRatingsRoutes);
 app.use("/api/subscribe", subscribeRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/trending", trendingRoutes);
-app.use("/api/payments", paymentRoutes); // Handles both /verify and /webhook via paymentRoutes.js
+app.use("/api/payments", paymentRoutes); 
 app.use('/api/blogs', blogRoutes);
+app.use("/api/users", userRoutes);
 
 app.get("/", (req, res) => {
   res.send("EnjoyReads API running, Welcome to the world of books");
