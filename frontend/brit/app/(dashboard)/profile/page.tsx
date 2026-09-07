@@ -1,5 +1,465 @@
-// Britext/frontend/brit/app/(dashboard)/profile/page.tsx
+"use client";
 
+import { useState, useEffect } from "react";
+import { 
+  User as UserIcon, 
+  Bookmark, 
+  History, 
+  ShoppingBag, 
+  BookOpen,
+  ChevronRight,
+  Library,
+  Store,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Trash2,
+  Plus,
+  Minus
+} from "lucide-react";
+import Link from "next/link";
+import { useAuth } from "@/app/context/AuthContext";
+import Header from "@/Components/Header"; 
+import { REST_API } from "../../constant";
+import { API } from "../../constant/api";
+import BookStore from "@/app/(public)/book-store/page";
+
+// Types
+interface AppUser {
+  id?: string;
+  _id?: string;
+  email?: string | null;
+  name?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+}
+
+type Tab = "my-books" | "store" | "cart" | "saved" | "history";
+
+interface Book {
+  id?: string;
+  _id?: string;
+  title: string;
+  author?: string;
+  price?: number;
+  category?: string;
+  coverImage?: string;
+}
+
+export type CartItem = {
+  bookId: string;
+  quantity: number;
+  book?: {
+    _id: string;
+    title: string;
+    category: string;
+    price: number;
+    coverImage?: string;
+  };
+};
+
+export default function UserDashboard() {
+  const { user, token, loading: authLoading } = useAuth() as { 
+    user: AppUser | null; 
+    token: string | null;
+    loading: boolean;
+  };
+
+  const [activeTab, setActiveTab] = useState<Tab>("my-books");
+  const [ownedBooks, setOwnedBooks] = useState<Book[]>([]);
+  const [fetchingBooks, setFetchingBooks] = useState(false);
+  
+  // Cart tab states
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [loadingCart, setLoadingCart] = useState(false);
+
+  // State to toggle sidebar collapse/expand
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // Helper to resolve user identifier safely across backend schemas
+  const userId = user?.id || user?._id;
+
+  // Fetch My Books
+  useEffect(() => {
+    const fetchMyBooks = async () => {
+      if (!userId) return;
+      
+      try {
+        setFetchingBooks(true);
+        const response = await fetch(`${REST_API}/users/${userId}/books`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Handle both array response and wrapped { purchasedBooks: [...] } response
+          const booksList = Array.isArray(data)
+            ? data
+            : Array.isArray(data?.purchasedBooks)
+            ? data.purchasedBooks
+            : [];
+
+          setOwnedBooks(booksList);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user books:", error);
+      } finally {
+        setFetchingBooks(false);
+      }
+    };
+
+    if (activeTab === "my-books") {
+      fetchMyBooks();
+    }
+  }, [userId, activeTab]);
+
+  // Fetch Cart Items from API when Cart tab is selected
+  useEffect(() => {
+    const fetchCart = async () => {
+      if (!token) return;
+      try {
+        setLoadingCart(true);
+        const res = await fetch(API.CART, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setCartItems(data?.items || []);
+        }
+      } catch (err) {
+        console.error("Failed to load cart", err);
+      } finally {
+        setLoadingCart(false);
+      }
+    };
+
+    if (activeTab === "cart" && token) {
+      fetchCart();
+    }
+  }, [token, activeTab]);
+
+  // Quantity updates for Cart
+  const updateQuantity = async (bookId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeItem(bookId);
+      return;
+    }
+
+    try {
+      const res = await fetch(API.CART, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ bookId, quantity }),
+      });
+
+      if (res.ok) {
+        setCartItems((prev) =>
+          prev.map((item) =>
+            item.bookId === bookId ? { ...item, quantity } : item
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Failed to update cart quantity", err);
+    }
+  };
+
+  // Remove Item from Cart
+  const removeItem = async (bookId: string) => {
+    try {
+      const res = await fetch(`${API.CART}/${bookId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        setCartItems((prev) => prev.filter((item) => item.bookId !== bookId));
+      }
+    } catch (err) {
+      console.error("Failed to remove item from cart", err);
+    }
+  };
+
+  const calculateSubtotal = () => {
+    return cartItems.reduce(
+      (sum, item) => sum + (item.book?.price || 0) * item.quantity,
+      0
+    );
+  };
+
+  // 1. Loading State Guard
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="w-12 h-12 bg-slate-100 rounded-full"></div>
+          <div className="h-4 w-32 bg-slate-100 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Unauthenticated Guard
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-6 text-center">
+        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100 max-w-md">
+          <UserIcon className="mx-auto text-gray-300 mb-4" size={48} />
+          <h2 className="text-2xl font-black text-slate-900 mb-2">Access Denied</h2>
+          <p className="text-gray-500 mb-8">Please log in to your account to view your dashboard and orders.</p>
+          <Link 
+            href="/auth" 
+            className="block w-full bg-[#005F7A] text-white font-bold py-4 rounded-xl shadow-lg shadow-sky-100 hover:scale-[1.02] transition-transform"
+          >
+            Login to Account
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Main Dashboard UI
+  return (
+    <>
+      <Header />
+      <div className="min-h-screen bg-white p-6 md:p-12 lg:px-24">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900">Account</h1>
+            <p className="text-slate-500 font-medium">Manage your library and preferences</p>
+          </div>
+          
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            {/* Sidebar Toggle Button */}
+            <button
+              onClick={() => setIsSidebarOpen((prev) => !prev)}
+              className="flex items-center gap-2 px-4 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm transition-all shadow-sm"
+              title={isSidebarOpen ? "Collapse Navigation" : "Expand Navigation"}
+            >
+              {isSidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+              <span>
+                {isSidebarOpen ? "Hide Menu" : "Show Menu"}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-12 gap-8 items-start transition-all duration-300">
+          {/* Sidebar Navigation */}
+          {isSidebarOpen && (
+            <div className="lg:col-span-3 space-y-2 animate-in fade-in slide-in-from-left-4 duration-300">
+              {(["my-books", "store", "cart", "saved", "history"] as Tab[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`w-full flex items-center gap-3 px-6 py-4 rounded-xl font-bold transition-all capitalize ${
+                    activeTab === tab 
+                    ? "bg-[#005F7A] text-white shadow-lg shadow-sky-50" 
+                    : "text-slate-500 hover:bg-slate-100/50"
+                  }`}
+                >
+                  {tab === "my-books" && <Library size={20} />}
+                  {tab === "store" && <Store size={20} />}
+                  {tab === "cart" && <ShoppingBag size={20} />}
+                  {tab === "saved" && <Bookmark size={20} />}
+                  {tab === "history" && <History size={20} />}
+                  {tab.replace("-", " ")}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Content Area */}
+          <div className={isSidebarOpen ? "lg:col-span-9" : "lg:col-span-12"}>
+            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 md:p-10 shadow-sm min-h-[500px]">
+              
+              {/* MY BOOKS TAB */}
+              {activeTab === "my-books" && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
+                  <h2 className="text-xl font-black text-slate-900 mb-8">My Library</h2>
+                  
+                  {fetchingBooks ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="animate-pulse">
+                          <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3" />
+                          <div className="h-4 bg-slate-100 rounded w-3/4 mb-2" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : ownedBooks.length > 0 ? (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                      {ownedBooks.map((book, index) => (
+                        <div key={book.id || book._id || index} className="group cursor-pointer">
+                          <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3 overflow-hidden">
+                            {book.coverImage && (
+                              <img 
+                                src={book.coverImage} 
+                                alt={book.title} 
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
+                              />
+                            )}
+                          </div>
+                          <h4 className="font-bold text-slate-900 line-clamp-1">{book.title}</h4>
+                          <p className="text-xs text-slate-500">{book.author}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                      <div className="w-16 h-16 bg-[#005F7A]/10 rounded-full flex items-center justify-center text-[#005F7A] mb-4">
+                        <BookOpen size={32} />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900">Your shelf is empty</h3>
+                      <p className="text-slate-500 mt-2 mb-6">You haven&apos;t purchased any books yet.</p>
+                      <button 
+                        onClick={() => setActiveTab("store")}
+                        className="bg-[#005F7A] text-white px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity"
+                      >
+                        Explore Store
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* STORE TAB */}
+              {activeTab === "store" && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <BookStore />
+                </div>
+              )}
+
+              {/* CART TAB */}
+              {activeTab === "cart" && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <h2 className="text-xl font-black text-slate-900 mb-6">Your Cart</h2>
+                  
+                  {loadingCart ? (
+                    <div className="flex justify-center items-center py-16">
+                      <div className="w-10 h-10 border-4 border-slate-100 border-t-[#005F7A] rounded-full animate-spin"></div>
+                    </div>
+                  ) : cartItems.length > 0 ? (
+                    <div className="space-y-6">
+                      <div className="divide-y divide-slate-100">
+                        {cartItems.map((item) => (
+                          <div key={item.bookId} className="py-4 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                              <div className="w-16 h-20 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
+                                {item.book?.coverImage && (
+                                  <img 
+                                    src={item.book.coverImage} 
+                                    alt={item.book.title} 
+                                    className="w-full h-full object-cover" 
+                                  />
+                                )}
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-slate-900 line-clamp-1">{item.book?.title || "Book"}</h4>
+                                <p className="text-xs text-slate-500 mb-1">{item.book?.category}</p>
+                                <p className="text-sm font-semibold text-[#005F7A]">${item.book?.price}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-6">
+                              {/* Quantity Control */}
+                              <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1">
+                                <button 
+                                  onClick={() => updateQuantity(item.bookId, item.quantity - 1)}
+                                  className="p-1 hover:bg-slate-100 rounded text-slate-600"
+                                >
+                                  <Minus size={14} />
+                                </button>
+                                <span className="text-sm font-bold w-6 text-center">{item.quantity}</span>
+                                <button 
+                                  onClick={() => updateQuantity(item.bookId, item.quantity + 1)}
+                                  className="p-1 hover:bg-slate-100 rounded text-slate-600"
+                                >
+                                  <Plus size={14} />
+                                </button>
+                              </div>
+
+                              {/* Delete */}
+                              <button 
+                                onClick={() => removeItem(item.bookId)}
+                                className="text-slate-400 hover:text-red-500 transition-colors"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Cart Footer */}
+                      <div className="border-t border-slate-100 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div>
+                          <p className="text-xs text-slate-500">Subtotal</p>
+                          <p className="text-2xl font-black text-slate-900">${calculateSubtotal().toFixed(2)}</p>
+                        </div>
+                        <Link 
+                          href="/checkout"
+                          className="w-full sm:w-auto bg-[#005F7A] text-white px-8 py-3.5 rounded-xl font-bold hover:opacity-90 transition-opacity text-center shadow-lg shadow-sky-50"
+                        >
+                          Proceed to Checkout
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-center py-12">
+                      <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-4">
+                        <ShoppingBag size={32} />
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900">Your cart is empty</h3>
+                      <p className="text-slate-500 mt-1 mb-6">Looks like you haven&apos;t added any items to your cart yet.</p>
+                      <button 
+                        onClick={() => setActiveTab("store")}
+                        className="bg-[#005F7A] text-white px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity"
+                      >
+                        Explore Store
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* SAVED & HISTORY TABS */}
+              {activeTab !== "my-books" && activeTab !== "store" && activeTab !== "cart" && (
+                <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-4">
+                    {activeTab === "saved" ? <Bookmark size={32} /> : <History size={32} />}
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900">
+                    {activeTab === "saved" ? "Your wishlist is empty" : "No orders yet"}
+                  </h3>
+                  <button 
+                    onClick={() => setActiveTab("store")}
+                    className="text-sky-600 font-bold mt-4 hover:underline flex items-center justify-center gap-1"
+                  >
+                    Visit Store <ChevronRight size={16} />
+                  </button>
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+
+/*
 "use client";
 
 import { useState, useEffect } from "react";
@@ -224,450 +684,6 @@ export default function UserDashboard() {
     <>
       <Header />
       <div className="min-h-screen bg-white p-6 md:p-12 lg:px-24">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
-          <div>
-            <h1 className="text-3xl font-black text-slate-900">Account</h1>
-            <p className="text-slate-500 font-medium">Manage your library and preferences</p>
-          </div>
-          
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            {/* Sidebar Toggle Button */}
-            <button
-              onClick={() => setIsSidebarOpen((prev) => !prev)}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm transition-all shadow-sm"
-              title={isSidebarOpen ? "Collapse Navigation" : "Expand Navigation"}
-            >
-              {isSidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
-              <span>
-                {isSidebarOpen ? "Hide Menu" : "Show Menu"}
-              </span>
-            </button>
-          </div>
-        </div>
-
-        <div className="grid lg:grid-cols-12 gap-8 items-start transition-all duration-300">
-          {/* Sidebar Navigation */}
-          {isSidebarOpen && (
-            <div className="lg:col-span-3 space-y-2 animate-in fade-in slide-in-from-left-4 duration-300">
-              {(["my-books", "store", "cart", "saved", "history"] as Tab[]).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`w-full flex items-center gap-3 px-6 py-4 rounded-xl font-bold transition-all capitalize ${
-                    activeTab === tab 
-                    ? "bg-[#005F7A] text-white shadow-lg shadow-sky-50" 
-                    : "text-slate-500 hover:bg-slate-100/50"
-                  }`}
-                >
-                  {tab === "my-books" && <Library size={20} />}
-                  {tab === "store" && <Store size={20} />}
-                  {tab === "cart" && <ShoppingBag size={20} />}
-                  {tab === "saved" && <Bookmark size={20} />}
-                  {tab === "history" && <History size={20} />}
-                  {tab.replace("-", " ")}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Content Area */}
-          <div className={isSidebarOpen ? "lg:col-span-9" : "lg:col-span-12"}>
-            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 md:p-10 shadow-sm min-h-[500px]">
-              
-              {/* MY BOOKS TAB */}
-              {activeTab === "my-books" && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
-                  <h2 className="text-xl font-black text-slate-900 mb-8">My Library</h2>
-                  
-                  {fetchingBooks ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                      {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="animate-pulse">
-                          <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3" />
-                          <div className="h-4 bg-slate-100 rounded w-3/4 mb-2" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : ownedBooks.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                      {ownedBooks.map((book) => (
-                        <div key={book.id} className="group cursor-pointer">
-                          <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3 overflow-hidden">
-                            {book.coverImage && (
-                              <img 
-                                src={book.coverImage} 
-                                alt={book.title} 
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
-                              />
-                            )}
-                          </div>
-                          <h4 className="font-bold text-slate-900 line-clamp-1">{book.title}</h4>
-                          <p className="text-xs text-slate-500">{book.author}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                      <div className="w-16 h-16 bg-[#005F7A]/10 rounded-full flex items-center justify-center text-[#005F7A] mb-4">
-                        <BookOpen size={32} />
-                      </div>
-                      <h3 className="text-xl font-black text-slate-900">Your shelf is empty</h3>
-                      <p className="text-slate-500 mt-2 mb-6">You haven&apos;t purchased any books yet.</p>
-                      <button 
-                        onClick={() => setActiveTab("store")}
-                        className="bg-[#005F7A] text-white px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity"
-                      >
-                        Explore Store
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* STORE TAB */}
-              {activeTab === "store" && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <BookStore />
-                </div>
-              )}
-
-              {/* CART TAB */}
-              {activeTab === "cart" && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <h2 className="text-xl font-black text-slate-900 mb-6">Your Cart</h2>
-                  
-                  {loadingCart ? (
-                    <div className="flex justify-center items-center py-16">
-                      <div className="w-10 h-10 border-4 border-slate-100 border-t-[#005F7A] rounded-full animate-spin"></div>
-                    </div>
-                  ) : cartItems.length > 0 ? (
-                    <div className="space-y-6">
-                      <div className="divide-y divide-slate-100">
-                        {cartItems.map((item) => (
-                          <div key={item.bookId} className="py-4 flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-4">
-                              <div className="w-16 h-20 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
-                                {item.book?.coverImage && (
-                                  <img 
-                                    src={item.book.coverImage} 
-                                    alt={item.book.title} 
-                                    className="w-full h-full object-cover" 
-                                  />
-                                )}
-                              </div>
-                              <div>
-                                <h4 className="font-bold text-slate-900 line-clamp-1">{item.book?.title || "Book"}</h4>
-                                <p className="text-xs text-slate-500 mb-1">{item.book?.category}</p>
-                                <p className="text-sm font-semibold text-[#005F7A]">${item.book?.price}</p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-6">
-                              {/* Quantity Control */}
-                              <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1">
-                                <button 
-                                  onClick={() => updateQuantity(item.bookId, item.quantity - 1)}
-                                  className="p-1 hover:bg-slate-100 rounded text-slate-600"
-                                >
-                                  <Minus size={14} />
-                                </button>
-                                <span className="text-sm font-bold w-6 text-center">{item.quantity}</span>
-                                <button 
-                                  onClick={() => updateQuantity(item.bookId, item.quantity + 1)}
-                                  className="p-1 hover:bg-slate-100 rounded text-slate-600"
-                                >
-                                  <Plus size={14} />
-                                </button>
-                              </div>
-
-                              {/* Delete */}
-                              <button 
-                                onClick={() => removeItem(item.bookId)}
-                                className="text-slate-400 hover:text-red-500 transition-colors"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Cart Footer */}
-                      <div className="border-t border-slate-100 pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div>
-                          <p className="text-xs text-slate-500">Subtotal</p>
-                          <p className="text-2xl font-black text-slate-900">${calculateSubtotal().toFixed(2)}</p>
-                        </div>
-                        <Link 
-                          href="/checkout"
-                          className="w-full sm:w-auto bg-[#005F7A] text-white px-8 py-3.5 rounded-xl font-bold hover:opacity-90 transition-opacity text-center shadow-lg shadow-sky-50"
-                        >
-                          Proceed to Checkout
-                        </Link>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center text-center py-12">
-                      <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-4">
-                        <ShoppingBag size={32} />
-                      </div>
-                      <h3 className="text-xl font-black text-slate-900">Your cart is empty</h3>
-                      <p className="text-slate-500 mt-1 mb-6">Looks like you haven&apos;t added any items to your cart yet.</p>
-                      <button 
-                        onClick={() => setActiveTab("store")}
-                        className="bg-[#005F7A] text-white px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity"
-                      >
-                        Explore Store
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* SAVED & HISTORY TABS */}
-              {activeTab !== "my-books" && activeTab !== "store" && activeTab !== "cart" && (
-                <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-4">
-                    {activeTab === "saved" ? <Bookmark size={32} /> : <History size={32} />}
-                  </div>
-                  <h3 className="text-xl font-black text-slate-900">
-                    {activeTab === "saved" ? "Your wishlist is empty" : "No orders yet"}
-                  </h3>
-                  <button 
-                    onClick={() => setActiveTab("store")}
-                    className="text-sky-600 font-bold mt-4 hover:underline flex items-center justify-center gap-1"
-                  >
-                    Visit Store <ChevronRight size={16} />
-                  </button>
-                </div>
-              )}
-
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-
-/*
-"use client";
-
-import { useState, useEffect } from "react";
-import { 
-  User as UserIcon, 
-  Bookmark, 
-  History, 
-  ShoppingBag, 
-  BookOpen,
-  ChevronRight,
-  Library,
-  Store,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Trash2,
-  Plus,
-  Minus
-} from "lucide-react";
-import Link from "next/link";
-import { useAuth } from "@/app/context/AuthContext";
-import Header from "@/Components/Header"; 
-import { REST_API } from "../../constant";
-import { API } from "../../constant/api";
-import BookStore from "@/app/(public)/book-store/page";
-
-// Types
-interface AppUser {
-  id: string;
-  email?: string | null;
-  name?: string | null;
-}
-
-type Tab = "my-books" | "store" | "cart" | "saved" | "history";
-
-interface Book {
-  id: string;
-  title: string;
-  author: string;
-  price?: number;
-  category?: string;
-  coverImage?: string;
-}
-
-export type CartItem = {
-  bookId: string;
-  quantity: number;
-  book?: {
-    _id: string;
-    title: string;
-    category: string;
-    price: number;
-    coverImage?: string;
-  };
-};
-
-export default function UserDashboard() {
-  const { user, token, loading: authLoading } = useAuth() as { 
-    user: AppUser | null; 
-    token: string | null;
-    loading: boolean;
-  };
-
-  const [activeTab, setActiveTab] = useState<Tab>("my-books");
-  const [ownedBooks, setOwnedBooks] = useState<Book[]>([]);
-  const [fetchingBooks, setFetchingBooks] = useState(false);
-  
-  // Cart tab states
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [loadingCart, setLoadingCart] = useState(false);
-
-  // State to toggle sidebar collapse/expand
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
-  // Fetch My Books
-  useEffect(() => {
-    const fetchMyBooks = async () => {
-      if (!user?.id) return;
-      
-      try {
-        setFetchingBooks(true);
-        const response = await fetch(`${REST_API}/users/${user.id}/books`);
-        
-        if (response.ok) {
-          const data: Book[] = await response.json();
-          setOwnedBooks(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch user books:", error);
-      } finally {
-        setFetchingBooks(false);
-      }
-    };
-
-    if (activeTab === "my-books") {
-      fetchMyBooks();
-    }
-  }, [user?.id, activeTab]);
-
-  // Fetch Cart Items from API when Cart tab is selected
-  useEffect(() => {
-    const fetchCart = async () => {
-      if (!token) return;
-      try {
-        setLoadingCart(true);
-        const res = await fetch(API.CART, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          setCartItems(data?.items || []);
-        }
-      } catch (err) {
-        console.error("Failed to load cart", err);
-      } finally {
-        setLoadingCart(false);
-      }
-    };
-
-    if (activeTab === "cart" && token) {
-      fetchCart();
-    }
-  }, [token, activeTab]);
-
-  // Quantity updates for Cart
-  const updateQuantity = async (bookId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeItem(bookId);
-      return;
-    }
-
-    try {
-      const res = await fetch(API.CART, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ bookId, quantity }),
-      });
-
-      if (res.ok) {
-        setCartItems((prev) =>
-          prev.map((item) =>
-            item.bookId === bookId ? { ...item, quantity } : item
-          )
-        );
-      }
-    } catch (err) {
-      console.error("Failed to update cart quantity", err);
-    }
-  };
-
-  // Remove Item from Cart
-  const removeItem = async (bookId: string) => {
-    try {
-      const res = await fetch(`${API.CART}/${bookId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (res.ok) {
-        setCartItems((prev) => prev.filter((item) => item.bookId !== bookId));
-      }
-    } catch (err) {
-      console.error("Failed to remove item from cart", err);
-    }
-  };
-
-  const calculateSubtotal = () => {
-    return cartItems.reduce(
-      (sum, item) => sum + (item.book?.price || 0) * item.quantity,
-      0
-    );
-  };
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-12 h-12 bg-slate-100 rounded-full"></div>
-          <div className="h-4 w-32 bg-slate-100 rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-6 text-center">
-        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100 max-w-md">
-          <UserIcon className="mx-auto text-gray-300 mb-4" size={48} />
-          <h2 className="text-2xl font-black text-slate-900 mb-2">Access Denied</h2>
-          <p className="text-gray-500 mb-8">Please log in to your account to view your dashboard and orders.</p>
-          <Link 
-            href="/auth" 
-            className="block w-full bg-[#005F7A] text-white font-bold py-4 rounded-xl shadow-lg shadow-sky-100 hover:scale-[1.02] transition-transform"
-          >
-            Login to Account
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <Header />
-      <div className="min-h-screen bg-white p-6 md:p-12 lg:px-24">
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
           <div>
@@ -719,7 +735,7 @@ export default function UserDashboard() {
           <div className={isSidebarOpen ? "lg:col-span-9" : "lg:col-span-12"}>
             <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 md:p-10 shadow-sm min-h-[500px]">
               
-              
+             
               {activeTab === "my-books" && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
                   <h2 className="text-xl font-black text-slate-900 mb-8">My Library</h2>
@@ -776,7 +792,7 @@ export default function UserDashboard() {
                 </div>
               )}
 
-             
+              
               {activeTab === "cart" && (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <h2 className="text-xl font-black text-slate-900 mb-6">Your Cart</h2>
@@ -895,656 +911,4 @@ export default function UserDashboard() {
   );
 }
 
-/*
-"use client";
-
-import { useState, useEffect } from "react";
-import { 
-  User as UserIcon, 
-  Bookmark, 
-  History, 
-  ShoppingBag, 
-  BookOpen,
-  ChevronRight,
-  Library
-} from "lucide-react";
-import Link from "next/link";
-import { useAuth } from "@/app/context/AuthContext";
-import Header from "@/Components/Header"; 
-import { REST_API } from "../../constant";
-
-// Define a clear Interface for your User to fix the .id error
-interface AppUser {
-  id: string;
-  email?: string | null;
-  name?: string | null;
-}
-
-type Tab = "my-books" | "saved" | "history";
-
-interface Book {
-  id: string;
-  title: string;
-  author: string;
-  coverImage?: string;
-}
-
-export default function UserDashboard() {
-  // 2. Cast the user from useAuth to your AppUser type
-  const { user, loading: authLoading } = useAuth() as { 
-    user: AppUser | null; 
-    loading: boolean 
-  };
-
-  const [activeTab, setActiveTab] = useState<Tab>("my-books");
-  const [ownedBooks, setOwnedBooks] = useState<Book[]>([]);
-  const [fetchingBooks, setFetchingBooks] = useState(false);
-
-  useEffect(() => {
-    const fetchMyBooks = async () => {
-      // Check for user.id safely
-      if (!user?.id) return;
-      
-      try {
-        setFetchingBooks(true);
-        const response = await fetch(`${REST_API}/users/${user.id}/books`);
-        
-        if (response.ok) {
-          // 3. Avoid 'any' by typing the response data
-          const data: Book[] = await response.json();
-          setOwnedBooks(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch books:", error);
-      } finally {
-        setFetchingBooks(false);
-      }
-    };
-
-    if (activeTab === "my-books") {
-      fetchMyBooks();
-    }
-  }, [user?.id, activeTab]);
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-12 h-12 bg-slate-100 rounded-full"></div>
-          <div className="h-4 w-32 bg-slate-100 rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-6 text-center">
-        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100 max-w-md">
-          <UserIcon className="mx-auto text-gray-300 mb-4" size={48} />
-          <h2 className="text-2xl font-black text-slate-900 mb-2">Access Denied</h2>
-          <p className="text-gray-500 mb-8">Please log in to your account to view your dashboard and orders.</p>
-          <Link 
-            href="/auth" 
-            className="block w-full bg-[#005F7A] text-white font-bold py-4 rounded-xl shadow-lg shadow-sky-100 hover:scale-[1.02] transition-transform"
-          >
-            Login to Account
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <Header />
-      <div className="min-h-screen bg-white p-6 md:p-12 lg:px-24">
-       
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-          <div>
-            <h1 className="text-3xl font-black text-slate-900">Account</h1>
-            <p className="text-slate-500 font-medium">Manage your library and preferences</p>
-          </div>
-          <div className="flex gap-4 w-full md:w-auto">
-            <Link 
-              href="/book-store" 
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-900 font-bold text-sm transition-all"
-            >
-              <BookOpen size={18} /> Store
-            </Link>
-            <Link 
-              href="/checkout" 
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm transition-all shadow-lg shadow-sky-100"
-            >
-              <ShoppingBag size={18} /> Cart
-            </Link>
-          </div>
-        </div>
-
-        <div className="grid lg:grid-cols-12 gap-12">
-          
-          <div className="lg:col-span-3 space-y-2">
-            {(["my-books", "saved", "history"] as Tab[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`w-full flex items-center gap-3 px-6 py-4 rounded-xl font-bold transition-all capitalize ${
-                  activeTab === tab 
-                  ? "bg-[#005F7A] text-white shadow-lg shadow-sky-50" 
-                  : "text-slate-500 hover:bg-slate-100/50"
-                }`}
-              >
-                {tab === "my-books" && <Library size={20} />}
-                {tab === "saved" && <Bookmark size={20} />}
-                {tab === "history" && <History size={20} />}
-                {tab.replace("-", " ")}
-              </button>
-            ))}
-          </div>
-
-          
-          <div className="lg:col-span-9">
-            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 md:p-12 shadow-sm min-h-[500px]">
-              {activeTab === "my-books" && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
-                  <h2 className="text-xl font-black text-slate-900 mb-8">My Library</h2>
-                  
-                  {fetchingBooks ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="animate-pulse">
-                          <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3" />
-                          <div className="h-4 bg-slate-100 rounded w-3/4 mb-2" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : ownedBooks.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                      {ownedBooks.map((book) => (
-                        <div key={book.id} className="group cursor-pointer">
-                          <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3 overflow-hidden">
-                            {book.coverImage && (
-                              <img 
-                                src={book.coverImage} 
-                                alt={book.title} 
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
-                              />
-                            )}
-                          </div>
-                          <h4 className="font-bold text-slate-900 line-clamp-1">{book.title}</h4>
-                          <p className="text-xs text-slate-500">{book.author}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                      <div className="w-16 h-16 bg-[#005F7A]/10 rounded-full flex items-center justify-center text-[#005F7A] mb-4">
-                        <BookOpen size={32} />
-                      </div>
-                      <h3 className="text-xl font-black text-slate-900">Your shelf is empty</h3>
-                      <p className="text-slate-500 mt-2 mb-6">You haven&apos;t purchased any books yet.</p>
-                      <Link href="/book-store" className="bg-[#005F7A] text-white px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity">
-                        Explore Books
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              
-              {activeTab !== "my-books" && (
-                <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-4">
-                    {activeTab === "saved" ? <Bookmark size={32} /> : <History size={32} />}
-                  </div>
-                  <h3 className="text-xl font-black text-slate-900">
-                    {activeTab === "saved" ? "Your wishlist is empty" : "No orders yet"}
-                  </h3>
-                  <Link href="/book-store" className="text-sky-600 font-bold mt-4 hover:underline">
-                    Visit Store <ChevronRight size={16} className="inline" />
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-/*
-"use client";
-
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { 
-  User as UserIcon, 
-  Bookmark, 
-  History, 
-  LogOut, 
-  ShoppingBag, 
-  BookOpen,
-  ChevronRight,
-  Library
-} from "lucide-react";
-import Link from "next/link";
-import { useAuth } from "@/app/context/AuthContext";
-import Header from "@/Components/Header"; 
-import { REST_API } from "../../constant";
-
-// 1. Define a clear Interface for your User to fix the .id error
-interface AppUser {
-  id: string;
-  email?: string | null;
-  name?: string | null;
-}
-
-type Tab = "my-books" | "saved" | "history";
-
-interface Book {
-  id: string;
-  title: string;
-  author: string;
-  coverImage?: string;
-}
-
-export default function UserDashboard() {
-  const router = useRouter();
-  
-  // 2. Cast the user from useAuth to your AppUser type
-  const { user, logout, loading: authLoading } = useAuth() as { 
-    user: AppUser | null; 
-    logout: () => void; 
-    loading: boolean 
-  };
-
-  const [activeTab, setActiveTab] = useState<Tab>("my-books");
-  const [ownedBooks, setOwnedBooks] = useState<Book[]>([]);
-  const [fetchingBooks, setFetchingBooks] = useState(false);
-
-  useEffect(() => {
-    const fetchMyBooks = async () => {
-      // Check for user.id safely
-      if (!user?.id) return;
-      
-      try {
-        setFetchingBooks(true);
-        const response = await fetch(`${REST_API}/users/${user.id}/books`);
-        
-        if (response.ok) {
-          // 3. Avoid 'any' by typing the response data
-          const data: Book[] = await response.json();
-          setOwnedBooks(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch books:", error);
-      } finally {
-        setFetchingBooks(false);
-      }
-    };
-
-    if (activeTab === "my-books") {
-      fetchMyBooks();
-    }
-  }, [user?.id, activeTab]);
-
-  const handleLogout = () => {
-    logout();
-    router.push("/auth");
-  };
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-12 h-12 bg-slate-100 rounded-full"></div>
-          <div className="h-4 w-32 bg-slate-100 rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-6 text-center">
-        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100 max-w-md">
-          <UserIcon className="mx-auto text-gray-300 mb-4" size={48} />
-          <h2 className="text-2xl font-black text-slate-900 mb-2">Access Denied</h2>
-          <p className="text-gray-500 mb-8">Please log in to your account to view your dashboard and orders.</p>
-          <Link 
-            href="/auth" 
-            className="block w-full bg-[#005F7A] text-white font-bold py-4 rounded-xl shadow-lg shadow-sky-100 hover:scale-[1.02] transition-transform"
-          >
-            Login to Account
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <Header />
-      <div className="min-h-screen bg-white p-6 md:p-12 lg:px-24">
-        
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-          <div>
-            <h1 className="text-3xl font-black text-slate-900">Account</h1>
-            <p className="text-slate-500 font-medium">Manage your library and preferences</p>
-          </div>
-          <div className="flex gap-4 w-full md:w-auto">
-            <Link 
-              href="/book-store" 
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-900 font-bold text-sm transition-all"
-            >
-              <BookOpen size={18} /> Store
-            </Link>
-            <Link 
-              href="/checkout" 
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm transition-all shadow-lg shadow-sky-100"
-            >
-              <ShoppingBag size={18} /> Cart
-            </Link>
-          </div>
-        </div>
-
-        <div className="grid lg:grid-cols-12 gap-12">
-          
-          <div className="lg:col-span-3 space-y-2">
-            {(["my-books", "saved", "history"] as Tab[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`w-full flex items-center gap-3 px-6 py-4 rounded-xl font-bold transition-all capitalize ${
-                  activeTab === tab 
-                  ? "bg-[#005F7A] text-white shadow-lg shadow-sky-50" 
-                  : "text-slate-500 hover:bg-slate-100/50"
-                }`}
-              >
-                {tab === "my-books" && <Library size={20} />}
-                {tab === "saved" && <Bookmark size={20} />}
-                {tab === "history" && <History size={20} />}
-                {tab.replace("-", " ")}
-              </button>
-            ))}
-
-            <div className="pt-4 mt-4 border-t border-slate-100">
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-6 py-4 rounded-xl font-bold text-red-500 hover:bg-red-50 transition-all"
-              >
-                <LogOut size={20} /> Logout
-              </button>
-            </div>
-          </div>
-
-          
-          <div className="lg:col-span-9">
-            <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 md:p-12 shadow-sm min-h-[500px]">
-              {activeTab === "my-books" && (
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-full">
-                  <h2 className="text-xl font-black text-slate-900 mb-8">My Library</h2>
-                  
-                  {fetchingBooks ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="animate-pulse">
-                          <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3" />
-                          <div className="h-4 bg-slate-100 rounded w-3/4 mb-2" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : ownedBooks.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                      {ownedBooks.map((book) => (
-                        <div key={book.id} className="group cursor-pointer">
-                          <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3 overflow-hidden">
-                            {book.coverImage && (
-                              <img 
-                                src={book.coverImage} 
-                                alt={book.title} 
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
-                              />
-                            )}
-                          </div>
-                          <h4 className="font-bold text-slate-900 line-clamp-1">{book.title}</h4>
-                          <p className="text-xs text-slate-500">{book.author}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                      <div className="w-16 h-16 bg-[#005F7A]/10 rounded-full flex items-center justify-center text-[#005F7A] mb-4">
-                        <BookOpen size={32} />
-                      </div>
-                      <h3 className="text-xl font-black text-slate-900">Your shelf is empty</h3>
-                      <p className="text-slate-500 mt-2 mb-6">You haven&apos;t purchased any books yet.</p>
-                      <Link href="/book-store" className="bg-[#005F7A] text-white px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity">
-                        Explore Books
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              
-              {activeTab !== "my-books" && (
-                <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-4">
-                    {activeTab === "saved" ? <Bookmark size={32} /> : <History size={32} />}
-                  </div>
-                  <h3 className="text-xl font-black text-slate-900">
-                    {activeTab === "saved" ? "Your wishlist is empty" : "No orders yet"}
-                  </h3>
-                  <Link href="/book-store" className="text-sky-600 font-bold mt-4 hover:underline">
-                    Visit Store <ChevronRight size={16} className="inline" />
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-*/
-
-/*
-"use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { 
-  User, 
-  Bookmark, 
-  History, 
-  LogOut, 
-  ShoppingBag, 
-  BookOpen,
-  ChevronRight,
-  Mail,
-  ShieldCheck
-} from "lucide-react";
-import Link from "next/link";
-import { useAuth } from "@/app/context/AuthContext";
-
-type Tab = "personal" | "saved" | "history";
-
-export default function UserDashboard() {
-  const router = useRouter();
-  const { user, logout, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>("personal");
-
-  const handleLogout = () => {
-    logout();
-    router.push("/auth");
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-12 h-12 bg-slate-100 rounded-full"></div>
-          <div className="h-4 w-32 bg-slate-100 rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-6 text-center">
-        <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-gray-100 max-w-md">
-          <User className="mx-auto text-gray-300 mb-4" size={48} />
-          <h2 className="text-2xl font-black text-slate-900 mb-2">Access Denied</h2>
-          <p className="text-gray-500 mb-8">Please log in to your account to view your dashboard and orders.</p>
-          <Link 
-            href="/auth" 
-            className="block w-full bg-[#005F7A] text-white font-bold py-4 rounded-xl shadow-lg shadow-sky-100 hover:scale-[1.02] transition-transform"
-          >
-            Login to Account
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-white p-6 md:p-12 lg:px-24">
-     
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900">Account</h1>
-          <p className="text-slate-500 font-medium">Manage your preferences</p>
-        </div>
-        <div className="flex gap-4 w-full md:w-auto">
-          <Link 
-            href="/book-store" 
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-900 font-bold text-sm transition-all"
-          >
-            <BookOpen size={18} /> Store
-          </Link>
-          <Link 
-            href="/checkout" 
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-sm transition-all shadow-lg shadow-sky-100"
-          >
-            <ShoppingBag size={18} /> Cart
-          </Link>
-        </div>
-      </div>
-
-      <div className="grid lg:grid-cols-12 gap-12">
-       
-        <div className="lg:col-span-3 space-y-2">
-          <button
-            onClick={() => setActiveTab("personal")}
-            className={`w-full flex items-center gap-3 px-6 py-4 rounded-xl font-bold transition-all ${
-              activeTab === "personal" 
-              ? "bg-[#005F7A] text-white shadow-lg shadow-sky-50" 
-              : "text-slate-500 hover:bg-slate-100/50"
-            }`}
-          >
-            <User size={20} /> Personal Info
-          </button>
-
-          <button
-            onClick={() => setActiveTab("saved")}
-            className={`w-full flex items-center gap-3 px-6 py-4 rounded-xl font-bold transition-all ${
-              activeTab === "saved" 
-              ? "bg-[#005F7A] text-white shadow-lg shadow-sky-50" 
-              : "text-slate-500 hover:bg-slate-100/50"
-            }`}
-          >
-            <Bookmark size={20} /> Saved for Later
-          </button>
-
-          <button
-            onClick={() => setActiveTab("history")}
-            className={`w-full flex items-center gap-3 px-6 py-4 rounded-xl font-bold transition-all ${
-              activeTab === "history" 
-              ? "bg-[#005F7A] text-white shadow-lg shadow-sky-50" 
-              : "text-slate-500 hover:bg-slate-100/50"
-            }`}
-          >
-            <History size={20} /> Order History
-          </button>
-
-          <div className="pt-4 mt-4 border-t border-slate-100">
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-6 py-4 rounded-xl font-bold text-red-500 hover:bg-red-50 transition-all"
-            >
-              <LogOut size={20} /> Logout
-            </button>
-          </div>
-        </div>
-
-        
-        <div className="lg:col-span-9">
-          <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 md:p-12 shadow-sm min-h-[500px]">
-            {activeTab === "personal" && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <h2 className="text-xl font-black text-slate-900 mb-8">Personal Information</h2>
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-black text-slate-400 tracking-widest px-1">First Name</label>
-                    <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 flex items-center gap-3">
-                      <User size={16} className="text-slate-400" /> {user.firstName}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] uppercase font-black text-slate-400 tracking-widest px-1">Last Name</label>
-                    <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700">
-                      {user.lastName}
-                    </div>
-                  </div>
-                  <div className="md:col-span-2 space-y-2">
-                    <label className="text-[10px] uppercase font-black text-slate-400 tracking-widest px-1">Email Address</label>
-                    <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 flex items-center gap-3">
-                      <Mail size={16} className="text-slate-400" /> {user.email}
-                    </div>
-                  </div>
-                  <div className="md:col-span-2 space-y-2">
-                    <label className="text-[10px] uppercase font-black text-slate-400 tracking-widest px-1">Account Role</label>
-                    <div className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 flex items-center gap-3">
-                      <ShieldCheck size={16} className="text-[#005F7A]" /> 
-                      <span className="capitalize">{user.role || "User"}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "saved" && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col items-center justify-center h-full text-center py-12">
-                <div className="w-16 h-16 bg-sky-50 rounded-full flex items-center justify-center text-sky-600 mb-4">
-                  <Bookmark size={32} />
-                </div>
-                <h3 className="text-xl font-black text-slate-900">Your wishlist is empty</h3>
-                <p className="text-slate-500 mt-2 mb-6">Browse the store to save books you love for later.</p>
-                <Link href="/book-store" className="text-sky-600 font-bold flex items-center gap-2 hover:underline">
-                  Visit Store <ChevronRight size={16} />
-                </Link>
-              </div>
-            )}
-
-            {activeTab === "history" && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col items-center justify-center h-full text-center py-12">
-                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 mb-4">
-                  <History size={32} />
-                </div>
-                <h3 className="text-xl font-black text-slate-900">No orders yet</h3>
-                <p className="text-slate-500 mt-2 mb-6">Your transaction history will appear here after your first purchase.</p>
-                <Link href="/book-store" className="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-sky-600 transition-colors">
-                  Start Reading
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 */
