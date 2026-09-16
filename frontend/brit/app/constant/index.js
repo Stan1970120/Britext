@@ -1,6 +1,6 @@
-export const REST_API = process.env.REST_API
-  ? process.env.REST_API
-  : "https://enjoyreads.onrender.com/api"; ;
+export const REST_API = process.env.NEXT_PUBLIC_REST_API 
+  ? process.env.NEXT_PUBLIC_REST_API 
+  : "https://api.enjoyreads.com/api";
 
 export const countries = [
   { name: "Albania", code: "AL" },
