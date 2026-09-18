@@ -1,3 +1,11 @@
+// frontend/brit/app/constant/index.js
+
+export const REST_API = process.env.NEXT_PUBLIC_REST_API 
+  ? process.env.NEXT_PUBLIC_REST_API 
+  : "https://api.enjoyreads.com/api";
+
+// frontend/brit/app/constant/api.js
+
 import { REST_API } from "./index.js"; 
 
 
