@@ -1,3 +1,5 @@
+// backend/src/routes/userRoutes.js
+
 import express from "express";
 import User from "../models/User.js";
 import { protect } from "../middleware/adminMiddleware.js";
