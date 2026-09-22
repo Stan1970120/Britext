@@ -41,19 +41,19 @@ export const useAuth = (): AuthContextType => {
   return context;
 };
 
-// Helper function to safely resolve API URLs with proper pathing
+/**
+ * Safely constructs absolute backend URLs.
+ * Works whether endpoint is absolute (https://...), relative with prefix (/auth/login),
+ * or built using REST_API.
+ */
 const buildApiUrl = (endpoint: string): string => {
   if (endpoint.startsWith("http://") || endpoint.startsWith("https://")) {
     return endpoint;
   }
-  const baseUrl = REST_API.endsWith("/") ? REST_API.slice(0, -1) : REST_API;
-  const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  
-  // Ensure /api prefix is present if missing from base URL
-  if (!baseUrl.endsWith("/api") && !path.startsWith("/api")) {
-    return `${baseUrl}/api${path}`;
-  }
-  return `${baseUrl}${path}`;
+  const cleanBase = REST_API.endsWith("/") ? REST_API.slice(0, -1) : REST_API;
+  const cleanPath = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+
+  return `${cleanBase}${cleanPath}`;
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -94,8 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const email = session.user.email || "";
 
           if (email) {
-            const rawEndpoint = API.GOOGLE_SYNC || `${REST_API}/api/auth/google-sync`;
-            const targetEndpoint = buildApiUrl(rawEndpoint);
+            const targetEndpoint = buildApiUrl(API.GOOGLE_SYNC);
 
             const res = await fetch(targetEndpoint, {
               method: "POST",
@@ -221,8 +220,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   ) => {
     setLoading(true);
     try {
-      const rawEndpoint = API.GOOGLE_SYNC || `${REST_API}/api/auth/google-sync`;
-      const targetEndpoint = buildApiUrl(rawEndpoint);
+      const targetEndpoint = buildApiUrl(API.GOOGLE_SYNC);
 
       const bodyPayload =
         typeof tokenOrPayload === "string"
