@@ -1,3 +1,24 @@
+export const dynamic = "force-dynamic";
+
+import React, { Suspense } from "react";
+import CheckoutClient, { type CartItem } from "./CheckoutClient";
+
+export type { CartItem };
+
+export default function CartPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center items-center h-screen">
+          <div className="w-16 h-16 border-4 border-gray-300 border-t-[#005F7A] rounded-full animate-spin"></div>
+        </div>
+      }
+    >
+      <CheckoutClient />
+    </Suspense>
+  );
+}
+/*
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";

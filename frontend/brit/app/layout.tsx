@@ -1,3 +1,27 @@
+import type { Metadata } from "next";
+import Providers from "./Providers";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "EnjoyReads",
+  description: "Digital publishing and reading platform",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body className="antialiased bg-white relative">
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}
+
+/*
 "use client";
 
 import { SessionProvider } from "next-auth/react";
