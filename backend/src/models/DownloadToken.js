@@ -1,3 +1,5 @@
+// backend/src/models/DownloadToken.js
+
 import mongoose from 'mongoose';
 
 const DownloadTokenSchema = new mongoose.Schema({

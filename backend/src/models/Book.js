@@ -1,3 +1,5 @@
+// backend/src/models/Book.js
+
 import mongoose from "mongoose";
 
 /*  CHAPTER SCHEMA*/
