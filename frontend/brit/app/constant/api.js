@@ -46,7 +46,8 @@ export const API = {
   PAYMENT_VERIFY: `${REST_API}/payments/verify`,
   PAYMENT_WEBHOOK: `${REST_API}/payments/webhook`, 
   DOWNLOAD_SECURE_CLAIM: `${REST_API}/downloads/secure-claim`,
-  GOOGLE_SYNC: `${REST_API}/auth/google-sync`,
+  GOOGLE_SYNC: `${REST_API}/api/auth/google-sync`,
+  // GOOGLE_SYNC: `${REST_API}/auth/google-sync`,
 };
 
 
