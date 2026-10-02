@@ -55,7 +55,7 @@ export const API = {
   DOWNLOAD_SECURE_CLAIM: `${REST_API}/downloads/secure-claim`,
 
   /* GOOGLE AUTH */
-  GOOGLE_SYNC: `${REST_API}/auth/google-sync`,
+  GOOGLE_SYNC: `${REST_API}/api/auth/google-sync`,
 };
 
 /*
