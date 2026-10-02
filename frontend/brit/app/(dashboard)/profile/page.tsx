@@ -94,7 +94,7 @@ export default function UserDashboard() {
          * https://api.enjoyreads.com/api
          */
         const response = await fetch(
-          `API.MY_BOOKS(userId)`,
+          `${API.MY_BOOKS(userId)}`,
           {
             method: "GET",
             headers: {
