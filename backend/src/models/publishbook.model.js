@@ -1,5 +1,3 @@
-// backend/src/models/publishbook.model.js
-
 import mongoose from 'mongoose';
 
 const publishBookSchema = new mongoose.Schema({

@@ -56,6 +56,7 @@ export const API = {
 
   /* GOOGLE AUTH */
   GOOGLE_SYNC: `${BASE_PREFIX}/auth/google-sync`,
+  DOWNLOAD_BOOK: "/api/downloads/user-claim",
 };
 
 
