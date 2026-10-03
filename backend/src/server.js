@@ -21,6 +21,7 @@ import trendingRoutes from "./routes/trending.route.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+const bookRoutes = require('./routes/bookRoutes');
 
 const app = express();
 
@@ -80,6 +81,7 @@ app.use("/api/comments", commentRoutes);
 app.use("/api/trending", trendingRoutes);
 app.use("/api/payments", paymentRoutes); 
 app.use("/api/blogs", blogRoutes);
+app.use('/api/books', bookRoutes);
 
 app.use("/api/users", userRoutes);
 app.use("/api/me", userRoutes);
