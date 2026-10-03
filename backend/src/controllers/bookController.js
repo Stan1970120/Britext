@@ -1,6 +1,24 @@
 import Book from "../models/Book.js";
 import User from "../models/User.js";
 
+// Fetch single book details
+export const getBookDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const book = await Book.findById(id);
+    if (!book) {
+      return res.status(404).json({ error: "Book not found." });
+    }
+
+    return res.status(200).json(book);
+  } catch (error) {
+    console.error("Error in getBookDetails:", error);
+    return res.status(500).json({ error: "Server error fetching book details." });
+  }
+};
+
+// Handle book download URL generation
 export const downloadBook = async (req, res) => {
   try {
     const bookId = req.params.id;
