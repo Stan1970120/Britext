@@ -1,3 +1,4 @@
+/*
 import { REST_API } from "./index.js";
 
 const BASE_PREFIX = `${REST_API}/api`;
@@ -5,13 +6,13 @@ const PUBLISH_PREFIX = `${REST_API}/api/publish-books`;
 const BLOG_PREFIX = `${REST_API}/api/blogs`;
 
 export const API = {
-  /* DASHBOARD & ADMIN (Uses /api/publish-books) */
+  
   GET_ADMIN_STATS: `${PUBLISH_PREFIX}/admin/stats`,
   ADMIN_BOOKS: (status) => `${PUBLISH_PREFIX}/admin/books?status=${status}`,
   CREATE_BOOK: `${PUBLISH_PREFIX}/admin/books`,
   GET_BOOK: (id) => `${PUBLISH_PREFIX}/admin/books/${id}`,
 
-  /* PUBLISHING & CHAPTERS */
+  
   PUBLISH_BOOK: (id) => `${PUBLISH_PREFIX}/admin/books/${id}/publish`,
   UPDATE_CHAPTERS: (id) => `${PUBLISH_PREFIX}/admin/books/${id}/chapters`,
   ADD_CHAPTER: (id) => `${PUBLISH_PREFIX}/admin/books/${id}/chapters`,
@@ -20,11 +21,11 @@ export const API = {
   UPDATE_CHAPTER: (bookId, chapterId) =>
     `${PUBLISH_PREFIX}/admin/books/${bookId}/chapters/${chapterId}`,
 
-  /* PUBLIC STORE & READER VIEW */
+  
   STORE_BOOKS: `${PUBLISH_PREFIX}/store/books`,
   READER_VIEW: (id) => `${PUBLISH_PREFIX}/store/books/${id}`,
 
-  /* BOOK ACTIONS & DOWNLOADS */
+  
   DOWNLOAD_BOOK: (id) => `${BASE_PREFIX}/books/${id}/download`,
   RATE_BOOK: (id) => `${BASE_PREFIX}/books/${id}/rating`,
 
@@ -38,10 +39,10 @@ export const API = {
   INITIALIZE_PAYMENT: `${BASE_PREFIX}/payments/initialize`,
   VERIFY_PAYMENT: `${BASE_PREFIX}/payments/verify`,
 
-  /* USER PURCHASES */
+  
   MY_BOOKS: (userId) => `${BASE_PREFIX}/users/${userId}/books`,
 
-  /* BLOGS ENGINE */
+  
   BLOG_UPLOAD_S3: `${BLOG_PREFIX}/admin/upload-s3`,
   BLOG_CREATE: `${BLOG_PREFIX}/admin/create`,
   BLOG_GET_ALL_ADMIN: `${BLOG_PREFIX}/admin/all`,
@@ -49,18 +50,18 @@ export const API = {
   BLOG_METRICS: `${BLOG_PREFIX}/admin/metrics`,
   BLOG_PUBLIC_FEED: `${BLOG_PREFIX}/public/feed`,
 
-  /* PAYMENTS */
+  
   FLUTTERWAVE_INITIALIZE: `${BASE_PREFIX}/payments/create-flutterwave-session`,
   PAYMENT_VERIFY: `${BASE_PREFIX}/payments/verify`,
   PAYMENT_WEBHOOK: `${BASE_PREFIX}/payments/webhook`,
 
-  /* SECURE DOWNLOAD CLAIM */
+  
   DOWNLOAD_SECURE_CLAIM: `${BASE_PREFIX}/downloads/secure-claim`,
 
-  /* GOOGLE AUTH */
+  
   GOOGLE_SYNC: `${BASE_PREFIX}/auth/google-sync`,
 };
-/*
+*/
 import { REST_API } from "./index.js";
 
 const BASE_PREFIX = `${REST_API}/api`;
