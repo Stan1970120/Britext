@@ -21,7 +21,7 @@ import trendingRoutes from "./routes/trending.route.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
-const bookRoutes = require('./routes/bookRoutes');
+import bookRoutes from './routes/bookRoutes.js';
 
 const app = express();
 
