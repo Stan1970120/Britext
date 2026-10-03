@@ -1,3 +1,5 @@
+// frontend/brit/app/(dashboard)/profile/page.tsx
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -90,8 +92,7 @@ export default function UserDashboard() {
          * The backend route is mounted as:
          * /api/users/:userId/books
          *
-         * API.BASE_URL should already contain:
-         * https://api.enjoyreads.com/api
+         
          */
         const response = await fetch(
           `${API.MY_BOOKS(userId)}`,

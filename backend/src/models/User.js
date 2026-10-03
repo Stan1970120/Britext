@@ -1,4 +1,4 @@
-// Britext/backend/src/models/User.js
+// backend/src/models/User.js
 
 import mongoose from "mongoose";
 
@@ -17,7 +17,7 @@ const userSchema = new mongoose.Schema({
 
   purchasedBooks: [{ 
     type: mongoose.Schema.Types.ObjectId, 
-    ref: "Book" 
+    ref: "PublishBook" 
   }],
 }, { timestamps: true });
 
