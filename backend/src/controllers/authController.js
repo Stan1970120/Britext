@@ -1,3 +1,4 @@
+// backend/src/controllers/authController.js
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -274,7 +275,7 @@ export const googleSync = async (req, res) => {
     let user = await User.findOne({ email });
 
     if (!user) {
-      user = await User.create({
+      user = new User({
         firstName: firstName || "Google",
         lastName: lastName || "User",
         email,
@@ -282,14 +283,15 @@ export const googleSync = async (req, res) => {
         isVerified: true,
         role: "user",
       });
+      // Bypass schema validation for legacy subdocuments on user creation
+      await user.save({ validateBeforeSave: false });
     } else {
-      if (!user.isVerified) {
-        user.isVerified = true;
-      }
+      // Update existing user via findByIdAndUpdate to bypass full document validation (e.g. legacy purchasedBooks array)
+      const updateData = { isVerified: true };
       if (provider && user.provider === "local") {
-        user.provider = provider;
+        updateData.provider = provider;
       }
-      await user.save();
+      user = await User.findByIdAndUpdate(user._id, { $set: updateData }, { new: true });
     }
 
     const token = jwt.sign(
