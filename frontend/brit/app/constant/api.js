@@ -46,7 +46,7 @@ export const API = {
   PAYMENT_WEBHOOK: `${BASE_PREFIX}/payments/webhook`,
 
   
-  GOOGLE_SYNC: `${BASE_PREFIX}/auth/google-sync`,
+  GOOGLE_SYNC: `${REST_API}/auth/google-sync`,
 
   DOWNLOAD_SECURE_CLAIM: `${BASE_PREFIX}/downloads/secure-claim`,
   DOWNLOAD_BOOK: (id) => `${BASE_PREFIX}/books/${id}/download`,
