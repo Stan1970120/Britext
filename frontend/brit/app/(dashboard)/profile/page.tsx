@@ -1,3 +1,5 @@
+// frontend/brit/app/(dashboard)/profile/page.tsx
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -24,6 +26,7 @@ import { useAuth } from "@/app/context/AuthContext";
 import Header from "@/Components/Header"; 
 import { API } from "../../constant/api";
 import BookStore from "@/app/(public)/book-store/page";
+import { div } from "framer-motion/client";
 
 // Types
 interface AppUser {
@@ -60,13 +63,6 @@ export type CartItem = {
   };
 };
 
-interface ApiRoutes {
-  DOWNLOAD_BOOK?: string;
-  MY_BOOKS: (userId: string) => string;
-  CART?: string;
-  [key: string]: unknown;
-}
-
 interface ApiErrorResponse {
   error?: string;
 }
@@ -83,6 +79,21 @@ export default function UserDashboard() {
   const [fetchingBooks, setFetchingBooks] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
+  // Modal State
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "error" | "info";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "error",
+  });
+
+  const closeModal = () => setModalConfig((prev) => ({ ...prev, isOpen: false }));
+
   // Cart tab states
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loadingCart, setLoadingCart] = useState(false);
@@ -96,15 +107,24 @@ export default function UserDashboard() {
   // Direct Library Download Handler using standard Bearer authentication
   const handleDownload = async (bookId: string) => {
     if (!token) {
-      alert("Authentication token missing. Please log in.");
+      setModalConfig({
+        isOpen: true,
+        title: "Authentication Required",
+        message: "Authentication token missing. Please log in to download.",
+        type: "info",
+      });
       return;
     }
 
     try {
       setDownloadingId(bookId);
 
+      const downloadEndpoint = typeof API.DOWNLOAD_BOOK === "function" 
+        ? API.DOWNLOAD_BOOK(bookId) 
+        : `/api/books/${bookId}/download`;
+
       const response = await axios.get<{ downloadUrl?: string }>(
-        `/api/books/${bookId}/download`,
+        downloadEndpoint,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -117,7 +137,12 @@ export default function UserDashboard() {
       if (downloadUrl) {
         window.location.href = downloadUrl;
       } else {
-        alert("Download URL unavailable.");
+        setModalConfig({
+          isOpen: true,
+          title: "Download Unavailable",
+          message: "Download URL is currently unavailable for this book.",
+          type: "error",
+        });
       }
     } catch (error) {
       const axiosError = error as AxiosError<ApiErrorResponse>;
@@ -126,7 +151,12 @@ export default function UserDashboard() {
         axiosError.message ||
         "Download failed. Please try again.";
 
-      alert(errorMessage);
+      setModalConfig({
+        isOpen: true,
+        title: "Download Failed",
+        message: errorMessage,
+        type: "error",
+      });
       console.error("Download failed:", errorMessage);
     } finally {
       setDownloadingId(null);
@@ -655,7 +685,7 @@ export default function UserDashboard() {
 
                     <button 
                       onClick={() => setActiveTab("store")}
-                      className="text-sky-600 font-bold mt-4 hover:underline flex items-center justify-center gap-1"
+                      className="text-[#005F7A] font-bold mt-4 hover:underline flex items-center justify-center gap-1"
                     >
                       Visit Store <ChevronRight size={16} />
                     </button>
@@ -665,10 +695,37 @@ export default function UserDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Notice/Error Modal */}
+      {modalConfig.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-[2rem] bg-white p-6 md:p-8 shadow-xl border border-slate-100">
+            <h3
+              className={`text-lg font-black ${
+                modalConfig.type === "error" ? "text-red-600" : "text-slate-900"
+              }`}
+            >
+              {modalConfig.title}
+            </h3>
+
+            <p className="mt-2 text-sm text-slate-600 leading-relaxed font-medium">
+              {modalConfig.message}
+            </p>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={closeModal}
+                className="rounded-xl bg-[#005F7A] px-6 py-2.5 text-sm font-bold text-white transition-all hover:opacity-90 shadow-md shadow-sky-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
-
 
 /*"use client";
 
