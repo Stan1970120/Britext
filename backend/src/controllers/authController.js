@@ -1,4 +1,3 @@
-// backend/src/controllers/authController.js
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -328,7 +327,7 @@ export const googleSync = async (req, res) => {
 
 /**
  * GET CURRENT USER PROFILE / ME ENDPOINTS
- */
+ 
 export const getProfile = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -360,10 +359,48 @@ export const getProfile = async (req, res) => {
     res.status(401).json({ message: "Invalid or expired token", error: error.message });
   }
 };
-
+*/
 /**
  * LOGOUT
  */
+
+export const getProfile = async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : req.cookies?.token;
+
+    if (!token) {
+      return res.status(401).json({ message: "Unauthorized: Token missing" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Populate purchasedBooks with full book documents
+    const user = await User.findById(decoded.id)
+      .select("-password")
+      .populate("purchasedBooks.bookId"); 
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      user: {
+        _id: user._id,
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified,
+        purchasedBooks: user.purchasedBooks, 
+      },
+    });
+  } catch (error) {
+    res.status(401).json({ message: "Invalid or expired token", error: error.message });
+  }
+};
+
 export const logout = (req, res) => {
   res.cookie("token", "", {
     httpOnly: true,
