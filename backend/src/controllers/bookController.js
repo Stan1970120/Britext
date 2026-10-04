@@ -1,5 +1,3 @@
-// backend/src/controllers/bookController.js
-
 import Book from "../models/Book.js";
 import User from "../models/User.js";
 
@@ -11,6 +9,25 @@ export const getBooks = async (req, res) => {
   } catch (error) {
     console.error("Error in getBooks:", error);
     return res.status(500).json({ error: "Server error fetching books." });
+  }
+};
+
+// Fetch books owned/purchased by a specific user
+export const getUserBooks = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Populate purchasedBooks so the frontend receives title, author, coverImage, etc.
+    const user = await User.findById(userId).populate("purchasedBooks");
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    return res.status(200).json(user.purchasedBooks || []);
+  } catch (error) {
+    console.error("Error in getUserBooks:", error);
+    return res.status(500).json({ error: "Server error fetching user books." });
   }
 };
 
@@ -47,7 +64,6 @@ export const rateBook = async (req, res) => {
       return res.status(404).json({ error: "Book not found." });
     }
 
-    // Check if user already reviewed
     const existingRatingIndex = book.ratings?.findIndex(
       (r) => r.user.toString() === userId.toString()
     );
@@ -59,7 +75,6 @@ export const rateBook = async (req, res) => {
       book.ratings.push({ user: userId, rating, review });
     }
 
-    // Recalculate average rating
     const totalRatings = book.ratings.length;
     const sumRatings = book.ratings.reduce((sum, item) => sum + item.rating, 0);
     book.averageRating = totalRatings > 0 ? (sumRatings / totalRatings).toFixed(1) : 0;
@@ -85,23 +100,23 @@ export const downloadBook = async (req, res) => {
       return res.status(401).json({ error: "User authentication missing." });
     }
 
-    // Check if the book exists
     const book = await Book.findById(bookId);
     if (!book) {
       return res.status(404).json({ error: "Book not found." });
     }
 
-    // Check ownership/purchase status
     const user = await User.findById(userId);
-    const hasPurchased = user?.purchasedBooks?.some(
-      (pBookId) => pBookId.toString() === bookId
-    );
+    
+    // Check if user owns the book (handles both ObjectId array & populated object array)
+    const hasPurchased = user?.purchasedBooks?.some((pBook) => {
+      const pId = pBook._id ? pBook._id.toString() : pBook.toString();
+      return pId === bookId.toString();
+    });
 
     if (!hasPurchased) {
       return res.status(403).json({ error: "You must purchase this book to download it." });
     }
 
-    // Serve the download URL (S3 presigned URL or direct file link)
     const downloadUrl = book.manuscriptUrl || book.downloadUrl;
 
     if (!downloadUrl) {
