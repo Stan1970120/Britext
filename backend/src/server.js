@@ -101,7 +101,7 @@ app.listen(PORT, () =>
   console.log(`Server running on port ${PORT}`)
 );
 
-*/
+*
 import 'dotenv/config'; 
 import express from "express";
 import mongoose from "mongoose";
@@ -204,7 +204,7 @@ app.listen(PORT, () =>
   console.log(`Server running on port ${PORT}`)
 );
 
-/*
+*/
 import 'dotenv/config'; 
 import express from "express";
 import mongoose from "mongoose";
