@@ -48,6 +48,10 @@ export const API = {
   DOWNLOAD_SECURE_CLAIM: `${BASE_PREFIX}/downloads/secure-claim`,
   DOWNLOAD_BOOK: (id) => `${BASE_PREFIX}/books/${id}/download`,
   GOOGLE_SYNC: `${BASE_PREFIX}/auth/google-sync`,
+
+  MY_BOOKS: (userId) => `/api/books/user/${userId}`,
+  DOWNLOAD_BOOK: (bookId) => `/api/books/${bookId}/download`,
+  CART: `/api/cart`,
 };
 /*
 import { REST_API } from "./index.js";
