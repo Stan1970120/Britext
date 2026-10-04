@@ -45,13 +45,15 @@ export const API = {
   PAYMENT_VERIFY: `${BASE_PREFIX}/payments/verify`,
   PAYMENT_WEBHOOK: `${BASE_PREFIX}/payments/webhook`,
 
+  
+  GOOGLE_SYNC: `${BASE_PREFIX}/auth/google-sync`,
+
   DOWNLOAD_SECURE_CLAIM: `${BASE_PREFIX}/downloads/secure-claim`,
   DOWNLOAD_BOOK: (id) => `${BASE_PREFIX}/books/${id}/download`,
   GOOGLE_SYNC: `${BASE_PREFIX}/auth/google-sync`,
-
-  MY_BOOKS: (userId) => `/api/books/user/${userId}`,
-  DOWNLOAD_BOOK: (bookId) => `/api/books/${bookId}/download`,
-  CART: `/api/cart`,
+  MY_BOOKS: (userId) => `${BASE_PREFIX}/users/${userId}/books`,
+  CART: `${BASE_PREFIX}/cart`,
+  
 };
 /*
 import { REST_API } from "./index.js";
