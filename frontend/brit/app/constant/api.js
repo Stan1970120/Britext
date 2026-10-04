@@ -47,6 +47,8 @@ export const API = {
   PAYMENT_VERIFY: `${BASE_PREFIX}/payments/verify`,
   PAYMENT_WEBHOOK: `${BASE_PREFIX}/payments/webhook`,
 
+  MY_BOOKS: (userId) => `${BASE_PREFIX}/users/${userId}/books`,
+
   DOWNLOAD_SECURE_CLAIM: `${BASE_PREFIX}/downloads/secure-claim`,
   DOWNLOAD_BOOK: (id) => `${BASE_PREFIX}/books/${id}/download`,
   GOOGLE_SYNC: `${BASE_PREFIX}/auth/google-sync`,

@@ -233,12 +233,12 @@ export default function UserDashboard() {
         });
 
         setOwnedBooks(normalizedBooks);
-     } catch (error) {
-  console.error("Failed to fetch user books:", error);
-  setOwnedBooks([]);
-} finally {
-  setFetchingBooks(false);
-}
+      } catch (error) {
+        console.error("Failed to fetch user books:", error);
+        setOwnedBooks([]);
+      } finally {
+        setFetchingBooks(false);
+      }
     };
 
     fetchMyBooks();
@@ -754,7 +754,6 @@ export default function UserDashboard() {
     </>
   );
 }
-
 
 /*
 "use client";
