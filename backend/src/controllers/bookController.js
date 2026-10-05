@@ -1,4 +1,4 @@
-import PublishBook from "../models/publishbook.js";
+import PublishBook from "../models/publishbook.model.js";
 import User from "../models/User.js";
 
 // Fetch all published books
