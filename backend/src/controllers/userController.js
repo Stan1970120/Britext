@@ -5,7 +5,7 @@ export const getUserBooks = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Check if user exists and populate purchasedBooks
+    // Check if user exists and populate purchasedBooks and nested bookId
     const user = await User.findById(userId).populate({
       path: "purchasedBooks",
       model: "PublishBook",
@@ -27,7 +27,6 @@ export const getUserBooks = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 /*
 import User from "../models/User.js";
