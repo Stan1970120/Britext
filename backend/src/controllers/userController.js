@@ -1,5 +1,37 @@
 import User from "../models/User.js";
 import PublishBook from "../models/publishbook.model.js";
+
+export const getUserBooks = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Check if user exists and populate purchasedBooks
+    const user = await User.findById(userId).populate({
+      path: "purchasedBooks",
+      model: "PublishBook",
+      populate: {
+        path: "bookId",
+        model: "PublishBook",
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      purchasedBooks: user.purchasedBooks || [],
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+/*
+import User from "../models/User.js";
+import PublishBook from "../models/publishbook.model.js";
 export const getUserBooks = async (req, res) => {
   try {
     const { userId } = req.params;
