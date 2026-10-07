@@ -247,7 +247,7 @@ export default function UserDashboard() {
           ? data
           : [];
 
-        // Normalize data structure based on backend PublishBook schema
+        /** 
         const normalizedBooks: Book[] = rawList.map((item: RawBookItem) => {
           const bookObj = (typeof item.bookId === "object" && item.bookId !== null)
             ? item.bookId
@@ -283,6 +283,50 @@ export default function UserDashboard() {
             chapters: bookObj.chapters || item.chapters || [],
           };
         });
+        **/
+        
+        // Inside fetchMyBooks in frontend/brit/app/(dashboard)/profile/page.tsx
+
+const normalizedBooks: Book[] = rawList.map((item: RawBookItem) => {
+  // 1. Un-nest the populated book object if item wraps bookId or book
+  const bookObj = (typeof item.bookId === "object" && item.bookId !== null)
+    ? item.bookId
+    : (typeof item.book === "object" && item.book !== null)
+    ? item.book
+    : item;
+
+  // 2. IMPORTANT: Force targetId to be the actual book's ID, not the purchased subdocument wrapper ID
+  const actualBookId = bookObj._id || bookObj.id || item.bookId || item._id;
+
+  // 3. Resolve author display
+  let authorDisplay = bookObj.author || item.author || "Admin";
+  if (typeof bookObj.authorId === "object" && bookObj.authorId !== null) {
+    authorDisplay = bookObj.authorId.name || authorDisplay;
+  }
+
+  return {
+    _id: String(actualBookId),
+    id: String(actualBookId),
+    title: bookObj.title || item.title || "Untitled Book",
+    author: authorDisplay,
+    authorId: bookObj.authorId || item.authorId,
+    summary: bookObj.summary || item.summary,
+    category: bookObj.category || item.category || "Uncategorized",
+    price: bookObj.price ?? item.price ?? 0,
+    coverImage: bookObj.coverImage || item.coverImage || "",
+    secondaryImage: bookObj.secondaryImage || item.secondaryImage,
+    manuscriptKey: bookObj.manuscriptKey || item.manuscriptKey,
+    status: bookObj.status || item.status || "published",
+    rating: bookObj.rating ?? item.rating ?? 0,
+    numReviews: bookObj.numReviews ?? item.numReviews ?? 0,
+    pages: bookObj.pages ?? item.pages ?? 0,
+    language: bookObj.language || item.language || "English",
+    publisher: bookObj.publisher || item.publisher,
+    publishedYear: bookObj.publishedYear || item.publishedYear,
+    dimensions: bookObj.dimensions || item.dimensions,
+    chapters: bookObj.chapters || item.chapters || [],
+  };
+});
 
         setOwnedBooks(normalizedBooks);
       } catch (error) {
