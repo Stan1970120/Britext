@@ -1,6 +1,4 @@
 
-// frontend/brit/app/(dashboard)/profile/page.tsx
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -251,9 +249,14 @@ export default function UserDashboard() {
 
         // Normalize data structure based on backend PublishBook schema
         const normalizedBooks: Book[] = rawList.map((item: RawBookItem) => {
-          const bookObj = item.book || item.bookId || item;
+          // 1. Resolve nested populated object vs flat document
+          const bookObj = (typeof item.bookId === "object" && item.bookId !== null)
+            ? item.bookId
+            : (typeof item.book === "object" && item.book !== null)
+            ? item.book
+            : item;
 
-          // Handle cases where authorId might be populated object vs string
+          // 2. Resolve author string or populated author object
           let authorDisplay = bookObj.author || item.author || "Admin";
           if (typeof bookObj.authorId === "object" && bookObj.authorId !== null) {
             authorDisplay = bookObj.authorId.name || authorDisplay;
@@ -268,10 +271,10 @@ export default function UserDashboard() {
             summary: bookObj.summary || item.summary,
             category: bookObj.category || item.category || "Uncategorized",
             price: bookObj.price ?? item.price ?? 0,
-            coverImage: bookObj.coverImage || item.coverImage,
+            coverImage: bookObj.coverImage || item.coverImage || "",
             secondaryImage: bookObj.secondaryImage || item.secondaryImage,
             manuscriptKey: bookObj.manuscriptKey || item.manuscriptKey,
-            status: bookObj.status || item.status || "draft",
+            status: bookObj.status || item.status || "published",
             rating: bookObj.rating ?? item.rating ?? 0,
             numReviews: bookObj.numReviews ?? item.numReviews ?? 0,
             pages: bookObj.pages ?? item.pages ?? 0,
