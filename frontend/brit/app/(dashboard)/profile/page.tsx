@@ -249,14 +249,12 @@ export default function UserDashboard() {
 
         // Normalize data structure based on backend PublishBook schema
         const normalizedBooks: Book[] = rawList.map((item: RawBookItem) => {
-          // 1. Resolve nested populated object vs flat document
           const bookObj = (typeof item.bookId === "object" && item.bookId !== null)
             ? item.bookId
             : (typeof item.book === "object" && item.book !== null)
             ? item.book
             : item;
 
-          // 2. Resolve author string or populated author object
           let authorDisplay = bookObj.author || item.author || "Admin";
           if (typeof bookObj.authorId === "object" && bookObj.authorId !== null) {
             authorDisplay = bookObj.authorId.name || authorDisplay;
@@ -298,7 +296,7 @@ export default function UserDashboard() {
     fetchMyBooks();
   }, [token, userId, activeTab]);
 
-  // Fetch Cart Items on initial mount & when token is available
+  // Fetch Cart Items
   useEffect(() => {
     const fetchCart = async () => {
       if (!token || !API?.CART) return;
@@ -330,13 +328,11 @@ export default function UserDashboard() {
     }
   }, [token]);
 
-  // Calculate total items count in cart
   const totalCartCount = cartItems.reduce(
     (acc, item) => acc + item.quantity,
     0
   );
 
-  // Quantity updates for Cart
   const updateQuantity = async (bookId: string, quantity: number) => {
     if (quantity <= 0) {
       removeItem(bookId);
@@ -367,7 +363,6 @@ export default function UserDashboard() {
     }
   };
 
-  // Remove Item from Cart
   const removeItem = async (bookId: string) => {
     if (!API?.CART) return;
 
@@ -396,7 +391,6 @@ export default function UserDashboard() {
     );
   };
 
-  // 1. Loading State Guard
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -408,7 +402,6 @@ export default function UserDashboard() {
     );
   }
 
-  // 2. Unauthenticated Guard
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-6 text-center">
@@ -432,7 +425,6 @@ export default function UserDashboard() {
     );
   }
 
-  // 3. Main Dashboard UI
   return (
     <>
       <Header />
