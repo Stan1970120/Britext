@@ -1,6 +1,5 @@
 import User from "../models/User.js";
-import PublishBook from "../models/publishbook.js"; 
-
+import PublishBook from "../models/publishbook.model.js";
 export const getUserBooks = async (req, res) => {
   try {
     const { userId } = req.params;
