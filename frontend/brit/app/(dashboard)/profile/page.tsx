@@ -49,12 +49,12 @@ export interface Chapter {
 export interface Book {
   id?: string;
   _id?: string;
-  title: string;
-  author: string;
+  title?: string;
+  author?: string;
   authorId?: string | { _id: string; name?: string; email?: string };
   summary?: string;
-  category: string;
-  price: number;
+  category?: string;
+  price?: number;
   coverImage?: string;
   secondaryImage?: string;
   manuscriptKey?: string;
@@ -225,20 +225,14 @@ export default function UserDashboard() {
 
         if (!response.ok) {
           const errorText = await response.text();
-
-          console.error(
-            "Failed to fetch My Books:",
-            response.status,
-            errorText
-          );
-
+          console.error("Failed to fetch My Books:", response.status, errorText);
           setOwnedBooks([]);
           return;
         }
 
         const data = await response.json();
 
-        const rawList: RawBookItem[] = Array.isArray(data?.purchasedBooks)
+        const rawList: (RawBookItem | string)[] = Array.isArray(data?.purchasedBooks)
           ? data.purchasedBooks
           : Array.isArray(data?.books)
           ? data.books
@@ -246,13 +240,26 @@ export default function UserDashboard() {
           ? data
           : [];
 
-        // Normalize populated book records directly from flat array
-        const normalizedBooks: Book[] = rawList.map((item: RawBookItem) => {
+        // Normalize books without fake placeholders
+        const normalizedBooks: Book[] = rawList.map((item) => {
+          // If the item is just a raw string ObjectId because population failed on backend
+          if (typeof item === "string") {
+            return {
+              _id: item,
+              id: item,
+              title: "",
+              author: "",
+              category: "",
+              price: 0,
+              coverImage: "",
+            };
+          }
+
           const bookObj = (typeof item.bookId === "object" && item.bookId !== null)
             ? item.bookId
             : item;
 
-          let authorDisplay = bookObj.author || "Admin";
+          let authorDisplay = bookObj.author || "";
           if (typeof bookObj.authorId === "object" && bookObj.authorId !== null) {
             authorDisplay = bookObj.authorId.name || authorDisplay;
           }
@@ -260,11 +267,11 @@ export default function UserDashboard() {
           return {
             _id: String(bookObj._id || bookObj.id || ""),
             id: String(bookObj._id || bookObj.id || ""),
-            title: bookObj.title || "Untitled Book",
+            title: bookObj.title || "",
             author: authorDisplay,
             authorId: bookObj.authorId,
             summary: bookObj.summary || "",
-            category: bookObj.category || "Uncategorized",
+            category: bookObj.category || "",
             price: bookObj.price ?? 0,
             coverImage: bookObj.coverImage || "",
             secondaryImage: bookObj.secondaryImage || "",
@@ -273,7 +280,7 @@ export default function UserDashboard() {
             rating: bookObj.rating ?? 0,
             numReviews: bookObj.numReviews ?? 0,
             pages: bookObj.pages ?? 0,
-            language: bookObj.language || "English",
+            language: bookObj.language || "",
             publisher: bookObj.publisher || "",
             publishedYear: bookObj.publishedYear,
             dimensions: bookObj.dimensions || "",
@@ -536,28 +543,34 @@ export default function UserDashboard() {
                           >
                             <div>
                               <div className="aspect-[3/4] bg-slate-100 rounded-xl mb-3 overflow-hidden relative">
-                                {book.coverImage && (
+                                {book.coverImage ? (
                                   <img 
                                     src={book.coverImage} 
-                                    alt={book.title} 
+                                    alt={book.title || "Book Cover"} 
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
                                   />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                    <BookOpen size={32} />
+                                  </div>
                                 )}
                               </div>
 
                               <h4 className="font-bold text-slate-900 line-clamp-1">
-                                {book.title}
+                                {book.title || ""}
                               </h4>
 
-                              <p className="text-xs text-slate-500 mb-3">
-                                {book.author}
-                              </p>
+                              {book.author && (
+                                <p className="text-xs text-slate-500 mb-3">
+                                  {book.author}
+                                </p>
+                              )}
                             </div>
 
                             <button
                               onClick={() => handleDownload(targetId)}
                               disabled={isDownloading || !targetId}
-                              className="w-full flex items-center justify-center gap-2 bg-[#005F7A] text-white py-2.5 px-3 rounded-xl text-xs font-bold hover:opacity-90 disabled:opacity-50 transition-all shadow-sm"
+                              className="w-full flex items-center justify-center gap-2 bg-[#005F7A] text-white py-2.5 px-3 rounded-xl text-xs font-bold hover:opacity-90 disabled:opacity-50 transition-all shadow-sm mt-3"
                             >
                               {isDownloading ? (
                                 <>
@@ -797,8 +810,6 @@ export default function UserDashboard() {
     </>
   );
 }
-
-
 /*
 "use client";
 
