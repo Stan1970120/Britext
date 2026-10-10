@@ -19,10 +19,7 @@ export const getUserBooks = async (req, res) => {
 
     const user = await User.findById(userId).populate({
       path: "purchasedBooks",
-      populate: {
-        path: "bookId",
-        model: "PublishBook",
-      },
+      model: PublishBook,
     });
 
     if (!user) {
@@ -106,7 +103,6 @@ export const downloadBook = async (req, res) => {
       return res.status(401).json({ error: "User authentication missing." });
     }
 
-    // Look up in PublishBook collection
     const book = await PublishBook.findById(bookId);
     if (!book) {
       return res.status(404).json({ error: "Book not found." });
@@ -114,13 +110,9 @@ export const downloadBook = async (req, res) => {
 
     const user = await User.findById(userId);
 
-    // Check ownership against both flat IDs and nested bookId objects
+    // Direct comparison against flat purchasedBooks ObjectId array
     const hasPurchased = user?.purchasedBooks?.some((pBook) => {
-      const pId = pBook?.bookId
-        ? pBook.bookId.toString()
-        : pBook._id
-        ? pBook._id.toString()
-        : pBook.toString();
+      const pId = pBook._id ? pBook._id.toString() : pBook.toString();
       return pId === bookId.toString();
     });
 
