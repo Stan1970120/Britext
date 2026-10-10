@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -94,7 +93,7 @@ interface RawBookItem {
   dimensions?: string;
   chapters?: Chapter[];
   book?: RawBookItem;
-  bookId?: RawBookItem;
+  bookId?: RawBookItem | string;
 }
 
 export type CartItem = {
@@ -247,86 +246,40 @@ export default function UserDashboard() {
           ? data
           : [];
 
-        /** 
+        // Normalize populated book records directly from flat array
         const normalizedBooks: Book[] = rawList.map((item: RawBookItem) => {
           const bookObj = (typeof item.bookId === "object" && item.bookId !== null)
             ? item.bookId
-            : (typeof item.book === "object" && item.book !== null)
-            ? item.book
             : item;
 
-          let authorDisplay = bookObj.author || item.author || "Admin";
+          let authorDisplay = bookObj.author || "Admin";
           if (typeof bookObj.authorId === "object" && bookObj.authorId !== null) {
             authorDisplay = bookObj.authorId.name || authorDisplay;
           }
 
           return {
-            _id: bookObj._id || item._id || bookObj.id || item.id,
-            id: bookObj.id || item.id || bookObj._id || item._id,
-            title: bookObj.title || item.title || "Untitled Book",
+            _id: String(bookObj._id || bookObj.id || ""),
+            id: String(bookObj._id || bookObj.id || ""),
+            title: bookObj.title || "Untitled Book",
             author: authorDisplay,
-            authorId: bookObj.authorId || item.authorId,
-            summary: bookObj.summary || item.summary,
-            category: bookObj.category || item.category || "Uncategorized",
-            price: bookObj.price ?? item.price ?? 0,
-            coverImage: bookObj.coverImage || item.coverImage || "",
-            secondaryImage: bookObj.secondaryImage || item.secondaryImage,
-            manuscriptKey: bookObj.manuscriptKey || item.manuscriptKey,
-            status: bookObj.status || item.status || "published",
-            rating: bookObj.rating ?? item.rating ?? 0,
-            numReviews: bookObj.numReviews ?? item.numReviews ?? 0,
-            pages: bookObj.pages ?? item.pages ?? 0,
-            language: bookObj.language || item.language || "English",
-            publisher: bookObj.publisher || item.publisher,
-            publishedYear: bookObj.publishedYear || item.publishedYear,
-            dimensions: bookObj.dimensions || item.dimensions,
-            chapters: bookObj.chapters || item.chapters || [],
+            authorId: bookObj.authorId,
+            summary: bookObj.summary || "",
+            category: bookObj.category || "Uncategorized",
+            price: bookObj.price ?? 0,
+            coverImage: bookObj.coverImage || "",
+            secondaryImage: bookObj.secondaryImage || "",
+            manuscriptKey: bookObj.manuscriptKey || "",
+            status: bookObj.status || "published",
+            rating: bookObj.rating ?? 0,
+            numReviews: bookObj.numReviews ?? 0,
+            pages: bookObj.pages ?? 0,
+            language: bookObj.language || "English",
+            publisher: bookObj.publisher || "",
+            publishedYear: bookObj.publishedYear,
+            dimensions: bookObj.dimensions || "",
+            chapters: bookObj.chapters || [],
           };
         });
-        **/
-        
-        // Inside fetchMyBooks in frontend/brit/app/(dashboard)/profile/page.tsx
-
-const normalizedBooks: Book[] = rawList.map((item: RawBookItem) => {
-  // 1. Un-nest the populated book object if item wraps bookId or book
-  const bookObj = (typeof item.bookId === "object" && item.bookId !== null)
-    ? item.bookId
-    : (typeof item.book === "object" && item.book !== null)
-    ? item.book
-    : item;
-
-  // 2. IMPORTANT: Force targetId to be the actual book's ID, not the purchased subdocument wrapper ID
-  const actualBookId = bookObj._id || bookObj.id || item.bookId || item._id;
-
-  // 3. Resolve author display
-  let authorDisplay = bookObj.author || item.author || "Admin";
-  if (typeof bookObj.authorId === "object" && bookObj.authorId !== null) {
-    authorDisplay = bookObj.authorId.name || authorDisplay;
-  }
-
-  return {
-    _id: String(actualBookId),
-    id: String(actualBookId),
-    title: bookObj.title || item.title || "Untitled Book",
-    author: authorDisplay,
-    authorId: bookObj.authorId || item.authorId,
-    summary: bookObj.summary || item.summary,
-    category: bookObj.category || item.category || "Uncategorized",
-    price: bookObj.price ?? item.price ?? 0,
-    coverImage: bookObj.coverImage || item.coverImage || "",
-    secondaryImage: bookObj.secondaryImage || item.secondaryImage,
-    manuscriptKey: bookObj.manuscriptKey || item.manuscriptKey,
-    status: bookObj.status || item.status || "published",
-    rating: bookObj.rating ?? item.rating ?? 0,
-    numReviews: bookObj.numReviews ?? item.numReviews ?? 0,
-    pages: bookObj.pages ?? item.pages ?? 0,
-    language: bookObj.language || item.language || "English",
-    publisher: bookObj.publisher || item.publisher,
-    publishedYear: bookObj.publishedYear || item.publishedYear,
-    dimensions: bookObj.dimensions || item.dimensions,
-    chapters: bookObj.chapters || item.chapters || [],
-  };
-});
 
         setOwnedBooks(normalizedBooks);
       } catch (error) {
@@ -845,6 +798,7 @@ const normalizedBooks: Book[] = rawList.map((item: RawBookItem) => {
   );
 }
 
+
 /*
 "use client";
 
@@ -885,15 +839,38 @@ interface AppUser {
 
 type Tab = "my-books" | "store" | "cart" | "saved" | "history";
 
-interface Book {
+export interface Chapter {
+  _id?: string;
+  title?: string;
+  heading?: string;
+  content?: string;
+  illustrationUrl?: string;
+  order?: number;
+}
+
+export interface Book {
   id?: string;
   _id?: string;
   title: string;
-  author?: string;
-  price?: number;
-  category?: string;
+  author: string;
+  authorId?: string | { _id: string; name?: string; email?: string };
+  summary?: string;
+  category: string;
+  price: number;
   coverImage?: string;
+  secondaryImage?: string;
   manuscriptKey?: string;
+  status?: "draft" | "published";
+  rating?: number;
+  numReviews?: number;
+  pages?: number;
+  language?: string;
+  publisher?: string;
+  publishedYear?: number;
+  dimensions?: string;
+  chapters?: Chapter[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface RawBookItem {
@@ -901,10 +878,22 @@ interface RawBookItem {
   _id?: string;
   title?: string;
   author?: string;
-  price?: number;
+  authorId?: string | { _id: string; name?: string; email?: string };
+  summary?: string;
   category?: string;
+  price?: number;
   coverImage?: string;
+  secondaryImage?: string;
   manuscriptKey?: string;
+  status?: "draft" | "published";
+  rating?: number;
+  numReviews?: number;
+  pages?: number;
+  language?: string;
+  publisher?: string;
+  publishedYear?: number;
+  dimensions?: string;
+  chapters?: Chapter[];
   book?: RawBookItem;
   bookId?: RawBookItem;
 }
@@ -912,13 +901,7 @@ interface RawBookItem {
 export type CartItem = {
   bookId: string;
   quantity: number;
-  book?: {
-    _id: string;
-    title: string;
-    category: string;
-    price: number;
-    coverImage?: string;
-  };
+  book?: Book;
 };
 
 interface ApiErrorResponse {
@@ -1065,20 +1048,86 @@ export default function UserDashboard() {
           ? data
           : [];
 
-        // Normalize data structure if nested inside `book` or `bookId` reference
+        /** 
         const normalizedBooks: Book[] = rawList.map((item: RawBookItem) => {
-          const bookObj = item.book || item.bookId || item;
+          const bookObj = (typeof item.bookId === "object" && item.bookId !== null)
+            ? item.bookId
+            : (typeof item.book === "object" && item.book !== null)
+            ? item.book
+            : item;
+
+          let authorDisplay = bookObj.author || item.author || "Admin";
+          if (typeof bookObj.authorId === "object" && bookObj.authorId !== null) {
+            authorDisplay = bookObj.authorId.name || authorDisplay;
+          }
+
           return {
             _id: bookObj._id || item._id || bookObj.id || item.id,
             id: bookObj.id || item.id || bookObj._id || item._id,
             title: bookObj.title || item.title || "Untitled Book",
-            author: bookObj.author || item.author || "Unknown Author",
+            author: authorDisplay,
+            authorId: bookObj.authorId || item.authorId,
+            summary: bookObj.summary || item.summary,
+            category: bookObj.category || item.category || "Uncategorized",
             price: bookObj.price ?? item.price ?? 0,
-            category: bookObj.category || item.category,
-            coverImage: bookObj.coverImage || item.coverImage,
+            coverImage: bookObj.coverImage || item.coverImage || "",
+            secondaryImage: bookObj.secondaryImage || item.secondaryImage,
             manuscriptKey: bookObj.manuscriptKey || item.manuscriptKey,
+            status: bookObj.status || item.status || "published",
+            rating: bookObj.rating ?? item.rating ?? 0,
+            numReviews: bookObj.numReviews ?? item.numReviews ?? 0,
+            pages: bookObj.pages ?? item.pages ?? 0,
+            language: bookObj.language || item.language || "English",
+            publisher: bookObj.publisher || item.publisher,
+            publishedYear: bookObj.publishedYear || item.publishedYear,
+            dimensions: bookObj.dimensions || item.dimensions,
+            chapters: bookObj.chapters || item.chapters || [],
           };
         });
+        
+        
+        // Inside fetchMyBooks in frontend/brit/app/(dashboard)/profile/page.tsx
+
+const normalizedBooks: Book[] = rawList.map((item: RawBookItem) => {
+  // 1. Un-nest the populated book object if item wraps bookId or book
+  const bookObj = (typeof item.bookId === "object" && item.bookId !== null)
+    ? item.bookId
+    : (typeof item.book === "object" && item.book !== null)
+    ? item.book
+    : item;
+
+  // IMPORTANT: Force targetId to be the actual book's ID, not the purchased subdocument wrapper ID
+  const actualBookId = bookObj._id || bookObj.id || item.bookId || item._id;
+
+  // 3. Resolve author display
+  let authorDisplay = bookObj.author || item.author || "Admin";
+  if (typeof bookObj.authorId === "object" && bookObj.authorId !== null) {
+    authorDisplay = bookObj.authorId.name || authorDisplay;
+  }
+
+  return {
+    _id: String(actualBookId),
+    id: String(actualBookId),
+    title: bookObj.title || item.title || "Untitled Book",
+    author: authorDisplay,
+    authorId: bookObj.authorId || item.authorId,
+    summary: bookObj.summary || item.summary,
+    category: bookObj.category || item.category || "Uncategorized",
+    price: bookObj.price ?? item.price ?? 0,
+    coverImage: bookObj.coverImage || item.coverImage || "",
+    secondaryImage: bookObj.secondaryImage || item.secondaryImage,
+    manuscriptKey: bookObj.manuscriptKey || item.manuscriptKey,
+    status: bookObj.status || item.status || "published",
+    rating: bookObj.rating ?? item.rating ?? 0,
+    numReviews: bookObj.numReviews ?? item.numReviews ?? 0,
+    pages: bookObj.pages ?? item.pages ?? 0,
+    language: bookObj.language || item.language || "English",
+    publisher: bookObj.publisher || item.publisher,
+    publishedYear: bookObj.publishedYear || item.publishedYear,
+    dimensions: bookObj.dimensions || item.dimensions,
+    chapters: bookObj.chapters || item.chapters || [],
+  };
+});
 
         setOwnedBooks(normalizedBooks);
       } catch (error) {
@@ -1092,7 +1141,7 @@ export default function UserDashboard() {
     fetchMyBooks();
   }, [token, userId, activeTab]);
 
-  // Fetch Cart Items on initial mount & when token is available
+  // Fetch Cart Items
   useEffect(() => {
     const fetchCart = async () => {
       if (!token || !API?.CART) return;
@@ -1124,13 +1173,11 @@ export default function UserDashboard() {
     }
   }, [token]);
 
-  // Calculate total items count in cart
   const totalCartCount = cartItems.reduce(
     (acc, item) => acc + item.quantity,
     0
   );
 
-  // Quantity updates for Cart
   const updateQuantity = async (bookId: string, quantity: number) => {
     if (quantity <= 0) {
       removeItem(bookId);
@@ -1161,7 +1208,6 @@ export default function UserDashboard() {
     }
   };
 
-  // Remove Item from Cart
   const removeItem = async (bookId: string) => {
     if (!API?.CART) return;
 
@@ -1190,7 +1236,6 @@ export default function UserDashboard() {
     );
   };
 
-  // 1. Loading State Guard
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -1202,7 +1247,6 @@ export default function UserDashboard() {
     );
   }
 
-  // 2. Unauthenticated Guard
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-6 text-center">
@@ -1226,7 +1270,6 @@ export default function UserDashboard() {
     );
   }
 
-  // 3. Main Dashboard UI
   return (
     <>
       <Header />
@@ -1630,7 +1673,6 @@ import { useAuth } from "@/app/context/AuthContext";
 import Header from "@/Components/Header"; 
 import { API } from "../../constant/api";
 import BookStore from "@/app/(public)/book-store/page";
-import { div } from "framer-motion/client";
 
 // Types
 interface AppUser {
@@ -1653,6 +1695,19 @@ interface Book {
   category?: string;
   coverImage?: string;
   manuscriptKey?: string;
+}
+
+interface RawBookItem {
+  id?: string;
+  _id?: string;
+  title?: string;
+  author?: string;
+  price?: number;
+  category?: string;
+  coverImage?: string;
+  manuscriptKey?: string;
+  book?: RawBookItem;
+  bookId?: RawBookItem;
 }
 
 export type CartItem = {
@@ -1723,7 +1778,7 @@ export default function UserDashboard() {
     try {
       setDownloadingId(bookId);
 
-      const downloadEndpoint = typeof API.DOWNLOAD_BOOK === "function" 
+      const downloadEndpoint = typeof API?.DOWNLOAD_BOOK === "function" 
         ? API.DOWNLOAD_BOOK(bookId) 
         : `/api/books/${bookId}/download`;
 
@@ -1775,17 +1830,18 @@ export default function UserDashboard() {
       try {
         setFetchingBooks(true);
 
-        const response = await fetch(
-          `${API.MY_BOOKS(userId)}`,
-          {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            credentials: "include",
-          }
-        );
+        const myBooksEndpoint = typeof API?.MY_BOOKS === "function" 
+          ? API.MY_BOOKS(userId) 
+          : `/api/users/${userId}/books`;
+
+        const response = await fetch(myBooksEndpoint, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+        });
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -1802,13 +1858,30 @@ export default function UserDashboard() {
 
         const data = await response.json();
 
-        const booksList = Array.isArray(data?.purchasedBooks)
+        const rawList: RawBookItem[] = Array.isArray(data?.purchasedBooks)
           ? data.purchasedBooks
+          : Array.isArray(data?.books)
+          ? data.books
           : Array.isArray(data)
           ? data
           : [];
 
-        setOwnedBooks(booksList);
+        // Normalize data structure if nested inside `book` or `bookId` reference
+        const normalizedBooks: Book[] = rawList.map((item: RawBookItem) => {
+          const bookObj = item.book || item.bookId || item;
+          return {
+            _id: bookObj._id || item._id || bookObj.id || item.id,
+            id: bookObj.id || item.id || bookObj._id || item._id,
+            title: bookObj.title || item.title || "Untitled Book",
+            author: bookObj.author || item.author || "Unknown Author",
+            price: bookObj.price ?? item.price ?? 0,
+            category: bookObj.category || item.category,
+            coverImage: bookObj.coverImage || item.coverImage,
+            manuscriptKey: bookObj.manuscriptKey || item.manuscriptKey,
+          };
+        });
+
+        setOwnedBooks(normalizedBooks);
       } catch (error) {
         console.error("Failed to fetch user books:", error);
         setOwnedBooks([]);
@@ -1820,7 +1893,7 @@ export default function UserDashboard() {
     fetchMyBooks();
   }, [token, userId, activeTab]);
 
-  // Fetch Cart Items on initial mount & when token is available to show total badge count
+  // Fetch Cart Items on initial mount & when token is available
   useEffect(() => {
     const fetchCart = async () => {
       if (!token || !API?.CART) return;
