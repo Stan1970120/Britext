@@ -5,7 +5,7 @@ export const getUserBooks = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Direct populate since purchasedBooks is an array of ObjectIds
+    // Direct populate since purchasedBooks is an array of ObjectIds[cite: 8]
     const user = await User.findById(userId).populate({
       path: "purchasedBooks",
       model: PublishBook,
