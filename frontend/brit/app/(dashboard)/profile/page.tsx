@@ -1,3 +1,5 @@
+/*
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -780,7 +782,7 @@ export default function UserDashboard() {
         </div>
       </div>
 
-      {/* Notice/Error Modal */}
+    
       {modalConfig.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-[2rem] bg-white p-6 md:p-8 shadow-xl border border-slate-100">
@@ -1656,8 +1658,7 @@ const normalizedBooks: Book[] = rawList.map((item: RawBookItem) => {
     </>
   );
 }
-
-/*
+*/
 "use client";
 
 import { useState, useEffect } from "react";
@@ -2414,5 +2415,3 @@ export default function UserDashboard() {
     </>
   );
 }
-
-*/
