@@ -110,7 +110,7 @@ export const downloadBook = async (req, res) => {
 
     const user = await User.findById(userId);
 
-    // Direct comparison against flat purchasedBooks ObjectId array
+    // Direct comparison against flat purchasedBooks ObjectId array[cite: 8]
     const hasPurchased = user?.purchasedBooks?.some((pBook) => {
       const pId = pBook._id ? pBook._id.toString() : pBook.toString();
       return pId === bookId.toString();
