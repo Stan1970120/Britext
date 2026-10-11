@@ -1,48 +1,45 @@
 import PublishBook from "../models/publishbook.model.js";
 import User from "../models/User.js";
 
-// Fetch all published books
 export const getBooks = async (req, res) => {
   try {
     const books = await PublishBook.find({});
     return res.status(200).json(books);
   } catch (error) {
     console.error("Error in getBooks:", error);
-    return res.status(500).json({ error: "Server error fetching books." });
+    return res.status(200).json({ error: "Server error fetching books." });
   }
 };
 
-// Fetch books owned/purchased by a specific user
 export const getUserBooks = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const user = await User.findById(userId).populate({
-      path: "purchasedBooks",
-      model: PublishBook,
-    });
-
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ error: "User not found." });
     }
 
-    return res.status(200).json(user.purchasedBooks || []);
+    const bookIds = (user.purchasedBooks || []).map((item) => 
+      typeof item === "object" && item !== null ? item._id || item.bookId : item
+    ).filter(Boolean);
+
+    const books = await PublishBook.find({ _id: { $in: bookIds } });
+
+    return res.status(200).json(books);
   } catch (error) {
     console.error("Error in getUserBooks:", error);
     return res.status(500).json({ error: "Server error fetching user books." });
   }
 };
 
-// Fetch single book details
 export const getBookDetails = async (req, res) => {
   try {
     const { id } = req.params;
-
     const book = await PublishBook.findById(id);
     if (!book) {
       return res.status(404).json({ error: "Book not found." });
     }
-
     return res.status(200).json(book);
   } catch (error) {
     console.error("Error in getBookDetails:", error);
@@ -50,7 +47,6 @@ export const getBookDetails = async (req, res) => {
   }
 };
 
-// Rate a book
 export const rateBook = async (req, res) => {
   try {
     const { id } = req.params;
@@ -83,7 +79,6 @@ export const rateBook = async (req, res) => {
     book.averageRating = totalRatings > 0 ? (sumRatings / totalRatings).toFixed(1) : 0;
 
     await book.save();
-
     return res.status(200).json({ message: "Rating submitted successfully.", book });
   } catch (error) {
     console.error("Error in rateBook:", error);
@@ -91,9 +86,6 @@ export const rateBook = async (req, res) => {
   }
 };
 
-/**
- * Handle book download URL generation
- */
 export const downloadBook = async (req, res) => {
   try {
     const bookId = req.params.id;
@@ -110,9 +102,8 @@ export const downloadBook = async (req, res) => {
 
     const user = await User.findById(userId);
 
-    // Direct comparison against flat purchasedBooks ObjectId array[cite: 8]
     const hasPurchased = user?.purchasedBooks?.some((pBook) => {
-      const pId = pBook._id ? pBook._id.toString() : pBook.toString();
+      const pId = typeof pBook === "object" && pBook !== null ? (pBook._id || pBook.bookId)?.toString() : pBook?.toString();
       return pId === bookId.toString();
     });
 
