@@ -34,7 +34,9 @@ const allowedOrigins = [
   "http://localhost:3000", 
   "https://britext.vercel.app",
   "https://enjoyreads.com",     
-  "https://www.enjoyreads.com"  
+  "https://www.enjoyreads.com",
+  "http://enjoyreads.com",     
+  "http://www.enjoyreads.com"
 ];
 
 app.use(
