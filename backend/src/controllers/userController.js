@@ -5,19 +5,20 @@ export const getUserBooks = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Direct populate since purchasedBooks is an array of ObjectIds[cite: 8]
-    const user = await User.findById(userId).populate({
-      path: "purchasedBooks",
-      model: PublishBook,
-    });
-
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    const bookIds = (user.purchasedBooks || []).map((item) => 
+      typeof item === "object" && item !== null ? item._id || item.bookId : item
+    ).filter(Boolean);
+
+    const books = await PublishBook.find({ _id: { $in: bookIds } });
+
     res.status(200).json({
       success: true,
-      purchasedBooks: user.purchasedBooks || [],
+      purchasedBooks: books,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
